@@ -8,6 +8,7 @@ import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import Privacy from './pages/Privacy';
 import Terms from './pages/Terms';
+import DataDeletion from './pages/DataDeletion';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -72,6 +73,7 @@ function AppRoutes() {
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/privacy" element={<Privacy />} />
       <Route path="/terms" element={<Terms />} />
+      <Route path="/data-deletion" element={<DataDeletion />} />
 
       {/* Protected Routes */}
       <Route path="/dashboard" element={
