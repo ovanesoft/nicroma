@@ -78,13 +78,13 @@ const ForgotPassword = () => {
             <div>
               <label htmlFor="email" className="form-label">Email</label>
               <div className="relative">
-                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                <Mail className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 transition-all duration-200 ${email ? 'opacity-0 -translate-x-2' : ''}`} />
                 <input
                   id="email"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="input-field pl-14"
+                  className={`input-field transition-all duration-200 ${email ? 'pl-4' : 'pl-14'}`}
                   placeholder="tu@email.com"
                   required
                   autoComplete="email"

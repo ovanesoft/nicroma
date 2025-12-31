@@ -85,31 +85,6 @@ body {
   box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
 }
 
-/* Ocultar iconos de input cuando tiene foco o contenido */
-.input-icon {
-  @apply absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 
-         transition-all duration-200 pointer-events-none;
-}
-
-.input-field:focus ~ .input-icon,
-.input-field:not(:placeholder-shown) ~ .input-icon {
-  @apply opacity-0 -translate-x-2;
-}
-
-/* Wrapper para inputs con icono */
-.input-with-icon {
-  @apply relative;
-}
-
-.input-with-icon .input-field {
-  @apply pl-12;
-}
-
-.input-with-icon .input-field:focus,
-.input-with-icon .input-field:not(:placeholder-shown) {
-  @apply pl-4;
-}
-
 /* Button styles */
 .btn-primary {
   @apply px-6 py-3 bg-gradient-to-r from-primary-600 to-primary-500 text-white font-semibold

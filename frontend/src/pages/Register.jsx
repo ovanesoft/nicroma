@@ -205,14 +205,14 @@ const Register = () => {
                 <div>
                   <label htmlFor="firstName" className="form-label">Nombre</label>
                   <div className="relative">
-                    <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                    <User className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 transition-all duration-200 ${formData.firstName ? 'opacity-0 -translate-x-2' : ''}`} />
                     <input
                       id="firstName"
                       name="firstName"
                       type="text"
                       value={formData.firstName}
                       onChange={handleChange}
-                      className={`input-field pl-14 ${fieldErrors.firstName ? 'border-red-500' : ''}`}
+                      className={`input-field transition-all duration-200 ${formData.firstName ? 'pl-4' : 'pl-14'} ${fieldErrors.firstName ? 'border-red-500' : ''}`}
                       placeholder="Juan"
                       required
                     />
@@ -238,14 +238,14 @@ const Register = () => {
               <div>
                 <label htmlFor="email" className="form-label">Email</label>
                 <div className="relative">
-                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                  <Mail className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 transition-all duration-200 ${formData.email ? 'opacity-0 -translate-x-2' : ''}`} />
                   <input
                     id="email"
                     name="email"
                     type="email"
                     value={formData.email}
                     onChange={handleChange}
-                    className={`input-field pl-14 ${fieldErrors.email ? 'border-red-500' : ''}`}
+                    className={`input-field transition-all duration-200 ${formData.email ? 'pl-4' : 'pl-14'} ${fieldErrors.email ? 'border-red-500' : ''}`}
                     placeholder="tu@email.com"
                     required
                     autoComplete="email"
@@ -257,14 +257,14 @@ const Register = () => {
               <div>
                 <label htmlFor="password" className="form-label">Contraseña</label>
                 <div className="relative">
-                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                  <Lock className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 transition-all duration-200 ${formData.password ? 'opacity-0 -translate-x-2' : ''}`} />
                   <input
                     id="password"
                     name="password"
                     type={showPassword ? 'text' : 'password'}
                     value={formData.password}
                     onChange={handleChange}
-                    className={`input-field pl-14 pr-12 ${fieldErrors.password ? 'border-red-500' : ''}`}
+                    className={`input-field pr-12 transition-all duration-200 ${formData.password ? 'pl-4' : 'pl-14'} ${fieldErrors.password ? 'border-red-500' : ''}`}
                     placeholder="••••••••"
                     required
                     autoComplete="new-password"
@@ -312,14 +312,14 @@ const Register = () => {
               <div>
                 <label htmlFor="confirmPassword" className="form-label">Confirmar contraseña</label>
                 <div className="relative">
-                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                  <Lock className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 transition-all duration-200 ${formData.confirmPassword ? 'opacity-0 -translate-x-2' : ''}`} />
                   <input
                     id="confirmPassword"
                     name="confirmPassword"
                     type={showPassword ? 'text' : 'password'}
                     value={formData.confirmPassword}
                     onChange={handleChange}
-                    className="input-field pl-14"
+                    className={`input-field transition-all duration-200 ${formData.confirmPassword ? 'pl-4' : 'pl-14'}`}
                     placeholder="••••••••"
                     required
                     autoComplete="new-password"
