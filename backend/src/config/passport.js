@@ -128,9 +128,10 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
         console.log('Google OAuth - existing user:', user ? user.id : 'none');
 
         if (user) {
+          console.log('Google OAuth - user found:', user.id);
           // Actualizar google_id si no lo tiene
           if (!user.google_id) {
-            console.log('Google OAuth - linking google_id to existing user');
+            console.log('Google OAuth - linking google_id');
             await query(
               'UPDATE users SET google_id = $1, email_verified = true WHERE id = $2',
               [profile.id, user.id]
@@ -139,22 +140,25 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
             user.email_verified = true;
           }
           
-          delete user.password_hash;
           return done(null, user);
         }
 
-        // Crear nuevo usuario con Google
-        console.log('Google OAuth - creating new user');
+        // Crear nuevo usuario
+        console.log('Google OAuth - creating user');
         const insertResult = await query(
           `INSERT INTO users (
             email, first_name, last_name, google_id, 
             auth_provider, email_verified, is_active, role, login_count
           ) VALUES ($1, $2, $3, $4, 'google', true, true, 'user', 0)
           RETURNING id, email, first_name, last_name, role, tenant_id, is_active`,
-          [email, profile.name.givenName || 'Usuario', profile.name.familyName || '', profile.id]
+          [email, profile.name?.givenName || 'Usuario', profile.name?.familyName || '', profile.id]
         );
 
-        console.log('Google OAuth - user created:', insertResult.rows[0]?.id);
+        if (!insertResult.rows[0]) {
+          throw new Error('No se pudo crear el usuario en la base de datos');
+        }
+
+        console.log('Google OAuth - user created:', insertResult.rows[0].id);
         return done(null, insertResult.rows[0]);
 
       } catch (error) {
