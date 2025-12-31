@@ -99,19 +99,35 @@ router.get('/google/callback', async (req, res) => {
   }
 
   try {
+    // DEBUG: Ver exactamente qué código recibimos
+    console.log('=== GOOGLE OAUTH DEBUG ===');
+    console.log('Raw query string:', req.originalUrl);
+    console.log('Parsed code:', code);
+    console.log('Code length:', code.length);
+    console.log('Redirect URI:', process.env.GOOGLE_CALLBACK_URL.trim());
+    
+    // Usar el código TAL CUAL viene en la URL original, sin decodificar
+    const urlParams = new URL(req.originalUrl, `https://${req.headers.host}`).searchParams;
+    const rawCode = urlParams.get('code');
+    console.log('Raw code from URL:', rawCode);
+
     // Intercambiar código por tokens usando fetch nativo
+    const bodyParams = new URLSearchParams({
+      code: rawCode, // Usar el código sin modificar
+      client_id: process.env.GOOGLE_CLIENT_ID.trim(),
+      client_secret: process.env.GOOGLE_CLIENT_SECRET.trim(),
+      redirect_uri: process.env.GOOGLE_CALLBACK_URL.trim(),
+      grant_type: 'authorization_code',
+    });
+    
+    console.log('Sending to Google:', bodyParams.toString().substring(0, 100) + '...');
+
     const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
       },
-      body: new URLSearchParams({
-        code: code,
-        client_id: process.env.GOOGLE_CLIENT_ID.trim(),
-        client_secret: process.env.GOOGLE_CLIENT_SECRET.trim(),
-        redirect_uri: process.env.GOOGLE_CALLBACK_URL.trim(),
-        grant_type: 'authorization_code',
-      }),
+      body: bodyParams,
     });
 
     const tokenData = await tokenResponse.json();
