@@ -212,7 +212,7 @@ const Register = () => {
                       type="text"
                       value={formData.firstName}
                       onChange={handleChange}
-                      className={`input-field pl-12 ${fieldErrors.firstName ? 'border-red-500' : ''}`}
+                      className={`input-field pl-14 ${fieldErrors.firstName ? 'border-red-500' : ''}`}
                       placeholder="Juan"
                       required
                     />
@@ -245,7 +245,7 @@ const Register = () => {
                     type="email"
                     value={formData.email}
                     onChange={handleChange}
-                    className={`input-field pl-12 ${fieldErrors.email ? 'border-red-500' : ''}`}
+                    className={`input-field pl-14 ${fieldErrors.email ? 'border-red-500' : ''}`}
                     placeholder="tu@email.com"
                     required
                     autoComplete="email"
@@ -264,7 +264,7 @@ const Register = () => {
                     type={showPassword ? 'text' : 'password'}
                     value={formData.password}
                     onChange={handleChange}
-                    className={`input-field pl-12 pr-12 ${fieldErrors.password ? 'border-red-500' : ''}`}
+                    className={`input-field pl-14 pr-12 ${fieldErrors.password ? 'border-red-500' : ''}`}
                     placeholder="••••••••"
                     required
                     autoComplete="new-password"
@@ -319,7 +319,7 @@ const Register = () => {
                     type={showPassword ? 'text' : 'password'}
                     value={formData.confirmPassword}
                     onChange={handleChange}
-                    className="input-field pl-12"
+                    className="input-field pl-14"
                     placeholder="••••••••"
                     required
                     autoComplete="new-password"

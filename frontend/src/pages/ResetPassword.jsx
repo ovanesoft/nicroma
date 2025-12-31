@@ -169,7 +169,7 @@ const ResetPassword = () => {
                   type={showPassword ? 'text' : 'password'}
                   value={formData.password}
                   onChange={handleChange}
-                  className="input-field pl-12 pr-12"
+                  className="input-field pl-14 pr-12"
                   placeholder="••••••••"
                   required
                 />
@@ -222,7 +222,7 @@ const ResetPassword = () => {
                   type={showPassword ? 'text' : 'password'}
                   value={formData.confirmPassword}
                   onChange={handleChange}
-                  className="input-field pl-12"
+                  className="input-field pl-14"
                   placeholder="••••••••"
                   required
                 />
