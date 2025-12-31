@@ -54,6 +54,7 @@ const Dashboard = () => {
           <div className="flex items-center justify-between p-4 border-b">
             <div className="flex items-center gap-3">
               <img src="/logo.png" alt="NicRoma" className="w-12 h-12 object-contain" />
+              <span className="text-xl text-slate-800 font-script">NicRoma</span>
             </div>
             <button onClick={() => setSidebarOpen(false)} className="text-slate-400 hover:text-slate-600">
               <X className="w-6 h-6" />
@@ -83,6 +84,7 @@ const Dashboard = () => {
         <div className="flex flex-col flex-1 bg-white border-r border-slate-200">
           <div className="flex items-center gap-3 p-6 border-b">
             <img src="/logo.png" alt="NicRoma" className="w-14 h-14 object-contain" />
+            <span className="text-xl text-slate-800 font-script">NicRoma</span>
           </div>
           
           <nav className="flex-1 p-4 space-y-1">

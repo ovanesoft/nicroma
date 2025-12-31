@@ -44,6 +44,9 @@ const Login = () => {
             <div className="w-48 h-48 mx-auto mb-6 animate-float">
               <img src="/logo.png" alt="NicRoma" className="w-full h-full object-contain drop-shadow-2xl" />
             </div>
+            <h1 className="text-5xl text-white mb-4 font-script">
+              NicRoma
+            </h1>
             <p className="text-xl text-white/60 max-w-md">
               Soluciones logísticas integrales para tu negocio
             </p>
@@ -67,6 +70,7 @@ const Login = () => {
             <div className="w-28 h-28 mx-auto mb-4">
               <img src="/logo.png" alt="NicRoma" className="w-full h-full object-contain drop-shadow-xl" />
             </div>
+            <h1 className="text-2xl text-white font-script">NicRoma</h1>
           </div>
 
           <div className="card animate-slide-up">
