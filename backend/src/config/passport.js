@@ -104,6 +104,7 @@ passport.use(new LocalStrategy(
 
 // Estrategia Google OAuth
 if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+  console.log('✅ Google OAuth configurado');
   passport.use(new GoogleStrategy(
     {
       clientID: process.env.GOOGLE_CLIENT_ID,
@@ -113,49 +114,56 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
     },
     async (accessToken, refreshToken, profile, done) => {
       try {
+        console.log('Google OAuth - profile received:', profile.emails?.[0]?.value);
         const email = profile.emails[0].value.toLowerCase();
         
         // Buscar usuario existente
         let result = await query(
-          'SELECT * FROM users WHERE email = $1 OR google_id = $2',
+          'SELECT * FROM users WHERE LOWER(email) = $1 OR google_id = $2',
           [email, profile.id]
         );
 
         let user = result.rows[0];
+        console.log('Google OAuth - existing user:', user ? user.id : 'none');
 
         if (user) {
           // Actualizar google_id si no lo tiene
           if (!user.google_id) {
+            console.log('Google OAuth - linking google_id to existing user');
             await query(
               'UPDATE users SET google_id = $1, email_verified = true WHERE id = $2',
               [profile.id, user.id]
             );
+            user.google_id = profile.id;
+            user.email_verified = true;
           }
-          
-          // Actualizar último login
-          await query('UPDATE users SET last_login = NOW() WHERE id = $1', [user.id]);
           
           delete user.password_hash;
           return done(null, user);
         }
 
         // Crear nuevo usuario con Google
+        console.log('Google OAuth - creating new user');
         const insertResult = await query(
           `INSERT INTO users (
             email, first_name, last_name, google_id, 
-            auth_provider, email_verified, is_active, role
-          ) VALUES ($1, $2, $3, $4, 'google', true, true, 'user')
+            auth_provider, email_verified, is_active, role, login_count
+          ) VALUES ($1, $2, $3, $4, 'google', true, true, 'user', 0)
           RETURNING id, email, first_name, last_name, role, tenant_id, is_active`,
-          [email, profile.name.givenName, profile.name.familyName, profile.id]
+          [email, profile.name.givenName || 'Usuario', profile.name.familyName || '', profile.id]
         );
 
+        console.log('Google OAuth - user created:', insertResult.rows[0]?.id);
         return done(null, insertResult.rows[0]);
 
       } catch (error) {
+        console.error('Google OAuth error:', error.message);
         return done(error);
       }
     }
   ));
+} else {
+  console.log('⚠️ Google OAuth NO configurado - faltan credenciales');
 }
 
 // Estrategia Facebook OAuth

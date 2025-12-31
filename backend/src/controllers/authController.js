@@ -755,25 +755,30 @@ const getCurrentUser = async (req, res) => {
 // Callback de OAuth exitoso
 const oauthCallback = async (req, res) => {
   try {
+    console.log('OAuth callback - user:', req.user ? { id: req.user.id, email: req.user.email } : 'no user');
+    
     if (!req.user) {
+      console.log('OAuth callback - no user, redirecting');
       return res.redirect(`${process.env.FRONTEND_URL}/login?error=oauth_failed`);
     }
 
     // Actualizar login
+    console.log('OAuth callback - updating last_login');
     await query(
-      `UPDATE users SET last_login = NOW(), login_count = login_count + 1 WHERE id = $1`,
+      `UPDATE users SET last_login = NOW(), login_count = COALESCE(login_count, 0) + 1 WHERE id = $1`,
       [req.user.id]
     );
 
     // Generar tokens
+    console.log('OAuth callback - generating tokens');
     const accessToken = generateAccessToken(req.user);
     const refreshToken = await generateRefreshToken(req.user, req);
 
     // Configurar cookies
     setTokenCookies(res, accessToken, refreshToken);
 
-    // Log de auditoría
-    await query(
+    // Log de auditoría (no bloquear si falla)
+    query(
       `SELECT log_audit($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
       [
         req.user.tenant_id, req.user.id, 'USER_LOGIN', 'users', req.user.id,
@@ -783,10 +788,13 @@ const oauthCallback = async (req, res) => {
     ).catch(err => console.error('Error en auditoría:', err));
 
     // Redirect al frontend con token
-    res.redirect(`${process.env.FRONTEND_URL}/dashboard?token=${accessToken}`);
+    const redirectUrl = `${process.env.FRONTEND_URL}/dashboard?token=${accessToken}`;
+    console.log('OAuth callback - redirecting to:', redirectUrl);
+    res.redirect(redirectUrl);
 
   } catch (error) {
-    console.error('Error en OAuth callback:', error);
+    console.error('Error en OAuth callback:', error.message);
+    console.error('Stack:', error.stack);
     res.redirect(`${process.env.FRONTEND_URL}/login?error=oauth_error`);
   }
 };
