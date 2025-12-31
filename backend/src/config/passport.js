@@ -104,14 +104,22 @@ passport.use(new LocalStrategy(
 
 // Estrategia Google OAuth
 if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+  // Sanitizar variables para evitar espacios invisibles
+  const clientID = process.env.GOOGLE_CLIENT_ID.trim();
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET.trim();
+  const callbackURL = process.env.GOOGLE_CALLBACK_URL.trim();
+
   console.log('✅ Google OAuth configurado');
-  console.log('   Callback URL:', process.env.GOOGLE_CALLBACK_URL);
+  console.log('   Callback URL:', callbackURL);
+  
   passport.use(new GoogleStrategy(
     {
-      clientID: process.env.GOOGLE_CLIENT_ID,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      callbackURL: process.env.GOOGLE_CALLBACK_URL,
-      proxy: true
+      clientID,
+      clientSecret,
+      callbackURL,
+      proxy: true,
+      accessType: 'offline', // Asegura obtener refresh token si es necesario
+      prompt: 'consent'
     },
     async (accessToken, refreshToken, profile, done) => {
       try {

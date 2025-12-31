@@ -88,7 +88,12 @@ app.use(cookieParser());
 app.use(hppProtection);
 
 // ===========================================
-// Sanitización y detección de ataques
+// Passport (OAuth) - ANTES de la sanitización para no romper los códigos
+// ===========================================
+app.use(passport.initialize());
+
+// ===========================================
+// Sanitización y detección de ataques - DESPUÉS de Passport
 // ===========================================
 
 // Detectar patrones de ataque comunes
@@ -96,12 +101,6 @@ app.use(attackDetection);
 
 // Sanitizar inputs
 app.use(sanitizeInput);
-
-// ===========================================
-// Passport (OAuth)
-// ===========================================
-
-app.use(passport.initialize());
 
 // ===========================================
 // Health check
