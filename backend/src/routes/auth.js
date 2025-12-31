@@ -67,30 +67,111 @@ router.post('/reset-password',
 // Rutas OAuth
 // ===========================================
 
-// Google OAuth
-router.get('/google',
-  passport.authenticate('google', { 
-    scope: ['profile', 'email'],
-    session: false
-  })
-);
+// Google OAuth - Implementación manual para evitar bugs de passport-google-oauth20
+router.get('/google', (req, res) => {
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  const redirectUri = process.env.GOOGLE_CALLBACK_URL;
+  const scope = encodeURIComponent('profile email');
+  
+  const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${scope}&access_type=offline&prompt=consent`;
+  
+  res.redirect(authUrl);
+});
 
-router.get('/google/callback',
-  (req, res, next) => {
-    const ua = req.headers['user-agent'] || '';
-    // Ignorar bots conocidos y peticiones HEAD que consumen el código de Google
-    if (ua.includes('got') || ua.includes('Bot') || ua.includes('Crawl') || req.method === 'HEAD') {
-      console.log('🛡️ Bot detectado y bloqueado en OAuth callback:', ua);
-      return res.status(204).end();
+router.get('/google/callback', async (req, res) => {
+  const ua = req.headers['user-agent'] || '';
+  
+  // Ignorar bots
+  if (ua.includes('got') || ua.includes('Bot') || ua.includes('Crawl') || req.method === 'HEAD') {
+    console.log('🛡️ Bot detectado y bloqueado en OAuth callback:', ua);
+    return res.status(204).end();
+  }
+
+  const { code, error } = req.query;
+  
+  if (error) {
+    console.log('Google OAuth error:', error);
+    return res.redirect(`${process.env.FRONTEND_URL}/login?error=google_denied`);
+  }
+
+  if (!code) {
+    return res.redirect(`${process.env.FRONTEND_URL}/login?error=no_code`);
+  }
+
+  try {
+    // Intercambiar código por tokens usando fetch nativo
+    const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        code: code,
+        client_id: process.env.GOOGLE_CLIENT_ID.trim(),
+        client_secret: process.env.GOOGLE_CLIENT_SECRET.trim(),
+        redirect_uri: process.env.GOOGLE_CALLBACK_URL.trim(),
+        grant_type: 'authorization_code',
+      }),
+    });
+
+    const tokenData = await tokenResponse.json();
+    
+    if (tokenData.error) {
+      console.error('Google token error:', tokenData);
+      return res.redirect(`${process.env.FRONTEND_URL}/login?error=${encodeURIComponent(tokenData.error_description || tokenData.error)}`);
     }
-    next();
-  },
-  passport.authenticate('google', { 
-    failureRedirect: `${process.env.FRONTEND_URL}/login?error=google_failed`,
-    session: false
-  }),
-  authController.oauthCallback
-);
+
+    // Obtener información del usuario
+    const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+      headers: {
+        Authorization: `Bearer ${tokenData.access_token}`,
+      },
+    });
+
+    const googleUser = await userInfoResponse.json();
+    console.log('Google user:', googleUser.email);
+
+    // Buscar o crear usuario en nuestra base de datos
+    const { query } = require('../config/database');
+    const email = googleUser.email.toLowerCase();
+
+    let result = await query(
+      'SELECT * FROM users WHERE LOWER(email) = $1 OR google_id = $2',
+      [email, googleUser.id]
+    );
+
+    let user = result.rows[0];
+
+    if (user) {
+      // Usuario existe, actualizar google_id si no lo tiene
+      if (!user.google_id) {
+        await query(
+          'UPDATE users SET google_id = $1, email_verified = true WHERE id = $2',
+          [googleUser.id, user.id]
+        );
+      }
+    } else {
+      // Crear nuevo usuario
+      const insertResult = await query(
+        `INSERT INTO users (
+          email, first_name, last_name, google_id, 
+          auth_provider, email_verified, is_active, role, login_count
+        ) VALUES ($1, $2, $3, $4, 'google', true, true, 'user', 0)
+        RETURNING *`,
+        [email, googleUser.given_name || 'Usuario', googleUser.family_name || '', googleUser.id]
+      );
+      user = insertResult.rows[0];
+    }
+
+    // Pasar el usuario al controlador de OAuth
+    req.user = user;
+    return authController.oauthCallback(req, res);
+
+  } catch (err) {
+    console.error('Google OAuth error:', err);
+    return res.redirect(`${process.env.FRONTEND_URL}/login?error=${encodeURIComponent(err.message)}`);
+  }
+});
 
 // Facebook OAuth
 router.get('/facebook',
