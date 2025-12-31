@@ -795,7 +795,8 @@ const oauthCallback = async (req, res) => {
   } catch (error) {
     console.error('Error en OAuth callback:', error.message);
     console.error('Stack:', error.stack);
-    res.redirect(`${process.env.FRONTEND_URL}/login?error=oauth_error`);
+    // Redirigir con el mensaje de error real para debuggear
+    res.redirect(`${process.env.FRONTEND_URL}/login?error=${encodeURIComponent(error.message)}`);
   }
 };
 
