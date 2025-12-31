@@ -88,11 +88,17 @@ export const AuthProvider = ({ children }) => {
   };
 
   const googleLogin = () => {
-    window.location.href = `${import.meta.env.VITE_API_URL || ''}/api/auth/google`;
+    const baseUrl = import.meta.env.VITE_API_URL 
+      ? `https://${import.meta.env.VITE_API_URL}` 
+      : '';
+    window.location.href = `${baseUrl}/api/auth/google`;
   };
 
   const facebookLogin = () => {
-    window.location.href = `${import.meta.env.VITE_API_URL || ''}/api/auth/facebook`;
+    const baseUrl = import.meta.env.VITE_API_URL 
+      ? `https://${import.meta.env.VITE_API_URL}` 
+      : '';
+    window.location.href = `${baseUrl}/api/auth/facebook`;
   };
 
   const value = {

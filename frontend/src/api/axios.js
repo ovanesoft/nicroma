@@ -1,6 +1,9 @@
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || '/api';
+// En producción, VITE_API_URL será la URL del backend (ej: https://nicroma-backend.onrender.com)
+const API_URL = import.meta.env.VITE_API_URL 
+  ? `https://${import.meta.env.VITE_API_URL}/api`
+  : '/api';
 
 const api = axios.create({
   baseURL: API_URL,
