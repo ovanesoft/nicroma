@@ -45,12 +45,19 @@ const corsOptions = {
     const allowedOrigins = [
       process.env.FRONTEND_URL,
       'http://localhost:5173',
-      'http://localhost:3000'
+      'http://localhost:3000',
+      'https://nicroma-frontend.onrender.com',
+      'https://www.nicroma.com',
+      'https://nicroma.com'
     ].filter(Boolean);
 
-    if (allowedOrigins.includes(origin)) {
+    // También permitir cualquier subdominio de onrender.com en desarrollo
+    const isRenderOrigin = origin && origin.endsWith('.onrender.com');
+    
+    if (allowedOrigins.includes(origin) || isRenderOrigin) {
       callback(null, true);
     } else {
+      console.log('CORS bloqueado para origen:', origin);
       callback(new Error('No permitido por CORS'));
     }
   },
