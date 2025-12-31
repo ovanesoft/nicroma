@@ -53,9 +53,7 @@ const Dashboard = () => {
         <div className={`fixed inset-y-0 left-0 w-72 bg-white shadow-xl transform transition-transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
           <div className="flex items-center justify-between p-4 border-b">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-primary-500 to-purple-600 rounded-xl flex items-center justify-center">
-                <span className="text-sm font-bold text-white">NR</span>
-              </div>
+              <img src="/logo.png" alt="NicRoma" className="w-10 h-10 object-contain" />
               <span className="text-xl text-slate-800 font-script">NicRoma</span>
             </div>
             <button onClick={() => setSidebarOpen(false)} className="text-slate-400 hover:text-slate-600">
@@ -85,9 +83,7 @@ const Dashboard = () => {
       <aside className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-72 lg:flex-col">
         <div className="flex flex-col flex-1 bg-white border-r border-slate-200">
           <div className="flex items-center gap-3 p-6 border-b">
-            <div className="w-10 h-10 bg-gradient-to-br from-primary-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg shadow-primary-500/20">
-              <span className="text-sm font-bold text-white">NR</span>
-            </div>
+            <img src="/logo.png" alt="NicRoma" className="w-10 h-10 object-contain" />
             <span className="text-xl text-slate-800 font-script">NicRoma</span>
           </div>
           

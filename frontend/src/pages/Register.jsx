@@ -118,8 +118,8 @@ const Register = () => {
         
         <div className="relative z-10 text-center">
           <div className="mb-8">
-            <div className="w-20 h-20 bg-gradient-to-br from-primary-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-2xl shadow-primary-500/30 animate-float">
-              <span className="text-2xl font-bold text-white">NR</span>
+            <div className="w-32 h-32 mx-auto mb-6 animate-float">
+              <img src="/logo.png" alt="NicRoma" className="w-full h-full object-contain drop-shadow-2xl" />
             </div>
             <h1 className="text-5xl text-white mb-4 font-script">NicRoma</h1>
             <p className="text-xl text-white/60 max-w-md">
@@ -147,8 +147,8 @@ const Register = () => {
         <div className="w-full max-w-md">
           {/* Mobile logo */}
           <div className="lg:hidden text-center mb-8">
-            <div className="w-16 h-16 bg-gradient-to-br from-primary-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-xl shadow-primary-500/30">
-              <span className="text-xl font-bold text-white">NR</span>
+            <div className="w-20 h-20 mx-auto mb-4">
+              <img src="/logo.png" alt="NicRoma" className="w-full h-full object-contain drop-shadow-xl" />
             </div>
             <h1 className="text-2xl text-white font-script">NicRoma</h1>
           </div>
@@ -349,9 +349,9 @@ const Register = () => {
 
             <p className="text-center mt-6 text-slate-500 text-sm">
               Al registrarte, aceptas nuestros{' '}
-              <a href="#" className="link">Términos de servicio</a>
+              <Link to="/terms" className="link">Términos de servicio</Link>
               {' '}y{' '}
-              <a href="#" className="link">Política de privacidad</a>
+              <Link to="/privacy" className="link">Política de privacidad</Link>
             </p>
 
             <p className="text-center mt-4 text-slate-500">
