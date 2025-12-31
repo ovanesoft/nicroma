@@ -82,9 +82,6 @@ services:
       - type: rewrite
         source: /*
         destination: /index.html
-    envVars:
-      - key: VITE_API_URL
-        fromService:
-          name: nicroma-backend
-          type: web
-          property: host
+        envVars:
+          - key: VITE_API_URL
+            sync: false  # Configurar manualmente: https://nicroma-backend.onrender.com/api
