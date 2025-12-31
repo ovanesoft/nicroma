@@ -76,6 +76,15 @@ router.get('/google',
 );
 
 router.get('/google/callback',
+  (req, res, next) => {
+    const ua = req.headers['user-agent'] || '';
+    // Ignorar bots conocidos y peticiones HEAD que consumen el código de Google
+    if (ua.includes('got') || ua.includes('Bot') || ua.includes('Crawl') || req.method === 'HEAD') {
+      console.log('🛡️ Bot detectado y bloqueado en OAuth callback:', ua);
+      return res.status(204).end();
+    }
+    next();
+  },
   passport.authenticate('google', { 
     failureRedirect: `${process.env.FRONTEND_URL}/login?error=google_failed`,
     session: false
@@ -92,6 +101,13 @@ router.get('/facebook',
 );
 
 router.get('/facebook/callback',
+  (req, res, next) => {
+    const ua = req.headers['user-agent'] || '';
+    if (ua.includes('got') || ua.includes('Bot') || ua.includes('Crawl') || req.method === 'HEAD') {
+      return res.status(204).end();
+    }
+    next();
+  },
   passport.authenticate('facebook', { 
     failureRedirect: `${process.env.FRONTEND_URL}/login?error=facebook_failed`,
     session: false
