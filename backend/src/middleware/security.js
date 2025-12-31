@@ -137,6 +137,11 @@ const sanitizeInput = (req, res, next) => {
 
 // Middleware para detectar y bloquear patrones de ataque comunes
 const attackDetection = (req, res, next) => {
+  // Omitir verificación para callbacks de OAuth (vienen con códigos complejos de Google/Facebook)
+  if (req.path.includes('/auth/google/callback') || req.path.includes('/auth/facebook/callback')) {
+    return next();
+  }
+
   const suspiciousPatterns = [
     /(\%27)|(\')|(\-\-)|(\%23)|(#)/i, // SQL Injection
     /((\%3C)|<)((\%2F)|\/)*[a-z0-9\%]+((\%3E)|>)/i, // XSS tags
