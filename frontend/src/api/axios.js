@@ -1,8 +1,8 @@
 import axios from 'axios';
 
-// En producción, VITE_API_URL será la URL del backend (ej: https://nicroma-backend.onrender.com)
+// En producción, VITE_API_URL será la URL completa del backend (ej: https://api.nicroma.com)
 const API_URL = import.meta.env.VITE_API_URL 
-  ? `https://${import.meta.env.VITE_API_URL}/api`
+  ? `${import.meta.env.VITE_API_URL}/api`
   : '/api';
 
 const api = axios.create({
