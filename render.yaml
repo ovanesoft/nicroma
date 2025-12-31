@@ -68,7 +68,6 @@ services:
   - type: web
     name: nicroma-frontend
     runtime: static
-    region: oregon
     plan: starter
     rootDir: frontend
     buildCommand: npm install && npm run build
