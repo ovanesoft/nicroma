@@ -29,6 +29,7 @@ export default {
       fontFamily: {
         sans: ['DM Sans', 'system-ui', 'sans-serif'],
         display: ['Clash Display', 'system-ui', 'sans-serif'],
+        script: ['Pinyon Script', 'cursive'],
       },
       animation: {
         'float': 'float 6s ease-in-out infinite',

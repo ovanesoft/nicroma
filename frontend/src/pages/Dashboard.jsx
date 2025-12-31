@@ -54,9 +54,9 @@ const Dashboard = () => {
           <div className="flex items-center justify-between p-4 border-b">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-gradient-to-br from-primary-500 to-purple-600 rounded-xl flex items-center justify-center">
-                <span className="text-xl font-bold text-white">N</span>
+                <span className="text-sm font-bold text-white">NR</span>
               </div>
-              <span className="text-xl font-bold text-slate-800">Nicroma</span>
+              <span className="text-xl text-slate-800 font-script">NicRoma</span>
             </div>
             <button onClick={() => setSidebarOpen(false)} className="text-slate-400 hover:text-slate-600">
               <X className="w-6 h-6" />
@@ -86,9 +86,9 @@ const Dashboard = () => {
         <div className="flex flex-col flex-1 bg-white border-r border-slate-200">
           <div className="flex items-center gap-3 p-6 border-b">
             <div className="w-10 h-10 bg-gradient-to-br from-primary-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg shadow-primary-500/20">
-              <span className="text-xl font-bold text-white">N</span>
+              <span className="text-sm font-bold text-white">NR</span>
             </div>
-            <span className="text-xl font-bold text-slate-800">Nicroma</span>
+            <span className="text-xl text-slate-800 font-script">NicRoma</span>
           </div>
           
           <nav className="flex-1 p-4 space-y-1">
@@ -214,7 +214,7 @@ const Dashboard = () => {
             <div className="relative">
               <h2 className="text-2xl font-bold mb-2">¡Hola, {user?.firstName}! 👋</h2>
               <p className="text-white/80 mb-6 max-w-xl">
-                Has iniciado sesión correctamente en Nicroma. Desde aquí podrás gestionar tu organización, 
+                Has iniciado sesión correctamente en NicRoma. Desde aquí podrás gestionar tu organización, 
                 usuarios e invitaciones.
               </p>
               <div className="flex flex-wrap gap-4">

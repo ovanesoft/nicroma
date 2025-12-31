@@ -42,10 +42,10 @@ const Login = () => {
         <div className="relative z-10 text-center">
           <div className="mb-8">
             <div className="w-20 h-20 bg-gradient-to-br from-primary-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-2xl shadow-primary-500/30 animate-float">
-              <span className="text-4xl font-bold text-white">N</span>
+              <span className="text-2xl font-bold text-white">NR</span>
             </div>
-            <h1 className="text-5xl font-bold text-white mb-4">
-              Nicroma
+            <h1 className="text-5xl text-white mb-4 font-script">
+              NicRoma
             </h1>
             <p className="text-xl text-white/60 max-w-md">
               Plataforma empresarial multi-tenant para gestionar tu negocio de forma eficiente
@@ -68,9 +68,9 @@ const Login = () => {
           {/* Mobile logo */}
           <div className="lg:hidden text-center mb-8">
             <div className="w-16 h-16 bg-gradient-to-br from-primary-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-xl shadow-primary-500/30">
-              <span className="text-3xl font-bold text-white">N</span>
+              <span className="text-xl font-bold text-white">NR</span>
             </div>
-            <h1 className="text-2xl font-bold text-white">Nicroma</h1>
+            <h1 className="text-2xl text-white font-script">NicRoma</h1>
           </div>
 
           <div className="card animate-slide-up">
