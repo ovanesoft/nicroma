@@ -4,7 +4,7 @@
 databases:
   - name: nicroma-db
     region: oregon
-    plan: pro-4gb  # Plan profesional mínimo (4GB RAM)
+    plan: basic-256mb  # ~$7/mes - suficiente para empezar
     databaseName: nicroma
     user: nicroma_user
     postgresMajorVersion: 16
@@ -15,7 +15,7 @@ services:
     name: nicroma-backend
     runtime: node
     region: oregon
-    plan: pro
+    plan: starter  # ~$7/mes
     rootDir: backend
     buildCommand: npm install && npm run build
     startCommand: npm start
@@ -40,7 +40,7 @@ services:
       - key: JWT_REFRESH_EXPIRES_IN
         value: 30d
       - key: FRONTEND_URL
-        sync: false  # Configurar manualmente después del deploy
+        sync: false
       - key: GOOGLE_CLIENT_ID
         sync: false
       - key: GOOGLE_CLIENT_SECRET
@@ -64,7 +64,7 @@ services:
       - key: EMAIL_FROM
         value: noreply@nicroma.com
 
-  # Frontend Static Site
+  # Frontend Static Site (GRATIS)
   - type: web
     name: nicroma-frontend
     runtime: static
