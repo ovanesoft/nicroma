@@ -11,16 +11,29 @@ export const AuthProvider = ({ children }) => {
   // Verificar si hay un usuario autenticado al cargar
   useEffect(() => {
     const checkAuth = async () => {
-      const token = localStorage.getItem('accessToken');
-      const savedUser = localStorage.getItem('user');
+      // Check for OAuth callback token in URL FIRST
+      const params = new URLSearchParams(window.location.search);
+      const oauthToken = params.get('token');
+      
+      if (oauthToken) {
+        console.log('OAuth token detected, saving...');
+        localStorage.setItem('accessToken', oauthToken);
+        // Limpiar URL
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
 
-      if (token && savedUser) {
+      const token = localStorage.getItem('accessToken');
+
+      if (token) {
         try {
-          // Verificar que el token sigue siendo válido
+          // Verificar que el token sigue siendo válido y obtener usuario
           const response = await api.get('/auth/me');
-          setUser(response.data.data.user);
-          localStorage.setItem('user', JSON.stringify(response.data.data.user));
+          const userData = response.data.data.user;
+          setUser(userData);
+          localStorage.setItem('user', JSON.stringify(userData));
+          console.log('User authenticated:', userData.email);
         } catch (err) {
+          console.log('Token invalid, clearing...');
           // Token inválido, limpiar
           localStorage.removeItem('accessToken');
           localStorage.removeItem('user');
@@ -30,16 +43,6 @@ export const AuthProvider = ({ children }) => {
 
       setLoading(false);
     };
-
-    // Check for OAuth callback token in URL
-    const params = new URLSearchParams(window.location.search);
-    const oauthToken = params.get('token');
-    
-    if (oauthToken) {
-      localStorage.setItem('accessToken', oauthToken);
-      // Limpiar URL
-      window.history.replaceState({}, document.title, window.location.pathname);
-    }
 
     checkAuth();
   }, []);
