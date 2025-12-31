@@ -146,6 +146,9 @@ const attackDetection = (req, res, next) => {
     /(\||;|`|\$\(|&&)/i // Command injection
   ];
 
+  // Campos que no deben ser verificados (contraseñas pueden tener caracteres especiales)
+  const skipFields = ['password', 'currentPassword', 'newPassword', 'confirmPassword'];
+
   const checkValue = (value) => {
     if (typeof value === 'string') {
       return suspiciousPatterns.some(pattern => pattern.test(value));
@@ -153,11 +156,13 @@ const attackDetection = (req, res, next) => {
     return false;
   };
 
-  const checkObject = (obj) => {
+  const checkObject = (obj, skipKeys = []) => {
     if (!obj) return false;
     for (const key in obj) {
+      // Saltar campos de contraseña
+      if (skipKeys.includes(key)) continue;
       if (checkValue(key) || checkValue(obj[key])) return true;
-      if (typeof obj[key] === 'object' && checkObject(obj[key])) return true;
+      if (typeof obj[key] === 'object' && checkObject(obj[key], skipKeys)) return true;
     }
     return false;
   };
@@ -171,8 +176,8 @@ const attackDetection = (req, res, next) => {
     });
   }
 
-  // Verificar body
-  if (checkObject(req.body)) {
+  // Verificar body (excluyendo campos de contraseña)
+  if (checkObject(req.body, skipFields)) {
     console.warn(`⚠️ Posible ataque detectado en body: ${req.ip}`);
     return res.status(403).json({
       success: false,
