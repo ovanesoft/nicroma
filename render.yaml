@@ -4,7 +4,7 @@
 databases:
   - name: nicroma-db
     region: oregon
-    plan: starter
+    plan: basic  # Nuevo plan de Render (reemplaza starter)
     databaseName: nicroma
     user: nicroma_user
     postgresMajorVersion: 16
@@ -15,7 +15,7 @@ services:
     name: nicroma-backend
     runtime: node
     region: oregon
-    plan: starter
+    plan: free
     rootDir: backend
     buildCommand: npm install && npm run build
     startCommand: npm start
@@ -40,7 +40,7 @@ services:
       - key: JWT_REFRESH_EXPIRES_IN
         value: 30d
       - key: FRONTEND_URL
-        sync: false  # Configurar manualmente: https://nicroma-frontend.onrender.com
+        sync: false  # Configurar manualmente después del deploy
       - key: GOOGLE_CLIENT_ID
         sync: false
       - key: GOOGLE_CLIENT_SECRET
@@ -68,7 +68,6 @@ services:
   - type: web
     name: nicroma-frontend
     runtime: static
-    plan: starter
     rootDir: frontend
     buildCommand: npm install && npm run build
     staticPublishPath: dist
@@ -89,4 +88,3 @@ services:
           name: nicroma-backend
           type: web
           property: host
-
