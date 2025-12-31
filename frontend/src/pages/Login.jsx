@@ -190,6 +190,17 @@ const Login = () => {
                 Regístrate gratis
               </Link>
             </p>
+
+            {/* Legal Links */}
+            <div className="mt-6 pt-6 border-t border-slate-200 flex justify-center gap-4 text-sm">
+              <Link to="/privacy" className="text-slate-400 hover:text-slate-600">
+                Política de Privacidad
+              </Link>
+              <span className="text-slate-300">•</span>
+              <Link to="/terms" className="text-slate-400 hover:text-slate-600">
+                Términos de Servicio
+              </Link>
+            </div>
           </div>
         </div>
       </div>
