@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Mail, ArrowLeft, Loader2, CheckCircle2 } from 'lucide-react';
+// Mail se usa solo en el icono central, no en inputs
 import api from '../api/axios';
 
 const ForgotPassword = () => {
@@ -77,19 +78,16 @@ const ForgotPassword = () => {
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
               <label htmlFor="email" className="form-label">Email</label>
-              <div className="relative">
-                <Mail className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 transition-all duration-200 ${email ? 'opacity-0 -translate-x-2' : ''}`} />
-                <input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className={`input-field transition-all duration-200 ${email ? 'pl-4' : 'pl-14'}`}
-                  placeholder="tu@email.com"
-                  required
-                  autoComplete="email"
-                />
-              </div>
+              <input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="input-field"
+                placeholder="tu@email.com"
+                required
+                autoComplete="email"
+              />
             </div>
 
             <button

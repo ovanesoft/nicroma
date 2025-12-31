@@ -162,14 +162,13 @@ const ResetPassword = () => {
             <div>
               <label htmlFor="password" className="form-label">Nueva contraseña</label>
               <div className="relative">
-                <Lock className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 transition-all duration-200 ${formData.password ? 'opacity-0 -translate-x-2' : ''}`} />
                 <input
                   id="password"
                   name="password"
                   type={showPassword ? 'text' : 'password'}
                   value={formData.password}
                   onChange={handleChange}
-                  className={`input-field pr-12 transition-all duration-200 ${formData.password ? 'pl-4' : 'pl-14'}`}
+                  className="input-field pr-12"
                   placeholder="••••••••"
                   required
                 />
@@ -215,17 +214,23 @@ const ResetPassword = () => {
             <div>
               <label htmlFor="confirmPassword" className="form-label">Confirmar contraseña</label>
               <div className="relative">
-                <Lock className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 transition-all duration-200 ${formData.confirmPassword ? 'opacity-0 -translate-x-2' : ''}`} />
                 <input
                   id="confirmPassword"
                   name="confirmPassword"
                   type={showPassword ? 'text' : 'password'}
                   value={formData.confirmPassword}
                   onChange={handleChange}
-                  className={`input-field transition-all duration-200 ${formData.confirmPassword ? 'pl-4' : 'pl-14'}`}
+                  className="input-field pr-12"
                   placeholder="••••••••"
                   required
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                >
+                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
               </div>
               {formData.confirmPassword && formData.password !== formData.confirmPassword && (
                 <p className="error-text">Las contraseñas no coinciden</p>

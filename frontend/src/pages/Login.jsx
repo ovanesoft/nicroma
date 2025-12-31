@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Mail, Lock, Eye, EyeOff, AlertCircle, Loader2 } from 'lucide-react';
+import { Eye, EyeOff, AlertCircle, Loader2 } from 'lucide-react';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -125,19 +125,16 @@ const Login = () => {
                 <label htmlFor="email" className="form-label">
                   Email
                 </label>
-                <div className="relative">
-                  <Mail className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 transition-all duration-200 ${email ? 'opacity-0 -translate-x-2' : ''}`} />
-                  <input
-                    id="email"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className={`input-field transition-all duration-200 ${email ? 'pl-4' : 'pl-14'}`}
-                    placeholder="tu@email.com"
-                    required
-                    autoComplete="email"
-                  />
-                </div>
+                <input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="input-field"
+                  placeholder="tu@email.com"
+                  required
+                  autoComplete="email"
+                />
               </div>
 
               <div>
@@ -150,13 +147,12 @@ const Login = () => {
                   </Link>
                 </div>
                 <div className="relative">
-                  <Lock className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 transition-all duration-200 ${password ? 'opacity-0 -translate-x-2' : ''}`} />
                   <input
                     id="password"
                     type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className={`input-field pr-12 transition-all duration-200 ${password ? 'pl-4' : 'pl-14'}`}
+                    className="input-field pr-12"
                     placeholder="••••••••"
                     required
                     autoComplete="current-password"
