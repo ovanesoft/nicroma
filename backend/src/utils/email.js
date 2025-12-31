@@ -1,26 +1,10 @@
-const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 
-// Crear transporter de nodemailer
-let transporter = null;
-
-const initializeTransporter = () => {
-  if (transporter) return transporter;
-
-  transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: process.env.SMTP_PORT,
-    secure: process.env.SMTP_PORT === '465',
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASSWORD
-    }
-  });
-
-  return transporter;
-};
+// Inicializar Resend
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 // Template base de emails
-const getEmailTemplate = (content, title = 'Nicroma') => `
+const getEmailTemplate = (content, title = 'NicRoma') => `
 <!DOCTYPE html>
 <html>
 <head>
@@ -39,31 +23,33 @@ const getEmailTemplate = (content, title = 'Nicroma') => `
     }
     .container {
       background-color: #ffffff;
-      border-radius: 8px;
+      border-radius: 12px;
       padding: 40px;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     }
     .logo {
       text-align: center;
       margin-bottom: 30px;
     }
     .logo h1 {
-      color: #2563eb;
-      font-size: 28px;
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      font-size: 32px;
       margin: 0;
+      font-family: 'Pinyon Script', cursive, serif;
     }
     .button {
       display: inline-block;
-      background-color: #2563eb;
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
       color: #ffffff !important;
-      padding: 14px 28px;
+      padding: 14px 32px;
       text-decoration: none;
-      border-radius: 6px;
+      border-radius: 8px;
       font-weight: 600;
       margin: 20px 0;
-    }
-    .button:hover {
-      background-color: #1d4ed8;
+      box-shadow: 0 4px 14px rgba(99, 102, 241, 0.4);
     }
     .footer {
       margin-top: 30px;
@@ -76,22 +62,25 @@ const getEmailTemplate = (content, title = 'Nicroma') => `
     .warning {
       background-color: #fef3c7;
       border: 1px solid #f59e0b;
-      border-radius: 6px;
-      padding: 12px;
+      border-radius: 8px;
+      padding: 12px 16px;
       margin: 20px 0;
       font-size: 14px;
       color: #92400e;
+    }
+    h2 {
+      color: #1e293b;
     }
   </style>
 </head>
 <body>
   <div class="container">
     <div class="logo">
-      <h1>🔷 Nicroma</h1>
+      <h1>NicRoma</h1>
     </div>
     ${content}
     <div class="footer">
-      <p>&copy; ${new Date().getFullYear()} Nicroma. Todos los derechos reservados.</p>
+      <p>&copy; ${new Date().getFullYear()} NicRoma. Todos los derechos reservados.</p>
       <p>Este es un email automático, por favor no responda.</p>
     </div>
   </div>
@@ -101,12 +90,11 @@ const getEmailTemplate = (content, title = 'Nicroma') => `
 
 // Enviar email de verificación
 const sendVerificationEmail = async (email, firstName, verificationToken) => {
-  const transport = initializeTransporter();
   const verificationUrl = `${process.env.FRONTEND_URL}/verify-email?token=${verificationToken}`;
 
   const content = `
     <h2>¡Hola ${firstName}!</h2>
-    <p>Gracias por registrarte en Nicroma. Para completar tu registro, por favor verifica tu dirección de email haciendo clic en el botón de abajo:</p>
+    <p>Gracias por registrarte en NicRoma. Para completar tu registro, por favor verifica tu dirección de email haciendo clic en el botón de abajo:</p>
     <p style="text-align: center;">
       <a href="${verificationUrl}" class="button">Verificar Email</a>
     </p>
@@ -117,16 +105,20 @@ const sendVerificationEmail = async (email, firstName, verificationToken) => {
     </div>
   `;
 
-  const mailOptions = {
-    from: `"Nicroma" <${process.env.EMAIL_FROM}>`,
-    to: email,
-    subject: 'Verifica tu email - Nicroma',
-    html: getEmailTemplate(content, 'Verificación de Email')
-  };
-
   try {
-    await transport.sendMail(mailOptions);
-    console.log(`📧 Email de verificación enviado a: ${email}`);
+    const { data, error } = await resend.emails.send({
+      from: process.env.EMAIL_FROM || 'NicRoma <noreply@nicroma.com>',
+      to: [email],
+      subject: 'Verifica tu email - NicRoma',
+      html: getEmailTemplate(content, 'Verificación de Email')
+    });
+
+    if (error) {
+      console.error('Error enviando email de verificación:', error);
+      throw error;
+    }
+
+    console.log(`📧 Email de verificación enviado a: ${email} (ID: ${data.id})`);
     return true;
   } catch (error) {
     console.error('Error enviando email de verificación:', error);
@@ -136,12 +128,11 @@ const sendVerificationEmail = async (email, firstName, verificationToken) => {
 
 // Enviar email de reset de contraseña
 const sendPasswordResetEmail = async (email, firstName, resetToken) => {
-  const transport = initializeTransporter();
   const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
 
   const content = `
     <h2>Hola ${firstName},</h2>
-    <p>Recibimos una solicitud para restablecer la contraseña de tu cuenta en Nicroma.</p>
+    <p>Recibimos una solicitud para restablecer la contraseña de tu cuenta en NicRoma.</p>
     <p>Haz clic en el siguiente botón para crear una nueva contraseña:</p>
     <p style="text-align: center;">
       <a href="${resetUrl}" class="button">Restablecer Contraseña</a>
@@ -153,16 +144,20 @@ const sendPasswordResetEmail = async (email, firstName, resetToken) => {
     </div>
   `;
 
-  const mailOptions = {
-    from: `"Nicroma" <${process.env.EMAIL_FROM}>`,
-    to: email,
-    subject: 'Restablecer contraseña - Nicroma',
-    html: getEmailTemplate(content, 'Restablecer Contraseña')
-  };
-
   try {
-    await transport.sendMail(mailOptions);
-    console.log(`📧 Email de reset enviado a: ${email}`);
+    const { data, error } = await resend.emails.send({
+      from: process.env.EMAIL_FROM || 'NicRoma <noreply@nicroma.com>',
+      to: [email],
+      subject: 'Restablecer contraseña - NicRoma',
+      html: getEmailTemplate(content, 'Restablecer Contraseña')
+    });
+
+    if (error) {
+      console.error('Error enviando email de reset:', error);
+      throw error;
+    }
+
+    console.log(`📧 Email de reset enviado a: ${email} (ID: ${data.id})`);
     return true;
   } catch (error) {
     console.error('Error enviando email de reset:', error);
@@ -172,7 +167,6 @@ const sendPasswordResetEmail = async (email, firstName, resetToken) => {
 
 // Enviar email de invitación
 const sendInvitationEmail = async (email, inviterName, tenantName, inviteToken, role) => {
-  const transport = initializeTransporter();
   const inviteUrl = `${process.env.FRONTEND_URL}/accept-invitation?token=${inviteToken}`;
   
   const roleNames = {
@@ -183,7 +177,7 @@ const sendInvitationEmail = async (email, inviterName, tenantName, inviteToken, 
 
   const content = `
     <h2>¡Has sido invitado!</h2>
-    <p>${inviterName} te ha invitado a unirte a <strong>${tenantName}</strong> en Nicroma como <strong>${roleNames[role] || role}</strong>.</p>
+    <p>${inviterName} te ha invitado a unirte a <strong>${tenantName}</strong> en NicRoma como <strong>${roleNames[role] || role}</strong>.</p>
     <p>Haz clic en el siguiente botón para aceptar la invitación:</p>
     <p style="text-align: center;">
       <a href="${inviteUrl}" class="button">Aceptar Invitación</a>
@@ -195,16 +189,20 @@ const sendInvitationEmail = async (email, inviterName, tenantName, inviteToken, 
     </div>
   `;
 
-  const mailOptions = {
-    from: `"Nicroma" <${process.env.EMAIL_FROM}>`,
-    to: email,
-    subject: `${inviterName} te invita a ${tenantName} - Nicroma`,
-    html: getEmailTemplate(content, 'Invitación a Nicroma')
-  };
-
   try {
-    await transport.sendMail(mailOptions);
-    console.log(`📧 Email de invitación enviado a: ${email}`);
+    const { data, error } = await resend.emails.send({
+      from: process.env.EMAIL_FROM || 'NicRoma <noreply@nicroma.com>',
+      to: [email],
+      subject: `${inviterName} te invita a ${tenantName} - NicRoma`,
+      html: getEmailTemplate(content, 'Invitación a NicRoma')
+    });
+
+    if (error) {
+      console.error('Error enviando email de invitación:', error);
+      throw error;
+    }
+
+    console.log(`📧 Email de invitación enviado a: ${email} (ID: ${data.id})`);
     return true;
   } catch (error) {
     console.error('Error enviando email de invitación:', error);
@@ -214,11 +212,10 @@ const sendInvitationEmail = async (email, inviterName, tenantName, inviteToken, 
 
 // Enviar email de bienvenida
 const sendWelcomeEmail = async (email, firstName) => {
-  const transport = initializeTransporter();
   const dashboardUrl = `${process.env.FRONTEND_URL}/dashboard`;
 
   const content = `
-    <h2>¡Bienvenido a Nicroma, ${firstName}!</h2>
+    <h2>¡Bienvenido a NicRoma, ${firstName}!</h2>
     <p>Tu cuenta ha sido verificada exitosamente. Ya puedes comenzar a usar todas las funcionalidades de la plataforma.</p>
     <p style="text-align: center;">
       <a href="${dashboardUrl}" class="button">Ir al Dashboard</a>
@@ -232,28 +229,29 @@ const sendWelcomeEmail = async (email, firstName) => {
     <p>Si tienes alguna pregunta, no dudes en contactarnos.</p>
   `;
 
-  const mailOptions = {
-    from: `"Nicroma" <${process.env.EMAIL_FROM}>`,
-    to: email,
-    subject: '¡Bienvenido a Nicroma!',
-    html: getEmailTemplate(content, 'Bienvenido')
-  };
-
   try {
-    await transport.sendMail(mailOptions);
-    console.log(`📧 Email de bienvenida enviado a: ${email}`);
+    const { data, error } = await resend.emails.send({
+      from: process.env.EMAIL_FROM || 'NicRoma <noreply@nicroma.com>',
+      to: [email],
+      subject: '¡Bienvenido a NicRoma!',
+      html: getEmailTemplate(content, 'Bienvenido')
+    });
+
+    if (error) {
+      console.error('Error enviando email de bienvenida:', error);
+      return false;
+    }
+
+    console.log(`📧 Email de bienvenida enviado a: ${email} (ID: ${data.id})`);
     return true;
   } catch (error) {
     console.error('Error enviando email de bienvenida:', error);
-    // No lanzamos error aquí para no bloquear el flujo principal
     return false;
   }
 };
 
 // Enviar notificación de cambio de contraseña
 const sendPasswordChangedEmail = async (email, firstName) => {
-  const transport = initializeTransporter();
-
   const content = `
     <h2>Hola ${firstName},</h2>
     <p>Tu contraseña ha sido cambiada exitosamente.</p>
@@ -263,16 +261,20 @@ const sendPasswordChangedEmail = async (email, firstName) => {
     </div>
   `;
 
-  const mailOptions = {
-    from: `"Nicroma Security" <${process.env.EMAIL_FROM}>`,
-    to: email,
-    subject: 'Contraseña cambiada - Nicroma',
-    html: getEmailTemplate(content, 'Seguridad')
-  };
-
   try {
-    await transport.sendMail(mailOptions);
-    console.log(`📧 Email de cambio de contraseña enviado a: ${email}`);
+    const { data, error } = await resend.emails.send({
+      from: process.env.EMAIL_FROM || 'NicRoma Security <noreply@nicroma.com>',
+      to: [email],
+      subject: 'Contraseña cambiada - NicRoma',
+      html: getEmailTemplate(content, 'Seguridad')
+    });
+
+    if (error) {
+      console.error('Error enviando email de cambio de contraseña:', error);
+      return false;
+    }
+
+    console.log(`📧 Email de cambio de contraseña enviado a: ${email} (ID: ${data.id})`);
     return true;
   } catch (error) {
     console.error('Error enviando email de cambio de contraseña:', error);
@@ -287,4 +289,3 @@ module.exports = {
   sendWelcomeEmail,
   sendPasswordChangedEmail
 };
-

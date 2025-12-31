@@ -186,14 +186,14 @@ const login = async (req, res) => {
       });
     }
 
-    // Verificar email verificado (desactivado temporalmente - requiere configurar SMTP)
-    // if (!user.email_verified) {
-    //   return res.status(403).json({
-    //     success: false,
-    //     message: 'Por favor verifica tu email antes de iniciar sesión',
-    //     code: 'EMAIL_NOT_VERIFIED'
-    //   });
-    // }
+    // Verificar email verificado
+    if (!user.email_verified) {
+      return res.status(403).json({
+        success: false,
+        message: 'Por favor verifica tu email antes de iniciar sesión',
+        code: 'EMAIL_NOT_VERIFIED'
+      });
+    }
 
     // Reset intentos fallidos y actualizar login
     await query(
