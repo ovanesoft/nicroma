@@ -4,7 +4,7 @@
 databases:
   - name: nicroma-db
     region: oregon
-    plan: basic  # Nuevo plan de Render (reemplaza starter)
+    plan: pro-1gb  # Plan profesional con 1GB RAM
     databaseName: nicroma
     user: nicroma_user
     postgresMajorVersion: 16
@@ -15,7 +15,7 @@ services:
     name: nicroma-backend
     runtime: node
     region: oregon
-    plan: free
+    plan: pro
     rootDir: backend
     buildCommand: npm install && npm run build
     startCommand: npm start
