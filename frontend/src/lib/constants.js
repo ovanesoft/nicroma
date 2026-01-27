@@ -15,7 +15,8 @@ import {
   Calendar,
   Receipt,
   CreditCard,
-  User
+  User,
+  Activity
 } from 'lucide-react';
 
 // Navegación según rol
@@ -32,6 +33,7 @@ export const getNavigation = (role) => {
       children: [
         { name: 'Organizaciones', href: '/admin/tenants', icon: Building2 },
         { name: 'Usuarios', href: '/admin/users', icon: Users },
+        { name: 'Logs del Sistema', href: '/admin/logs', icon: Activity },
       ]
     },
     { name: 'Configuración', href: '/settings', icon: Settings }

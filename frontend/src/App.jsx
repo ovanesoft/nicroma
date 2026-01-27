@@ -17,6 +17,7 @@ import DashboardRouter from './pages/DashboardRouter';
 // Pages - Admin (Root only)
 import TenantsPage from './pages/admin/TenantsPage';
 import UsersPage from './pages/admin/UsersPage';
+import SystemLogsPage from './pages/admin/SystemLogsPage';
 
 // Pages - Organization (Admin/Manager)
 import OrgUsersPage from './pages/org/OrgUsersPage';
@@ -143,6 +144,11 @@ function AppRoutes() {
       <Route path="/admin/users" element={
         <ProtectedRoute allowedRoles={['root']}>
           <UsersPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/logs" element={
+        <ProtectedRoute allowedRoles={['root']}>
+          <SystemLogsPage />
         </ProtectedRoute>
       } />
 
