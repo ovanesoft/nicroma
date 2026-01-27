@@ -1,0 +1,153 @@
+# =============================================================================
+# RENDER BLUEPRINT - NICROMA
+# Sistema de Logística Marítima Multi-tenant
+# https://render.com/docs/blueprint-spec
+# =============================================================================
+#
+# INSTRUCCIONES DE DEPLOY:
+# 1. Ir a https://dashboard.render.com/blueprints
+# 2. Click "New Blueprint Instance"
+# 3. Conectar con el repo de GitHub: ovanesoft/nicroma
+# 4. Render creará automáticamente: DB + Backend + Frontend
+# 5. Configurar las variables de entorno marcadas como "sync: false"
+#
+# DESPUÉS DEL DEPLOY INICIAL:
+# - Configurar FRONTEND_URL en el backend
+# - Configurar VITE_API_URL en el frontend
+# - Configurar credenciales de Google OAuth si se usa
+# - Configurar Resend API Key para emails
+#
+# USUARIO ROOT POR DEFECTO:
+# Email: root@nicroma.com
+# Password: Root@12345 (CAMBIAR INMEDIATAMENTE)
+# =============================================================================
+
+databases:
+  # PostgreSQL Database
+  - name: nicroma-db
+    region: oregon
+    plan: basic-256mb
+    databaseName: nicroma
+    user: nicroma_user
+    postgresMajorVersion: 16
+
+services:
+  # ===========================================
+  # BACKEND API (Node.js + Prisma)
+  # ===========================================
+  - type: web
+    name: nicroma-backend
+    runtime: node
+    region: oregon
+    plan: starter
+    rootDir: backend
+    buildCommand: |
+      npm install
+      npx prisma generate
+      npx prisma db push --accept-data-loss
+      npm run db:init || echo "DB init skipped"
+    startCommand: npm start
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      # === AMBIENTE ===
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      
+      # === BASE DE DATOS (automático) ===
+      - key: DATABASE_URL
+        fromDatabase:
+          name: nicroma-db
+          property: connectionString
+      
+      # === JWT (auto-generados) ===
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      - key: JWT_REFRESH_EXPIRES_IN
+        value: 30d
+      
+      # === URLS (configurar manualmente) ===
+      - key: FRONTEND_URL
+        sync: false  # Ej: https://nicroma.com
+      - key: API_URL
+        sync: false  # Ej: https://api.nicroma.com
+      
+      # === GOOGLE OAUTH (opcional) ===
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_CALLBACK_URL
+        sync: false  # Ej: https://api.nicroma.com/api/auth/google/callback
+      
+      # === FACEBOOK OAUTH (opcional) ===
+      - key: FACEBOOK_APP_ID
+        sync: false
+      - key: FACEBOOK_APP_SECRET
+        sync: false
+      - key: FACEBOOK_CALLBACK_URL
+        sync: false
+      
+      # === EMAIL CON RESEND (recomendado) ===
+      - key: RESEND_API_KEY
+        sync: false  # Obtener en https://resend.com
+      - key: EMAIL_FROM
+        value: NicRoma <noreply@nicroma.com>
+      
+      # === EMAIL SMTP (alternativa) ===
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        sync: false
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASSWORD
+        sync: false
+
+  # ===========================================
+  # FRONTEND (React + Vite - Static Site)
+  # ===========================================
+  - type: web
+    name: nicroma-frontend
+    runtime: static
+    region: oregon
+    plan: free
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    autoDeploy: true
+    pullRequestPreviewsEnabled: true
+    headers:
+      # Seguridad
+      - path: /*
+        name: X-Frame-Options
+        value: DENY
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+      - path: /*
+        name: X-XSS-Protection
+        value: 1; mode=block
+      - path: /*
+        name: Referrer-Policy
+        value: strict-origin-when-cross-origin
+      # Cache para assets
+      - path: /assets/*
+        name: Cache-Control
+        value: public, max-age=31536000, immutable
+    routes:
+      # SPA routing - todas las rutas van a index.html
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_URL
+        sync: false  # Ej: https://api.nicroma.com

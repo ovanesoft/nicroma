@@ -1,0 +1,1054 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Tenant {
+  id                   String                @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  name                 String                @db.VarChar(255)
+  slug                 String                @unique @db.VarChar(100)
+  domain               String?               @db.VarChar(255)
+  logoUrl              String?               @map("logo_url")
+  settings             Json?                 @default("{}")
+  plan                 String?               @default("free") @db.VarChar(50)
+  isActive             Boolean?              @default(true) @map("is_active")
+  createdAt            DateTime?             @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime?             @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy            String?               @map("created_by") @db.Uuid
+  audit_logs           AuditLog[]
+  payments             payments[]
+  promotion_uses       promotion_uses[]
+  system_logs          system_logs[]
+  tenant_subscriptions tenant_subscriptions?
+  user_invitations     UserInvitation[]
+  users                User[]
+
+  @@index([isActive], map: "idx_tenants_is_active")
+  @@index([slug], map: "idx_tenants_slug")
+  @@map("tenants")
+}
+
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+model User {
+  id                       String           @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenantId                 String?          @map("tenant_id") @db.Uuid
+  email                    String           @unique(map: "users_email_unique") @db.VarChar(255)
+  passwordHash             String?          @map("password_hash") @db.VarChar(255)
+  firstName                String?          @map("first_name") @db.VarChar(100)
+  lastName                 String?          @map("last_name") @db.VarChar(100)
+  phone                    String?          @db.VarChar(50)
+  avatarUrl                String?          @map("avatar_url")
+  role                     String?          @default("user") @db.VarChar(50)
+  permissions              Json?            @default("[]")
+  googleId                 String?          @unique @map("google_id") @db.VarChar(255)
+  facebookId               String?          @unique @map("facebook_id") @db.VarChar(255)
+  authProvider             String?          @default("local") @map("auth_provider") @db.VarChar(50)
+  isActive                 Boolean?         @default(true) @map("is_active")
+  emailVerified            Boolean?         @default(false) @map("email_verified")
+  emailVerificationToken   String?          @map("email_verification_token") @db.VarChar(255)
+  emailVerificationExpires DateTime?        @map("email_verification_expires") @db.Timestamptz(6)
+  passwordResetToken       String?          @map("password_reset_token") @db.VarChar(255)
+  passwordResetExpires     DateTime?        @map("password_reset_expires") @db.Timestamptz(6)
+  passwordChangedAt        DateTime?        @map("password_changed_at") @db.Timestamptz(6)
+  failedLoginAttempts      Int?             @default(0) @map("failed_login_attempts")
+  lastFailedLogin          DateTime?        @map("last_failed_login") @db.Timestamptz(6)
+  isLocked                 Boolean?         @default(false) @map("is_locked")
+  lockedUntil              DateTime?        @map("locked_until") @db.Timestamptz(6)
+  lastLogin                DateTime?        @map("last_login") @db.Timestamptz(6)
+  lastActivity             DateTime?        @map("last_activity") @db.Timestamptz(6)
+  loginCount               Int?             @default(0) @map("login_count")
+  createdAt                DateTime?        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                DateTime?        @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  audit_logs               AuditLog[]
+  promotions               promotions[]
+  refresh_tokens           RefreshToken[]
+  system_logs              system_logs[]
+  user_invitations         UserInvitation[]
+  tenants                  Tenant?          @relation(fields: [tenantId], references: [id], onUpdate: NoAction)
+
+  @@index([isActive], map: "idx_users_is_active")
+  @@index([role], map: "idx_users_role")
+  @@index([tenantId], map: "idx_users_tenant_id")
+  @@map("users")
+}
+
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+model UserInvitation {
+  id         String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenantId   String    @map("tenant_id") @db.Uuid
+  email      String    @db.VarChar(255)
+  role       String?   @default("user") @db.VarChar(50)
+  token      String    @unique @db.VarChar(255)
+  invitedBy  String    @map("invited_by") @db.Uuid
+  status     String?   @default("pending") @db.VarChar(50)
+  expiresAt  DateTime  @map("expires_at") @db.Timestamptz(6)
+  acceptedAt DateTime? @map("accepted_at") @db.Timestamptz(6)
+  createdAt  DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
+  users      User      @relation(fields: [invitedBy], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  tenants    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([status], map: "idx_invitations_status")
+  @@index([tenantId], map: "idx_invitations_tenant_id")
+  @@index([token], map: "idx_invitations_token")
+  @@map("user_invitations")
+}
+
+model RefreshToken {
+  id         String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  userId     String    @map("user_id") @db.Uuid
+  tokenHash  String    @map("token_hash") @db.VarChar(255)
+  deviceInfo Json?     @default("{}") @map("device_info")
+  ipAddress  String?   @map("ip_address") @db.Inet
+  expiresAt  DateTime  @map("expires_at") @db.Timestamptz(6)
+  isRevoked  Boolean?  @default(false) @map("is_revoked")
+  revokedAt  DateTime? @map("revoked_at") @db.Timestamptz(6)
+  createdAt  DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
+  users      User      @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([expiresAt], map: "idx_refresh_tokens_expires")
+  @@index([tokenHash], map: "idx_refresh_tokens_token")
+  @@index([userId], map: "idx_refresh_tokens_user_id")
+  @@map("refresh_tokens")
+}
+
+model AuditLog {
+  id         String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenantId   String?   @map("tenant_id") @db.Uuid
+  userId     String?   @map("user_id") @db.Uuid
+  action     String    @db.VarChar(100)
+  entityType String?   @map("entity_type") @db.VarChar(100)
+  entityId   String?   @map("entity_id") @db.Uuid
+  oldValues  Json?     @map("old_values")
+  newValues  Json?     @map("new_values")
+  ipAddress  String?   @map("ip_address") @db.Inet
+  userAgent  String?   @map("user_agent")
+  createdAt  DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
+  tenants    Tenant?   @relation(fields: [tenantId], references: [id], onUpdate: NoAction)
+  users      User?     @relation(fields: [userId], references: [id], onUpdate: NoAction)
+
+  @@index([action], map: "idx_audit_logs_action")
+  @@index([createdAt], map: "idx_audit_logs_created_at")
+  @@index([tenantId], map: "idx_audit_logs_tenant_id")
+  @@index([userId], map: "idx_audit_logs_user_id")
+  @@map("audit_logs")
+}
+
+model Session {
+  sid    String   @id @db.VarChar
+  sess   Json     @db.Json
+  expire DateTime @db.Timestamp(6)
+
+  @@index([expire], map: "idx_sessions_expire")
+  @@map("sessions")
+}
+
+model SubscriptionPlan {
+  id                   String                 @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  name                 String                 @db.VarChar(100)
+  slug                 String                 @unique @db.VarChar(50)
+  description          String?
+  priceMonthly         Decimal?               @default(0) @map("price_monthly") @db.Decimal(10, 2)
+  priceYearly          Decimal?               @default(0) @map("price_yearly") @db.Decimal(10, 2)
+  currency             String?                @default("USD") @db.VarChar(3)
+  features             Json?                  @default("[]")
+  max_users            Int?                   @default(5)
+  max_storage_gb       Int?                   @default(1)
+  isActive             Boolean?               @default(true) @map("is_active")
+  sortOrder            Int?                   @default(0) @map("sort_order")
+  createdAt            DateTime?              @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime?              @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  tenant_subscriptions tenant_subscriptions[]
+
+  @@index([isActive], map: "idx_subscription_plans_is_active")
+  @@index([slug], map: "idx_subscription_plans_slug")
+  @@map("subscription_plans")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model payments {
+  id                   String                @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenant_id            String                @db.Uuid
+  subscription_id      String?               @db.Uuid
+  amount               Decimal               @db.Decimal(10, 2)
+  currency             String?               @default("USD") @db.VarChar(3)
+  status               String?               @default("pending") @db.VarChar(50)
+  payment_method       String?               @db.VarChar(50)
+  payment_provider     String?               @db.VarChar(50)
+  provider_payment_id  String?               @db.VarChar(255)
+  provider_invoice_id  String?               @db.VarChar(255)
+  description          String?
+  invoice_url          String?
+  receipt_url          String?
+  metadata             Json?                 @default("{}")
+  paid_at              DateTime?             @db.Timestamptz(6)
+  failed_at            DateTime?             @db.Timestamptz(6)
+  failure_reason       String?
+  refunded_at          DateTime?             @db.Timestamptz(6)
+  refund_reason        String?
+  created_at           DateTime?             @default(now()) @db.Timestamptz(6)
+  updated_at           DateTime?             @default(now()) @db.Timestamptz(6)
+  tenant_subscriptions tenant_subscriptions? @relation(fields: [subscription_id], references: [id], onUpdate: NoAction)
+  tenants              Tenant                @relation(fields: [tenant_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([created_at], map: "idx_payments_created_at")
+  @@index([provider_payment_id], map: "idx_payments_provider_payment_id")
+  @@index([status], map: "idx_payments_status")
+  @@index([subscription_id], map: "idx_payments_subscription_id")
+  @@index([tenant_id], map: "idx_payments_tenant_id")
+}
+
+model promotion_uses {
+  id                   String                @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  promotion_id         String                @db.Uuid
+  tenant_id            String                @db.Uuid
+  subscription_id      String?               @db.Uuid
+  discount_applied     Decimal?              @db.Decimal(10, 2)
+  used_at              DateTime?             @default(now()) @db.Timestamptz(6)
+  promotions           promotions            @relation(fields: [promotion_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  tenant_subscriptions tenant_subscriptions? @relation(fields: [subscription_id], references: [id], onUpdate: NoAction)
+  tenants              Tenant                @relation(fields: [tenant_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([promotion_id, tenant_id, subscription_id], map: "unique_promotion_use")
+  @@index([promotion_id], map: "idx_promotion_uses_promotion_id")
+  @@index([tenant_id], map: "idx_promotion_uses_tenant_id")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+model promotions {
+  id                  String           @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  code                String           @unique @db.VarChar(50)
+  name                String           @db.VarChar(255)
+  description         String?
+  discount_type       String?          @default("percentage") @db.VarChar(20)
+  discount_value      Decimal          @db.Decimal(10, 2)
+  currency            String?          @default("USD") @db.VarChar(3)
+  applicable_plans    Json?            @default("[]")
+  min_billing_cycle   String?          @db.VarChar(20)
+  max_uses            Int?
+  uses_count          Int?             @default(0)
+  max_uses_per_tenant Int?             @default(1)
+  is_active           Boolean?         @default(true)
+  starts_at           DateTime?        @default(now()) @db.Timestamptz(6)
+  expires_at          DateTime?        @db.Timestamptz(6)
+  created_by          String?          @db.Uuid
+  created_at          DateTime?        @default(now()) @db.Timestamptz(6)
+  updated_at          DateTime?        @default(now()) @db.Timestamptz(6)
+  promotion_uses      promotion_uses[]
+  users               User?            @relation(fields: [created_by], references: [id], onUpdate: NoAction)
+
+  @@index([expires_at], map: "idx_promotions_expires_at")
+  @@index([is_active], map: "idx_promotions_is_active")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model system_logs {
+  id          String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  level       String?   @default("info") @db.VarChar(20)
+  category    String    @db.VarChar(100)
+  message     String
+  details     Json?     @default("{}")
+  tenant_id   String?   @db.Uuid
+  user_id     String?   @db.Uuid
+  ip_address  String?   @db.Inet
+  user_agent  String?
+  request_id  String?   @db.VarChar(100)
+  duration_ms Int?
+  created_at  DateTime? @default(now()) @db.Timestamptz(6)
+  tenants     Tenant?   @relation(fields: [tenant_id], references: [id], onUpdate: NoAction)
+  users       User?     @relation(fields: [user_id], references: [id], onUpdate: NoAction)
+
+  @@index([category], map: "idx_system_logs_category")
+  @@index([created_at(sort: Desc)], map: "idx_system_logs_created_at")
+  @@index([level], map: "idx_system_logs_level")
+  @@index([tenant_id], map: "idx_system_logs_tenant_id")
+  @@index([user_id], map: "idx_system_logs_user_id")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model tenant_subscriptions {
+  id                   String            @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenant_id            String            @unique(map: "unique_active_subscription") @db.Uuid
+  plan_id              String?           @db.Uuid
+  status               String?           @default("active") @db.VarChar(50)
+  billing_cycle        String?           @default("monthly") @db.VarChar(20)
+  amount               Decimal?          @default(0) @db.Decimal(10, 2)
+  currency             String?           @default("USD") @db.VarChar(3)
+  trial_ends_at        DateTime?         @db.Timestamptz(6)
+  current_period_start DateTime?         @default(now()) @db.Timestamptz(6)
+  current_period_end   DateTime?         @db.Timestamptz(6)
+  cancelled_at         DateTime?         @db.Timestamptz(6)
+  suspended_at         DateTime?         @db.Timestamptz(6)
+  suspension_reason    String?
+  notes                String?
+  created_at           DateTime?         @default(now()) @db.Timestamptz(6)
+  updated_at           DateTime?         @default(now()) @db.Timestamptz(6)
+  payments             payments[]
+  promotion_uses       promotion_uses[]
+  subscription_plans   SubscriptionPlan? @relation(fields: [plan_id], references: [id], onUpdate: NoAction)
+  tenants              Tenant            @relation(fields: [tenant_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([current_period_end], map: "idx_tenant_subscriptions_period_end")
+  @@index([status], map: "idx_tenant_subscriptions_status")
+  @@index([tenant_id], map: "idx_tenant_subscriptions_tenant_id")
+}
+
+// ===========================================
+// MÓDULO: LOGÍSTICA MARÍTIMA
+// ===========================================
+
+// CLIENTES Y PROVEEDORES
+model Cliente {
+  id              String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenantId        String   @map("tenant_id") @db.Uuid
+  
+  razonSocial     String   @map("razon_social") @db.VarChar(255)
+  nombreFantasia  String?  @map("nombre_fantasia") @db.VarChar(255)
+  tipoDocumento   String   @map("tipo_documento") @db.VarChar(50)
+  numeroDocumento String   @map("numero_documento") @db.VarChar(50)
+  condicionFiscal String?  @map("condicion_fiscal") @db.VarChar(100)
+  
+  email           String?  @db.VarChar(255)
+  telefono        String?  @db.VarChar(50)
+  direccion       String?
+  ciudad          String?  @db.VarChar(100)
+  provincia       String?  @db.VarChar(100)
+  pais            String   @default("Argentina") @db.VarChar(100)
+  codigoPostal    String?  @map("codigo_postal") @db.VarChar(20)
+  
+  esCliente       Boolean  @default(true) @map("es_cliente")
+  esProveedor     Boolean  @default(false) @map("es_proveedor")
+  esConsignee     Boolean  @default(false) @map("es_consignee")
+  esShipper       Boolean  @default(false) @map("es_shipper")
+  
+  activo          Boolean  @default(true)
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy       String?  @map("created_by") @db.Uuid
+  
+  // Vinculación con usuario del portal
+  userId          String?  @unique @map("user_id") @db.Uuid
+  
+  carpetasCliente    Carpeta[] @relation("CarpetaCliente")
+  carpetasConsignee  Carpeta[] @relation("CarpetaConsignee")
+  carpetasShipper    Carpeta[] @relation("CarpetaShipper")
+  facturas           Factura[]
+  prefacturas        Prefactura[]
+
+  @@unique([tenantId, numeroDocumento])
+  @@index([tenantId])
+  @@index([razonSocial])
+  @@index([userId])
+  @@map("clientes")
+}
+
+// CARPETAS DE EMBARQUE (CORE)
+model Carpeta {
+  id              String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenantId        String   @map("tenant_id") @db.Uuid
+  numero          String   @db.VarChar(50)
+  
+  estado          String   @default("HOUSE") @db.VarChar(50)
+  area            String   @db.VarChar(50)
+  sector          String   @db.VarChar(50)
+  tipoOperacion   String   @map("tipo_operacion") @db.VarChar(50)
+  categoriaEmbarque String? @map("categoria_embarque") @db.VarChar(100)
+  consolidado     Boolean  @default(false)
+  
+  fechaEmision         DateTime  @default(now()) @map("fecha_emision") @db.Timestamptz(6)
+  fechaSalidaEstimada  DateTime? @map("etd") @db.Timestamptz(6)
+  fechaSalidaConfirmada DateTime? @map("atd") @db.Timestamptz(6)
+  fechaLlegadaEstimada DateTime? @map("eta") @db.Timestamptz(6)
+  fechaLlegadaConfirmada DateTime? @map("ata") @db.Timestamptz(6)
+  fechaCarga           DateTime? @map("fecha_carga") @db.Timestamptz(6)
+  fechaDescarga        DateTime? @map("fecha_descarga") @db.Timestamptz(6)
+  
+  puertoOrigen    String?  @map("puerto_origen") @db.VarChar(100)
+  lugarCarga      String?  @map("lugar_carga") @db.VarChar(255)
+  puertoDestino   String?  @map("puerto_destino") @db.VarChar(100)
+  lugarDescarga   String?  @map("lugar_descarga") @db.VarChar(255)
+  
+  clienteId       String   @map("cliente_id") @db.Uuid
+  cliente         Cliente  @relation("CarpetaCliente", fields: [clienteId], references: [id])
+  consigneeId     String?  @map("consignee_id") @db.Uuid
+  consignee       Cliente? @relation("CarpetaConsignee", fields: [consigneeId], references: [id])
+  shipperId       String?  @map("shipper_id") @db.Uuid
+  shipper         Cliente? @relation("CarpetaShipper", fields: [shipperId], references: [id])
+  
+  transportista   String?  @db.VarChar(255)
+  notify          String?
+  agente          String?  @db.VarChar(255)
+  agente2         String?  @db.VarChar(255)
+  agenteAduanal   String?  @map("agente_aduanal") @db.VarChar(255)
+  empresaFacturacion String? @map("empresa_facturacion") @db.VarChar(255)
+  clienteFinal    String?  @map("cliente_final") @db.VarChar(255)
+  trader          String?  @db.VarChar(255)
+  
+  referenciaInterna String?  @map("referencia_interna") @db.VarChar(100)
+  referenciaExterna String?  @map("referencia_externa") @db.VarChar(100)
+  referenciaCliente String?  @map("referencia_cliente") @db.VarChar(100)
+  booking           String?  @db.VarChar(100)
+  documentador      String?  @db.VarChar(100)
+  mane              String?  @db.VarChar(100)
+  
+  buque           String?  @db.VarChar(100)
+  viaje           String?  @db.VarChar(50)
+  terminalPortuaria String? @map("terminal_portuaria") @db.VarChar(100)
+  depositoFiscal  String?  @map("deposito_fiscal") @db.VarChar(100)
+  
+  frecuencia      String?  @db.VarChar(50)
+  transito        Int?
+  incoterm        String?  @db.VarChar(10)
+  ciudadInc       String?  @map("ciudad_inc") @db.VarChar(100)
+  
+  cutOffDoc       DateTime? @map("cut_off_doc") @db.Timestamptz(6)
+  cutOffFisico    DateTime? @map("cut_off_fisico") @db.Timestamptz(6)
+  cutOffIMO       DateTime? @map("cut_off_imo") @db.Timestamptz(6)
+  cutOffVGM       DateTime? @map("cut_off_vgm") @db.Timestamptz(6)
+  
+  moneda          String   @default("USD") @db.VarChar(10)
+  prepaidCollect  String   @default("Prepaid") @map("prepaid_collect") @db.VarChar(20)
+  
+  masterBL        String?  @map("master_bl") @db.VarChar(100)
+  houseBL         String?  @map("house_bl") @db.VarChar(100)
+  
+  observaciones   String?
+  notasInternas   String?  @map("notas_internas")
+  
+  usuarioId       String   @map("usuario_id") @db.Uuid
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  
+  mercancias      Mercancia[]
+  contenedores    Contenedor[]
+  gastos          Gasto[]
+  tarifasContenedor TarifaContenedor[]
+  prefacturas     Prefactura[]
+  facturas        Factura[]
+
+  @@unique([tenantId, numero])
+  @@index([tenantId])
+  @@index([clienteId])
+  @@index([estado])
+  @@index([fechaEmision])
+  @@map("carpetas")
+}
+
+// MERCANCÍAS
+model Mercancia {
+  id              String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  carpetaId       String   @map("carpeta_id") @db.Uuid
+  carpeta         Carpeta  @relation(fields: [carpetaId], references: [id], onDelete: Cascade)
+  
+  descripcion     String
+  embalaje        String?  @db.VarChar(100)
+  marcas          String?  @db.VarChar(255)
+  bultos          Int?
+  volumen         Float?
+  peso            Float?
+  valorMercaderia Float?   @map("valor_mercaderia")
+  valorCIF        Float?   @map("valor_cif")
+  hsCode          String?  @map("hs_code") @db.VarChar(20)
+  
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([carpetaId])
+  @@map("mercancias")
+}
+
+// CONTENEDORES
+model Contenedor {
+  id              String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  carpetaId       String   @map("carpeta_id") @db.Uuid
+  carpeta         Carpeta  @relation(fields: [carpetaId], references: [id], onDelete: Cascade)
+  
+  tipo            String   @db.VarChar(20)
+  numero          String?  @db.VarChar(20)
+  condicion       String?  @db.VarChar(50)
+  precinto        String?  @db.VarChar(50)
+  cantidad        Int      @default(1)
+  tara            Float?
+  pesoMaximo      Float?   @map("peso_maximo")
+  
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([carpetaId])
+  @@index([numero])
+  @@map("contenedores")
+}
+
+// TARIFAS POR CONTENEDOR
+model TarifaContenedor {
+  id              String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  carpetaId       String   @map("carpeta_id") @db.Uuid
+  carpeta         Carpeta  @relation(fields: [carpetaId], references: [id], onDelete: Cascade)
+  
+  tipoContenedor  String   @map("tipo_contenedor") @db.VarChar(20)
+  cantidad        Int
+  tarifaVenta     Float    @map("tarifa_venta")
+  tarifaCosto     Float    @map("tarifa_costo")
+  moneda          String   @default("USD") @db.VarChar(10)
+  
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([carpetaId])
+  @@map("tarifas_contenedor")
+}
+
+// GASTOS
+model Gasto {
+  id              String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  carpetaId       String   @map("carpeta_id") @db.Uuid
+  carpeta         Carpeta  @relation(fields: [carpetaId], references: [id], onDelete: Cascade)
+  
+  concepto        String   @db.VarChar(255)
+  prepaidCollect  String   @default("Prepaid") @map("prepaid_collect") @db.VarChar(20)
+  divisa          String   @default("USD") @db.VarChar(10)
+  montoVenta      Float    @map("monto_venta")
+  montoCosto      Float    @map("monto_costo")
+  base            String?  @db.VarChar(100)
+  cantidad        Float    @default(1)
+  totalVenta      Float    @map("total_venta")
+  totalCosto      Float    @map("total_costo")
+  gravado         Boolean  @default(true)
+  porcentajeIVA   Float    @default(21) @map("porcentaje_iva")
+  
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([carpetaId])
+  @@map("gastos")
+}
+
+// PREFACTURAS
+model Prefactura {
+  id              String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenantId        String   @map("tenant_id") @db.Uuid
+  numero          String   @db.VarChar(50)
+  
+  carpetaId       String?  @map("carpeta_id") @db.Uuid
+  carpeta         Carpeta? @relation(fields: [carpetaId], references: [id])
+  clienteId       String   @map("cliente_id") @db.Uuid
+  cliente         Cliente  @relation(fields: [clienteId], references: [id])
+  
+  fecha           DateTime @default(now()) @db.Timestamptz(6)
+  moneda          String   @default("USD") @db.VarChar(10)
+  subtotal        Float
+  iva             Float
+  total           Float
+  estado          String   @default("BORRADOR") @db.VarChar(50)
+  observaciones   String?
+  
+  usuarioId       String   @map("usuario_id") @db.Uuid
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  
+  items           ItemPrefactura[]
+  factura         Factura?
+
+  @@unique([tenantId, numero])
+  @@index([tenantId])
+  @@index([clienteId])
+  @@map("prefacturas")
+}
+
+// ITEMS PREFACTURA
+model ItemPrefactura {
+  id              String     @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  prefacturaId    String     @map("prefactura_id") @db.Uuid
+  prefactura      Prefactura @relation(fields: [prefacturaId], references: [id], onDelete: Cascade)
+  
+  descripcion     String
+  cantidad        Float      @default(1)
+  precioUnitario  Float      @map("precio_unitario")
+  subtotal        Float
+  alicuotaIVA     Float      @default(21) @map("alicuota_iva")
+  iva             Float
+  total           Float
+  
+  createdAt       DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([prefacturaId])
+  @@map("items_prefactura")
+}
+
+// FACTURAS
+model Factura {
+  id              String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenantId        String   @map("tenant_id") @db.Uuid
+  numero          String   @db.VarChar(50)
+  tipoComprobante String   @map("tipo_comprobante") @db.VarChar(5)
+  puntoVenta      Int      @map("punto_venta")
+  numeroCompleto  String   @map("numero_completo") @db.VarChar(20)
+  
+  prefacturaId    String?  @unique @map("prefactura_id") @db.Uuid
+  prefactura      Prefactura? @relation(fields: [prefacturaId], references: [id])
+  carpetaId       String?  @map("carpeta_id") @db.Uuid
+  carpeta         Carpeta? @relation(fields: [carpetaId], references: [id])
+  clienteId       String   @map("cliente_id") @db.Uuid
+  cliente         Cliente  @relation(fields: [clienteId], references: [id])
+  
+  fecha           DateTime @default(now()) @db.Timestamptz(6)
+  fechaVencimiento DateTime? @map("fecha_vencimiento") @db.Timestamptz(6)
+  moneda          String   @default("USD") @db.VarChar(10)
+  cotizacion      Float    @default(1)
+  subtotal        Float
+  iva             Float
+  percepcionIVA   Float    @default(0) @map("percepcion_iva")
+  percepcionIIBB  Float    @default(0) @map("percepcion_iibb")
+  total           Float
+  estado          String   @default("PENDIENTE") @db.VarChar(50)
+  
+  cae             String?  @db.VarChar(20)
+  vencimientoCAE  DateTime? @map("vencimiento_cae") @db.Timestamptz(6)
+  
+  observaciones   String?
+  usuarioId       String   @map("usuario_id") @db.Uuid
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  
+  items           ItemFactura[]
+  cobranzas       Cobranza[]
+
+  @@unique([tenantId, numero])
+  @@unique([tenantId, puntoVenta, tipoComprobante, numeroCompleto])
+  @@index([tenantId])
+  @@index([clienteId])
+  @@index([estado])
+  @@map("facturas")
+}
+
+// ITEMS FACTURA
+model ItemFactura {
+  id              String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  facturaId       String   @map("factura_id") @db.Uuid
+  factura         Factura  @relation(fields: [facturaId], references: [id], onDelete: Cascade)
+  
+  descripcion     String
+  cantidad        Float    @default(1)
+  precioUnitario  Float    @map("precio_unitario")
+  subtotal        Float
+  alicuotaIVA     Float    @default(21) @map("alicuota_iva")
+  iva             Float
+  total           Float
+  
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([facturaId])
+  @@map("items_factura")
+}
+
+// COBRANZAS
+model Cobranza {
+  id              String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenantId        String   @map("tenant_id") @db.Uuid
+  numero          String   @db.VarChar(50)
+  
+  facturaId       String   @map("factura_id") @db.Uuid
+  factura         Factura  @relation(fields: [facturaId], references: [id])
+  
+  fecha           DateTime @default(now()) @db.Timestamptz(6)
+  monto           Float
+  moneda          String   @default("USD") @db.VarChar(10)
+  medioPago       String   @map("medio_pago") @db.VarChar(50)
+  referencia      String?  @db.VarChar(100)
+  observaciones   String?
+  
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([tenantId, numero])
+  @@index([tenantId])
+  @@index([facturaId])
+  @@map("cobranzas")
+}
+
+// TABLAS MAESTRAS
+model Puerto {
+  id              String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  codigo          String   @unique @db.VarChar(10)
+  nombre          String   @db.VarChar(100)
+  pais            String   @db.VarChar(100)
+  activo          Boolean  @default(true)
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@map("puertos")
+}
+
+model TipoContenedorMaestro {
+  id              String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  codigo          String   @unique @db.VarChar(10)
+  descripcion     String   @db.VarChar(100)
+  teu             Float    @default(1)
+  activo          Boolean  @default(true)
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@map("tipos_contenedor")
+}
+
+model IncotermMaestro {
+  id              String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  codigo          String   @unique @db.VarChar(10)
+  descripcion     String   @db.VarChar(255)
+  activo          Boolean  @default(true)
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@map("incoterms")
+}
+
+model ConceptoGasto {
+  id              String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenantId        String?  @map("tenant_id") @db.Uuid
+  codigo          String   @db.VarChar(50)
+  descripcion     String   @db.VarChar(255)
+  categoria       String?  @db.VarChar(100)
+  activo          Boolean  @default(true)
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([tenantId, codigo])
+  @@map("conceptos_gasto")
+}
+
+model Naviera {
+  id              String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  codigo          String   @unique @db.VarChar(20)
+  nombre          String   @db.VarChar(100)
+  activo          Boolean  @default(true)
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@map("navieras")
+}
+
+// ===========================================
+// MÓDULO: INTEGRACIONES CON NAVIERAS
+// ===========================================
+
+// Proveedores de API soportados
+enum CarrierProvider {
+  MAERSK
+  MSC
+  CMA_CGM
+  HAPAG_LLOYD
+  EVERGREEN
+}
+
+// Estado de la integración
+enum IntegrationStatus {
+  ACTIVE
+  INACTIVE
+  ERROR
+  PENDING_VERIFICATION
+}
+
+// Configuración de integración por tenant
+model CarrierIntegration {
+  id              String            @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenantId        String            @map("tenant_id") @db.Uuid
+  provider        CarrierProvider
+  
+  // Credenciales (encriptadas)
+  clientId        String?           @map("client_id") @db.VarChar(500)
+  clientSecret    String?           @map("client_secret") @db.VarChar(500)
+  apiKey          String?           @map("api_key") @db.VarChar(500)
+  username        String?           @db.VarChar(255)
+  password        String?           @db.VarChar(500)
+  
+  // Tokens de acceso (almacenados temporalmente)
+  accessToken     String?           @map("access_token")
+  tokenExpiresAt  DateTime?         @map("token_expires_at") @db.Timestamptz(6)
+  refreshToken    String?           @map("refresh_token")
+  
+  // Estado y configuración
+  status          IntegrationStatus @default(PENDING_VERIFICATION)
+  lastTestedAt    DateTime?         @map("last_tested_at") @db.Timestamptz(6)
+  lastError       String?           @map("last_error")
+  settings        Json?             @default("{}")
+  
+  // Límites y uso
+  apiCallsToday   Int               @default(0) @map("api_calls_today")
+  apiCallsMonth   Int               @default(0) @map("api_calls_month")
+  lastApiCall     DateTime?         @map("last_api_call") @db.Timestamptz(6)
+  
+  createdAt       DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime          @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy       String?           @map("created_by") @db.Uuid
+  
+  trackingSubscriptions TrackingSubscription[]
+
+  @@unique([tenantId, provider])
+  @@index([tenantId])
+  @@index([provider])
+  @@map("carrier_integrations")
+}
+
+// Suscripción de tracking para un contenedor/BL
+model TrackingSubscription {
+  id                  String             @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenantId            String             @map("tenant_id") @db.Uuid
+  integrationId       String             @map("integration_id") @db.Uuid
+  integration         CarrierIntegration @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+  
+  // Referencia a rastrear
+  trackingType        String             @map("tracking_type") @db.VarChar(50) // CONTAINER, BL, BOOKING
+  trackingNumber      String             @map("tracking_number") @db.VarChar(100)
+  
+  // Asociación opcional con carpeta
+  carpetaId           String?            @map("carpeta_id") @db.Uuid
+  contenedorId        String?            @map("contenedor_id") @db.Uuid
+  
+  // Estado
+  isActive            Boolean            @default(true) @map("is_active")
+  lastCheckedAt       DateTime?          @map("last_checked_at") @db.Timestamptz(6)
+  lastEventAt         DateTime?          @map("last_event_at") @db.Timestamptz(6)
+  checkIntervalMinutes Int               @default(60) @map("check_interval_minutes")
+  
+  // Datos del tracking actual
+  currentStatus       String?            @map("current_status") @db.VarChar(100)
+  currentLocation     String?            @map("current_location") @db.VarChar(255)
+  vessel              String?            @db.VarChar(100)
+  voyage              String?            @db.VarChar(50)
+  eta                 DateTime?          @db.Timestamptz(6)
+  ata                 DateTime?          @db.Timestamptz(6)
+  pod                 String?            @db.VarChar(100) // Port of Discharge
+  pol                 String?            @db.VarChar(100) // Port of Loading
+  
+  createdAt           DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime           @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  
+  events              TrackingEvent[]
+
+  @@unique([tenantId, trackingNumber, integrationId])
+  @@index([tenantId])
+  @@index([trackingNumber])
+  @@index([carpetaId])
+  @@map("tracking_subscriptions")
+}
+
+// Eventos de tracking históricos
+model TrackingEvent {
+  id                  String               @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  subscriptionId      String               @map("subscription_id") @db.Uuid
+  subscription        TrackingSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  
+  eventType           String               @map("event_type") @db.VarChar(100)
+  eventCode           String?              @map("event_code") @db.VarChar(50)
+  eventDescription    String?              @map("event_description")
+  eventDateTime       DateTime             @map("event_date_time") @db.Timestamptz(6)
+  
+  location            String?              @db.VarChar(255)
+  locationCode        String?              @map("location_code") @db.VarChar(20)
+  facility            String?              @db.VarChar(255)
+  
+  vessel              String?              @db.VarChar(100)
+  voyage              String?              @db.VarChar(50)
+  
+  // Datos originales de la API
+  rawData             Json?                @map("raw_data")
+  
+  createdAt           DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([subscriptionId])
+  @@index([eventDateTime])
+  @@map("tracking_events")
+}
+
+// Cache de schedules/itinerarios
+model VesselSchedule {
+  id              String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  provider        CarrierProvider
+  
+  vesselName      String   @map("vessel_name") @db.VarChar(100)
+  vesselImo       String?  @map("vessel_imo") @db.VarChar(20)
+  voyage          String   @db.VarChar(50)
+  service         String?  @db.VarChar(100)
+  
+  portCode        String   @map("port_code") @db.VarChar(20)
+  portName        String   @map("port_name") @db.VarChar(100)
+  
+  eta             DateTime? @db.Timestamptz(6)
+  etd             DateTime? @db.Timestamptz(6)
+  ata             DateTime? @db.Timestamptz(6)
+  atd             DateTime? @db.Timestamptz(6)
+  
+  terminalName    String?  @map("terminal_name") @db.VarChar(100)
+  
+  rawData         Json?    @map("raw_data")
+  fetchedAt       DateTime @default(now()) @map("fetched_at") @db.Timestamptz(6)
+  expiresAt       DateTime @map("expires_at") @db.Timestamptz(6)
+
+  @@index([provider])
+  @@index([vesselName, voyage])
+  @@index([portCode])
+  @@map("vessel_schedules")
+}
+
+// ===========================================
+// MÓDULO: FACTURACIÓN ELECTRÓNICA
+// ===========================================
+
+// Países soportados para facturación electrónica
+enum FiscalCountry {
+  AR  // Argentina - ARCA/AFIP
+  CL  // Chile - SII
+  MX  // México - SAT
+  CO  // Colombia - DIAN
+  PE  // Perú - SUNAT
+  UY  // Uruguay - DGI
+  BR  // Brasil - SEFAZ
+  ES  // España - AEAT
+}
+
+// Ambiente fiscal
+enum FiscalEnvironment {
+  PRODUCTION
+  TESTING
+}
+
+// Estado de configuración fiscal
+enum FiscalConfigStatus {
+  ACTIVE
+  INACTIVE
+  ERROR
+  PENDING_SETUP
+}
+
+// Configuración fiscal por tenant
+model FiscalConfig {
+  id                  String             @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenantId            String             @unique @map("tenant_id") @db.Uuid
+  
+  // País y ambiente
+  country             FiscalCountry      @default(AR)
+  environment         FiscalEnvironment  @default(TESTING)
+  status              FiscalConfigStatus @default(PENDING_SETUP)
+  
+  // Datos fiscales (Argentina)
+  cuit                String?            @db.VarChar(13)
+  razonSocial         String?            @map("razon_social") @db.VarChar(255)
+  domicilioFiscal     String?            @map("domicilio_fiscal")
+  condicionIVA        String?            @map("condicion_iva") @db.VarChar(50)
+  inicioActividades   DateTime?          @map("inicio_actividades") @db.Date
+  
+  // Certificado digital (encriptado)
+  certificate         String?            // Certificado .crt en base64
+  privateKey          String?            @map("private_key") // Clave privada .key en base64
+  certificatePassword String?            @map("certificate_password") // Password del certificado (encriptado)
+  certificateExpires  DateTime?          @map("certificate_expires") @db.Timestamptz(6)
+  
+  // Tokens de AFIP (temporales)
+  wsaaToken           String?            @map("wsaa_token") // Token de autenticación
+  wsaaSign            String?            @map("wsaa_sign") // Firma
+  wsaaExpires         DateTime?          @map("wsaa_expires") @db.Timestamptz(6)
+  
+  // Configuración adicional
+  settings            Json?              @default("{}")
+  lastError           String?            @map("last_error")
+  lastTestedAt        DateTime?          @map("last_tested_at") @db.Timestamptz(6)
+  
+  createdAt           DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime           @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy           String?            @map("created_by") @db.Uuid
+  
+  puntosVenta         PuntoVenta[]
+
+  @@index([tenantId])
+  @@map("fiscal_configs")
+}
+
+// Puntos de venta habilitados
+model PuntoVenta {
+  id                  String       @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  fiscalConfigId      String       @map("fiscal_config_id") @db.Uuid
+  fiscalConfig        FiscalConfig @relation(fields: [fiscalConfigId], references: [id], onDelete: Cascade)
+  
+  numero              Int          // Número de punto de venta (1-99999)
+  nombre              String?      @db.VarChar(100)
+  domicilio           String?      @db.VarChar(255)
+  tipoEmision         String       @default("CAE") @map("tipo_emision") @db.VarChar(10) // CAE, CAEA
+  
+  // Tipos de comprobante habilitados
+  tiposHabilitados    Json         @default("[]") @map("tipos_habilitados") // [1, 6, 11, etc]
+  
+  isActive            Boolean      @default(true) @map("is_active")
+  isDefault           Boolean      @default(false) @map("is_default")
+  
+  createdAt           DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime     @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  
+  comprobantes        ComprobanteFiscal[]
+
+  @@unique([fiscalConfigId, numero])
+  @@index([fiscalConfigId])
+  @@map("puntos_venta")
+}
+
+// Comprobantes fiscales emitidos
+model ComprobanteFiscal {
+  id                  String     @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenantId            String     @map("tenant_id") @db.Uuid
+  
+  // Relación con factura del sistema
+  facturaId           String?    @unique @map("factura_id") @db.Uuid
+  
+  // Punto de venta
+  puntoVentaId        String     @map("punto_venta_id") @db.Uuid
+  puntoVenta          PuntoVenta @relation(fields: [puntoVentaId], references: [id])
+  
+  // Datos del comprobante
+  tipoComprobante     Int        @map("tipo_comprobante") // 1=FA, 6=FB, 11=FC, etc.
+  puntoVentaNum       Int        @map("punto_venta_num")
+  numeroComprobante   Int        @map("numero_comprobante")
+  numeroCompleto      String     @map("numero_completo") @db.VarChar(20) // 00001-00000001
+  
+  // Datos del receptor
+  tipoDocReceptor     Int        @map("tipo_doc_receptor") // 80=CUIT, 96=DNI, etc.
+  nroDocReceptor      String     @map("nro_doc_receptor") @db.VarChar(20)
+  
+  // Importes
+  importeTotal        Decimal    @map("importe_total") @db.Decimal(15, 2)
+  importeNeto         Decimal    @map("importe_neto") @db.Decimal(15, 2)
+  importeIVA          Decimal    @map("importe_iva") @db.Decimal(15, 2)
+  importeTributos     Decimal    @default(0) @map("importe_tributos") @db.Decimal(15, 2)
+  importeExento       Decimal    @default(0) @map("importe_exento") @db.Decimal(15, 2)
+  
+  // Fechas
+  fechaComprobante    DateTime   @map("fecha_comprobante") @db.Date
+  fechaServicioDesde  DateTime?  @map("fecha_servicio_desde") @db.Date
+  fechaServicioHasta  DateTime?  @map("fecha_servicio_hasta") @db.Date
+  fechaVencimiento    DateTime?  @map("fecha_vencimiento") @db.Date
+  
+  // Datos fiscales de AFIP
+  cae                 String?    @db.VarChar(20)
+  caeVencimiento      DateTime?  @map("cae_vencimiento") @db.Date
+  
+  // Estado
+  estado              String     @default("PENDIENTE") @db.VarChar(20) // PENDIENTE, AUTORIZADO, RECHAZADO, ANULADO
+  resultado           String?    @db.VarChar(1) // A=Aprobado, R=Rechazado, P=Parcial
+  
+  // Respuesta de AFIP
+  afipResponse        Json?      @map("afip_response")
+  observaciones       String?
+  errores             Json?
+  
+  // QR y PDF
+  qrData              String?    @map("qr_data")
+  pdfUrl              String?    @map("pdf_url")
+  
+  createdAt           DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([tenantId, tipoComprobante, puntoVentaNum, numeroComprobante])
+  @@index([tenantId])
+  @@index([facturaId])
+  @@index([cae])
+  @@map("comprobantes_fiscales")
+}

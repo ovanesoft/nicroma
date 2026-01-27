@@ -1,0 +1,49 @@
+{
+  "name": "nicroma-backend",
+  "version": "1.0.0",
+  "description": "Backend API para Nicroma - Sistema Multi-tenant",
+  "main": "src/app.js",
+  "scripts": {
+    "start": "node src/app.js",
+    "dev": "nodemon src/app.js",
+    "db:init": "node src/database/init.js",
+    "db:push": "npx prisma db push --accept-data-loss",
+    "prisma:generate": "npx prisma generate",
+    "build": "npm run prisma:generate && (npm run db:init || true) && (npm run db:push || true)"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.22.0",
+    "bcryptjs": "^2.4.3",
+    "connect-pg-simple": "^9.0.1",
+    "cookie-parser": "^1.4.6",
+    "cors": "^2.8.5",
+    "crypto-js": "^4.2.0",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "express-rate-limit": "^7.1.5",
+    "express-session": "^1.17.3",
+    "express-validator": "^7.0.1",
+    "helmet": "^7.1.0",
+    "hpp": "^0.2.3",
+    "jsonwebtoken": "^9.0.2",
+    "node-forge": "^1.3.3",
+    "nodemailer": "^6.9.7",
+    "passport": "^0.7.0",
+    "passport-facebook": "^3.0.0",
+    "passport-google-oauth20": "^2.0.0",
+    "passport-local": "^1.0.0",
+    "pg": "^8.11.3",
+    "prisma": "^5.22.0",
+    "resend": "^2.0.0",
+    "soap": "^1.6.3",
+    "uuid": "^9.0.1",
+    "xml2js": "^0.6.2",
+    "xss-clean": "^0.1.4"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

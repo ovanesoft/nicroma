@@ -1,0 +1,552 @@
+const prisma = require('../services/prisma');
+
+// Generar número de carpeta
+const generarNumeroCarpeta = async (tenantId, area, sector) => {
+  const year = new Date().getFullYear();
+  const areaCode = area.substring(0, 2).toUpperCase(); // MA, AE, TE
+  const sectorCode = sector === 'Importación' ? 'I' : 'E';
+  
+  // Buscar el último número del año
+  const ultimaCarpeta = await prisma.carpeta.findFirst({
+    where: {
+      tenantId,
+      numero: {
+        startsWith: `${year}-${areaCode}${sectorCode}-`
+      }
+    },
+    orderBy: {
+      numero: 'desc'
+    }
+  });
+
+  let secuencia = 1;
+  if (ultimaCarpeta) {
+    const parts = ultimaCarpeta.numero.split('-');
+    secuencia = parseInt(parts[2]) + 1;
+  }
+
+  return `${year}-${areaCode}${sectorCode}-${secuencia.toString().padStart(6, '0')}`;
+};
+
+// Listar carpetas
+const listarCarpetas = async (req, res) => {
+  try {
+    const tenantId = req.user.tenant_id;
+    const { 
+      page = 1, 
+      limit = 20, 
+      search, 
+      estado, 
+      area, 
+      sector,
+      clienteId,
+      fechaDesde,
+      fechaHasta,
+      orderBy = 'fechaEmision',
+      orderDir = 'desc'
+    } = req.query;
+
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    
+    // Construir filtros
+    const where = { tenantId };
+    
+    if (search) {
+      where.OR = [
+        { numero: { contains: search, mode: 'insensitive' } },
+        { booking: { contains: search, mode: 'insensitive' } },
+        { referenciaCliente: { contains: search, mode: 'insensitive' } },
+        { masterBL: { contains: search, mode: 'insensitive' } },
+        { houseBL: { contains: search, mode: 'insensitive' } }
+      ];
+    }
+    
+    if (estado) where.estado = estado;
+    if (area) where.area = area;
+    if (sector) where.sector = sector;
+    if (clienteId) where.clienteId = clienteId;
+    
+    if (fechaDesde || fechaHasta) {
+      where.fechaEmision = {};
+      if (fechaDesde) where.fechaEmision.gte = new Date(fechaDesde);
+      if (fechaHasta) where.fechaEmision.lte = new Date(fechaHasta);
+    }
+
+    // Ejecutar consultas en paralelo
+    const [carpetas, total] = await Promise.all([
+      prisma.carpeta.findMany({
+        where,
+        skip,
+        take: parseInt(limit),
+        orderBy: { [orderBy]: orderDir },
+        include: {
+          cliente: {
+            select: {
+              id: true,
+              razonSocial: true,
+              numeroDocumento: true
+            }
+          },
+          _count: {
+            select: {
+              contenedores: true,
+              gastos: true
+            }
+          }
+        }
+      }),
+      prisma.carpeta.count({ where })
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        carpetas,
+        pagination: {
+          page: parseInt(page),
+          limit: parseInt(limit),
+          total,
+          totalPages: Math.ceil(total / parseInt(limit))
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Error listando carpetas:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al listar carpetas'
+    });
+  }
+};
+
+// Obtener carpeta por ID
+const obtenerCarpeta = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const tenantId = req.user.tenant_id;
+
+    const carpeta = await prisma.carpeta.findFirst({
+      where: { id, tenantId },
+      include: {
+        cliente: true,
+        consignee: true,
+        shipper: true,
+        mercancias: true,
+        contenedores: true,
+        gastos: {
+          orderBy: { createdAt: 'asc' }
+        },
+        tarifasContenedor: true,
+        prefacturas: {
+          select: {
+            id: true,
+            numero: true,
+            fecha: true,
+            total: true,
+            estado: true
+          }
+        },
+        facturas: {
+          select: {
+            id: true,
+            numeroCompleto: true,
+            fecha: true,
+            total: true,
+            estado: true
+          }
+        }
+      }
+    });
+
+    if (!carpeta) {
+      return res.status(404).json({
+        success: false,
+        message: 'Carpeta no encontrada'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: { carpeta }
+    });
+  } catch (error) {
+    console.error('Error obteniendo carpeta:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al obtener carpeta'
+    });
+  }
+};
+
+// Crear carpeta
+const crearCarpeta = async (req, res) => {
+  try {
+    const tenantId = req.user.tenant_id;
+    const usuarioId = req.user.id;
+    const data = req.body;
+
+    // Generar número de carpeta
+    const numero = await generarNumeroCarpeta(tenantId, data.area, data.sector);
+
+    // Crear carpeta con relaciones
+    const carpeta = await prisma.carpeta.create({
+      data: {
+        tenantId,
+        usuarioId,
+        numero,
+        estado: data.estado || 'HOUSE',
+        area: data.area,
+        sector: data.sector,
+        tipoOperacion: data.tipoOperacion,
+        categoriaEmbarque: data.categoriaEmbarque,
+        consolidado: data.consolidado || false,
+        
+        // Fechas
+        fechaEmision: data.fechaEmision ? new Date(data.fechaEmision) : new Date(),
+        fechaSalidaEstimada: data.etd ? new Date(data.etd) : null,
+        fechaSalidaConfirmada: data.atd ? new Date(data.atd) : null,
+        fechaLlegadaEstimada: data.eta ? new Date(data.eta) : null,
+        fechaLlegadaConfirmada: data.ata ? new Date(data.ata) : null,
+        fechaCarga: data.fechaCarga ? new Date(data.fechaCarga) : null,
+        fechaDescarga: data.fechaDescarga ? new Date(data.fechaDescarga) : null,
+        
+        // Lugares
+        puertoOrigen: data.puertoOrigen,
+        lugarCarga: data.lugarCarga,
+        puertoDestino: data.puertoDestino,
+        lugarDescarga: data.lugarDescarga,
+        
+        // Partes
+        clienteId: data.clienteId,
+        consigneeId: data.consigneeId,
+        shipperId: data.shipperId,
+        transportista: data.transportista,
+        notify: data.notify,
+        agente: data.agente,
+        agente2: data.agente2,
+        agenteAduanal: data.agenteAduanal,
+        empresaFacturacion: data.empresaFacturacion,
+        clienteFinal: data.clienteFinal,
+        trader: data.trader,
+        
+        // Referencias
+        referenciaInterna: data.referenciaInterna,
+        referenciaExterna: data.referenciaExterna,
+        referenciaCliente: data.referenciaCliente,
+        booking: data.booking,
+        documentador: data.documentador,
+        mane: data.mane,
+        
+        // Transporte
+        buque: data.buque,
+        viaje: data.viaje,
+        terminalPortuaria: data.terminalPortuaria,
+        depositoFiscal: data.depositoFiscal,
+        
+        // Operativo
+        frecuencia: data.frecuencia,
+        transito: data.transito,
+        incoterm: data.incoterm,
+        ciudadInc: data.ciudadInc,
+        
+        // Cut-off
+        cutOffDoc: data.cutOffDoc ? new Date(data.cutOffDoc) : null,
+        cutOffFisico: data.cutOffFisico ? new Date(data.cutOffFisico) : null,
+        cutOffIMO: data.cutOffIMO ? new Date(data.cutOffIMO) : null,
+        cutOffVGM: data.cutOffVGM ? new Date(data.cutOffVGM) : null,
+        
+        // Financiero
+        moneda: data.moneda || 'USD',
+        prepaidCollect: data.prepaidCollect || 'Prepaid',
+        
+        // BL
+        masterBL: data.masterBL,
+        houseBL: data.houseBL,
+        
+        // Observaciones
+        observaciones: data.observaciones,
+        notasInternas: data.notasInternas,
+        
+        // Crear mercancías si se enviaron
+        mercancias: data.mercancias ? {
+          create: data.mercancias.map(m => ({
+            descripcion: m.descripcion,
+            embalaje: m.embalaje,
+            marcas: m.marcas,
+            bultos: m.bultos,
+            volumen: m.volumen,
+            peso: m.peso,
+            valorMercaderia: m.valorMercaderia,
+            valorCIF: m.valorCIF,
+            hsCode: m.hsCode
+          }))
+        } : undefined,
+        
+        // Crear contenedores si se enviaron
+        contenedores: data.contenedores ? {
+          create: data.contenedores.map(c => ({
+            tipo: c.tipo,
+            numero: c.numero,
+            condicion: c.condicion,
+            precinto: c.precinto,
+            cantidad: c.cantidad || 1,
+            tara: c.tara,
+            pesoMaximo: c.pesoMaximo
+          }))
+        } : undefined,
+        
+        // Crear gastos si se enviaron
+        gastos: data.gastos ? {
+          create: data.gastos.map(g => ({
+            concepto: g.concepto,
+            prepaidCollect: g.prepaidCollect || 'Prepaid',
+            divisa: g.divisa || 'USD',
+            montoVenta: g.montoVenta,
+            montoCosto: g.montoCosto,
+            base: g.base,
+            cantidad: g.cantidad || 1,
+            totalVenta: (g.montoVenta || 0) * (g.cantidad || 1),
+            totalCosto: (g.montoCosto || 0) * (g.cantidad || 1),
+            gravado: g.gravado !== false,
+            porcentajeIVA: g.porcentajeIVA || 21
+          }))
+        } : undefined
+      },
+      include: {
+        cliente: true,
+        mercancias: true,
+        contenedores: true,
+        gastos: true
+      }
+    });
+
+    res.status(201).json({
+      success: true,
+      message: 'Carpeta creada exitosamente',
+      data: { carpeta }
+    });
+  } catch (error) {
+    console.error('Error creando carpeta:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al crear carpeta',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
+// Actualizar carpeta
+const actualizarCarpeta = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const tenantId = req.user.tenant_id;
+    const data = req.body;
+
+    // Verificar que la carpeta exista
+    const existing = await prisma.carpeta.findFirst({
+      where: { id, tenantId }
+    });
+
+    if (!existing) {
+      return res.status(404).json({
+        success: false,
+        message: 'Carpeta no encontrada'
+      });
+    }
+
+    // No permitir cambiar número ni tenant
+    delete data.numero;
+    delete data.tenantId;
+
+    // Preparar datos para actualizar
+    const updateData = {
+      ...data,
+      // Convertir fechas
+      fechaEmision: data.fechaEmision ? new Date(data.fechaEmision) : undefined,
+      fechaSalidaEstimada: data.etd ? new Date(data.etd) : undefined,
+      fechaSalidaConfirmada: data.atd ? new Date(data.atd) : undefined,
+      fechaLlegadaEstimada: data.eta ? new Date(data.eta) : undefined,
+      fechaLlegadaConfirmada: data.ata ? new Date(data.ata) : undefined,
+      fechaCarga: data.fechaCarga ? new Date(data.fechaCarga) : undefined,
+      fechaDescarga: data.fechaDescarga ? new Date(data.fechaDescarga) : undefined,
+      cutOffDoc: data.cutOffDoc ? new Date(data.cutOffDoc) : undefined,
+      cutOffFisico: data.cutOffFisico ? new Date(data.cutOffFisico) : undefined,
+      cutOffIMO: data.cutOffIMO ? new Date(data.cutOffIMO) : undefined,
+      cutOffVGM: data.cutOffVGM ? new Date(data.cutOffVGM) : undefined
+    };
+
+    // Eliminar campos undefined
+    Object.keys(updateData).forEach(key => {
+      if (updateData[key] === undefined) delete updateData[key];
+    });
+
+    // Eliminar arrays de relaciones del update directo
+    delete updateData.mercancias;
+    delete updateData.contenedores;
+    delete updateData.gastos;
+
+    const carpeta = await prisma.carpeta.update({
+      where: { id },
+      data: updateData,
+      include: {
+        cliente: true,
+        mercancias: true,
+        contenedores: true,
+        gastos: true
+      }
+    });
+
+    res.json({
+      success: true,
+      message: 'Carpeta actualizada',
+      data: { carpeta }
+    });
+  } catch (error) {
+    console.error('Error actualizando carpeta:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al actualizar carpeta'
+    });
+  }
+};
+
+// Eliminar carpeta (soft delete - cambiar estado a CANCELADA)
+const eliminarCarpeta = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const tenantId = req.user.tenant_id;
+
+    const carpeta = await prisma.carpeta.findFirst({
+      where: { id, tenantId }
+    });
+
+    if (!carpeta) {
+      return res.status(404).json({
+        success: false,
+        message: 'Carpeta no encontrada'
+      });
+    }
+
+    // Soft delete - cambiar estado
+    await prisma.carpeta.update({
+      where: { id },
+      data: { estado: 'CANCELADA' }
+    });
+
+    res.json({
+      success: true,
+      message: 'Carpeta cancelada'
+    });
+  } catch (error) {
+    console.error('Error eliminando carpeta:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al eliminar carpeta'
+    });
+  }
+};
+
+// Obtener siguiente número de carpeta
+const siguienteNumero = async (req, res) => {
+  try {
+    const tenantId = req.user.tenant_id;
+    const { area = 'Marítimo', sector = 'Importación' } = req.query;
+    
+    const numero = await generarNumeroCarpeta(tenantId, area, sector);
+    
+    res.json({
+      success: true,
+      data: { numero }
+    });
+  } catch (error) {
+    console.error('Error generando número:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al generar número'
+    });
+  }
+};
+
+// Duplicar carpeta
+const duplicarCarpeta = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const tenantId = req.user.tenant_id;
+    const usuarioId = req.user.id;
+
+    // Obtener carpeta original con relaciones
+    const original = await prisma.carpeta.findFirst({
+      where: { id, tenantId },
+      include: {
+        mercancias: true,
+        contenedores: true,
+        gastos: true,
+        tarifasContenedor: true
+      }
+    });
+
+    if (!original) {
+      return res.status(404).json({
+        success: false,
+        message: 'Carpeta no encontrada'
+      });
+    }
+
+    // Generar nuevo número
+    const numero = await generarNumeroCarpeta(tenantId, original.area, original.sector);
+
+    // Crear copia
+    const { id: _, createdAt, updatedAt, numero: __, ...carpetaData } = original;
+    
+    const nueva = await prisma.carpeta.create({
+      data: {
+        ...carpetaData,
+        numero,
+        usuarioId,
+        estado: 'HOUSE',
+        fechaEmision: new Date(),
+        // Duplicar relaciones
+        mercancias: {
+          create: original.mercancias.map(({ id, carpetaId, createdAt, updatedAt, ...m }) => m)
+        },
+        contenedores: {
+          create: original.contenedores.map(({ id, carpetaId, createdAt, updatedAt, ...c }) => c)
+        },
+        gastos: {
+          create: original.gastos.map(({ id, carpetaId, createdAt, updatedAt, ...g }) => g)
+        },
+        tarifasContenedor: {
+          create: original.tarifasContenedor.map(({ id, carpetaId, createdAt, updatedAt, ...t }) => t)
+        }
+      },
+      include: {
+        cliente: true,
+        mercancias: true,
+        contenedores: true,
+        gastos: true
+      }
+    });
+
+    res.status(201).json({
+      success: true,
+      message: 'Carpeta duplicada',
+      data: { carpeta: nueva }
+    });
+  } catch (error) {
+    console.error('Error duplicando carpeta:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al duplicar carpeta'
+    });
+  }
+};
+
+module.exports = {
+  listarCarpetas,
+  obtenerCarpeta,
+  crearCarpeta,
+  actualizarCarpeta,
+  eliminarCarpeta,
+  siguienteNumero,
+  duplicarCarpeta
+};
