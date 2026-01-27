@@ -920,7 +920,8 @@ const registerPortalClient = async (req, res) => {
 
     // Crear registro en tabla clientes (vinculado al usuario)
     const clienteNombre = razonSocial || `${firstName} ${lastName}`.trim();
-    const clienteCuit = cuit || `00-00000000-0`; // CUIT temporal si no se proporciona
+    // Generar número de documento único si no se proporciona CUIT
+    const clienteCuit = cuit || `TEMP-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     
     await dbClient.query(
       `INSERT INTO clientes (
@@ -931,7 +932,7 @@ const registerPortalClient = async (req, res) => {
         tenantId,
         clienteNombre,
         firstName,
-        cuit ? 'CUIT' : 'DNI',
+        cuit ? 'CUIT' : 'PENDIENTE',
         clienteCuit,
         normalizedEmail,
         telefono || null,
