@@ -72,14 +72,26 @@ function PortalLanding() {
           setForm(prev => ({ ...prev, password: '', confirmPassword: '' }));
         }
       } else {
-        // Login usando el contexto de autenticación
-        const result = await login(form.email, form.password);
+        // Login específico del portal (email + tenant)
+        const response = await api.post('/auth/login-portal', {
+          email: form.email,
+          password: form.password,
+          portalSlug
+        });
 
-        if (result.success) {
+        if (response.data.success) {
+          const { accessToken, refreshToken, user } = response.data.data;
+          
+          // Guardar tokens y usuario
+          localStorage.setItem('accessToken', accessToken);
+          if (refreshToken) {
+            localStorage.setItem('refreshToken', refreshToken);
+          }
+          localStorage.setItem('user', JSON.stringify(user));
+          
           toast.success('Bienvenido!');
           navigate('/dashboard');
-        } else {
-          toast.error(result.message || 'Error al iniciar sesión');
+          window.location.reload(); // Forzar recarga para actualizar contexto
         }
       }
     } catch (error) {
