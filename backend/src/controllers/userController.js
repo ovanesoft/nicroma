@@ -329,6 +329,14 @@ const createUser = async (req, res) => {
     // Determinar tenant_id
     const tenantId = adminUser.role === 'root' ? req.body.tenantId : adminUser.tenant_id;
 
+    // Validar que hay tenant_id (excepto para root creando usuarios sin tenant)
+    if (!tenantId && adminUser.role !== 'root') {
+      return res.status(400).json({
+        success: false,
+        message: 'Tu cuenta no está vinculada a una organización. Contactá al administrador.'
+      });
+    }
+
     const result = await query(
       `INSERT INTO users (
         email, password_hash, first_name, last_name,
