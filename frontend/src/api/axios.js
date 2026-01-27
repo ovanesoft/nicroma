@@ -37,26 +37,41 @@ api.interceptors.response.use(
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
 
-      try {
-        // Intentar refresh del token
-        const response = await axios.post(`${API_URL}/auth/refresh`, {}, {
-          withCredentials: true
-        });
+      const refreshToken = localStorage.getItem('refreshToken');
+      
+      if (refreshToken) {
+        try {
+          // Intentar refresh del token usando el refreshToken de localStorage
+          const response = await axios.post(`${API_URL}/auth/refresh`, {
+            refreshToken
+          }, {
+            withCredentials: true
+          });
 
-        const { accessToken } = response.data.data;
-        
-        // Guardar nuevo token
-        localStorage.setItem('accessToken', accessToken);
-        
-        // Reintentar request original
-        originalRequest.headers.Authorization = `Bearer ${accessToken}`;
-        return api(originalRequest);
-      } catch (refreshError) {
-        // Si falla el refresh, limpiar y redirigir al login
+          const { accessToken, refreshToken: newRefreshToken } = response.data.data;
+          
+          // Guardar nuevos tokens
+          localStorage.setItem('accessToken', accessToken);
+          if (newRefreshToken) {
+            localStorage.setItem('refreshToken', newRefreshToken);
+          }
+          
+          // Reintentar request original
+          originalRequest.headers.Authorization = `Bearer ${accessToken}`;
+          return api(originalRequest);
+        } catch (refreshError) {
+          // Si falla el refresh, limpiar y redirigir al login
+          localStorage.removeItem('accessToken');
+          localStorage.removeItem('refreshToken');
+          localStorage.removeItem('user');
+          window.location.href = '/login';
+          return Promise.reject(refreshError);
+        }
+      } else {
+        // No hay refresh token, redirigir al login
         localStorage.removeItem('accessToken');
         localStorage.removeItem('user');
         window.location.href = '/login';
-        return Promise.reject(refreshError);
       }
     }
 

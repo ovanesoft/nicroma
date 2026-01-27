@@ -275,6 +275,7 @@ const login = async (req, res) => {
           tenantName: user.tenant_name
         },
         accessToken,
+        refreshToken: refreshToken.token, // Para guardar en localStorage (cross-domain)
         expiresAt: refreshToken.expiresAt
       }
     });
@@ -342,6 +343,7 @@ const refreshAccessToken = async (req, res) => {
       success: true,
       data: {
         accessToken,
+        refreshToken: newRefreshToken.token, // Para guardar en localStorage
         expiresAt: newRefreshToken.expiresAt
       }
     });
