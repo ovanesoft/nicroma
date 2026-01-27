@@ -5,7 +5,7 @@ const logController = require('../controllers/logController');
 
 // Todas las rutas requieren autenticación y rol root
 router.use(authenticateToken);
-router.use(requireRole(['root']));
+router.use(requireRole('root'));
 
 // GET /api/logs - Obtener todos los logs con paginación y filtros
 router.get('/', logController.getSystemLogs);
