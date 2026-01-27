@@ -1,5 +1,10 @@
 require('dotenv').config();
 
+// Fallback para FRONTEND_URL si no está definida
+if (!process.env.FRONTEND_URL) {
+  process.env.FRONTEND_URL = 'https://nicroma.com';
+}
+
 const express = require('express');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
