@@ -148,20 +148,24 @@ const generatePasswordResetToken = () => {
 const setTokenCookies = (res, accessToken, refreshToken) => {
   const isProduction = process.env.NODE_ENV === 'production';
   
+  // Configuración para cross-domain (api.nicroma.com -> nicroma.com)
+  const cookieOptions = {
+    httpOnly: true,
+    secure: isProduction, // HTTPS en producción
+    sameSite: isProduction ? 'none' : 'lax', // 'none' permite cross-site con secure
+    domain: isProduction ? '.nicroma.com' : undefined // Compartir entre subdominios
+  };
+  
   // Cookie para access token (httpOnly, más corta duración)
   res.cookie('accessToken', accessToken, {
-    httpOnly: true,
-    secure: isProduction,
-    sameSite: isProduction ? 'strict' : 'lax',
+    ...cookieOptions,
     maxAge: 15 * 60 * 1000 // 15 minutos
   });
 
   // Cookie para refresh token (httpOnly, más larga duración)
   if (refreshToken) {
     res.cookie('refreshToken', refreshToken.token, {
-      httpOnly: true,
-      secure: isProduction,
-      sameSite: isProduction ? 'strict' : 'lax',
+      ...cookieOptions,
       path: '/api/auth/refresh', // Solo accesible en refresh endpoint
       maxAge: 30 * 24 * 60 * 60 * 1000 // 30 días
     });
