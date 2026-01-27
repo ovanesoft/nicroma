@@ -5,6 +5,7 @@ import { Eye, EyeOff, AlertCircle, Loader2, CheckCircle2 } from 'lucide-react';
 
 const Register = () => {
   const [formData, setFormData] = useState({
+    companyName: '',
     firstName: '',
     lastName: '',
     email: '',
@@ -65,6 +66,7 @@ const Register = () => {
     setIsLoading(true);
 
     const result = await register({
+      companyName: formData.companyName,
       firstName: formData.firstName,
       lastName: formData.lastName,
       email: formData.email,
@@ -191,6 +193,21 @@ const Register = () => {
 
             {/* Register Form */}
             <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label htmlFor="companyName" className="form-label">Nombre de tu empresa</label>
+                <input
+                  id="companyName"
+                  name="companyName"
+                  type="text"
+                  value={formData.companyName}
+                  onChange={handleChange}
+                  className={`input-field ${fieldErrors.companyName ? 'border-red-500' : ''}`}
+                  placeholder="Mi Empresa S.A."
+                  required
+                />
+                {fieldErrors.companyName && <p className="error-text">{fieldErrors.companyName}</p>}
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label htmlFor="firstName" className="form-label">Nombre</label>

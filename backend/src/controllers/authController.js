@@ -19,12 +19,12 @@ const {
   sendPasswordChangedEmail
 } = require('../utils/email');
 
-// Registro de usuario
+// Registro de usuario (crea tenant + usuario admin)
 const register = async (req, res) => {
   const client = await getClient();
   
   try {
-    const { email, password, firstName, lastName } = req.body;
+    const { email, password, firstName, lastName, companyName } = req.body;
     const normalizedEmail = email.toLowerCase().trim();
 
     await client.query('BEGIN');
@@ -43,6 +43,36 @@ const register = async (req, res) => {
       });
     }
 
+    // Generar slug único para el tenant
+    const baseSlug = (companyName || firstName)
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '');
+    
+    // Verificar si el slug ya existe y agregar número si es necesario
+    let slug = baseSlug;
+    let slugCounter = 1;
+    while (true) {
+      const existingTenant = await client.query(
+        'SELECT id FROM tenants WHERE slug = $1',
+        [slug]
+      );
+      if (existingTenant.rows.length === 0) break;
+      slug = `${baseSlug}-${slugCounter}`;
+      slugCounter++;
+    }
+
+    // Crear tenant
+    const tenantResult = await client.query(
+      `INSERT INTO tenants (name, slug, is_active, plan)
+       VALUES ($1, $2, true, 'free')
+       RETURNING id, name, slug`,
+      [companyName || `${firstName} ${lastName}`, slug]
+    );
+    const tenant = tenantResult.rows[0];
+
     // Hash de contraseña (cost factor 12)
     const saltRounds = 12;
     const passwordHash = await bcrypt.hash(password, saltRounds);
@@ -51,18 +81,25 @@ const register = async (req, res) => {
     const verificationToken = generateEmailVerificationToken();
     const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 horas
 
-    // Crear usuario
+    // Crear usuario como admin del tenant
     const result = await client.query(
       `INSERT INTO users (
         email, password_hash, first_name, last_name,
+        tenant_id, role,
         email_verification_token, email_verification_expires,
-        auth_provider, role, is_active
-      ) VALUES ($1, $2, $3, $4, $5, $6, 'local', 'user', true)
-      RETURNING id, email, first_name, last_name, role`,
-      [normalizedEmail, passwordHash, firstName, lastName, verificationToken, verificationExpires]
+        auth_provider, is_active
+      ) VALUES ($1, $2, $3, $4, $5, 'admin', $6, $7, 'local', true)
+      RETURNING id, email, first_name, last_name, role, tenant_id`,
+      [normalizedEmail, passwordHash, firstName, lastName, tenant.id, verificationToken, verificationExpires]
     );
 
     const newUser = result.rows[0];
+
+    // Actualizar created_by del tenant
+    await client.query(
+      'UPDATE tenants SET created_by = $1 WHERE id = $2',
+      [newUser.id, tenant.id]
+    );
 
     // Enviar email de verificación
     try {
