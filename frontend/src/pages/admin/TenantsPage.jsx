@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Plus, Search, Building2, MoreVertical, Edit, Trash2 } from 'lucide-react';
+import { Plus, Search, Building2, MoreVertical, Edit, Trash2, Power, PowerOff, AlertTriangle } from 'lucide-react';
 import Layout from '../../components/layout/Layout';
 import { 
   Card, CardContent, CardHeader, CardTitle,
@@ -12,18 +12,25 @@ import {
 } from '../../components/ui';
 import { useTenants, useCreateTenant } from '../../hooks/useApi';
 import { formatDate } from '../../lib/utils';
+import api from '../../api/axios';
+import toast from 'react-hot-toast';
 
 const tenantSchema = z.object({
   name: z.string().min(2, 'Mínimo 2 caracteres'),
   slug: z.string()
     .min(2, 'Mínimo 2 caracteres')
     .regex(/^[a-z0-9-]+$/, 'Solo letras minúsculas, números y guiones'),
-  domain: z.string().optional()
+  domain: z.string().optional(),
+  plan: z.string().optional()
 });
 
 function TenantsPage() {
   const [search, setSearch] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
+  const [editingTenant, setEditingTenant] = useState(null);
+  const [deleteModal, setDeleteModal] = useState({ open: false, tenant: null });
+  const [activeMenu, setActiveMenu] = useState(null);
+  const menuRef = useRef(null);
   
   const { data, isLoading, refetch } = useTenants({ search });
   const createTenant = useCreateTenant();
@@ -34,24 +41,76 @@ function TenantsPage() {
     register, 
     handleSubmit, 
     reset,
+    setValue,
     formState: { errors, isSubmitting } 
   } = useForm({
     resolver: zodResolver(tenantSchema)
   });
 
+  // Cerrar menú al hacer click fuera
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setActiveMenu(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   const onSubmit = async (formData) => {
     try {
-      await createTenant.mutateAsync(formData);
+      if (editingTenant) {
+        await api.put(`/tenants/${editingTenant.id}`, formData);
+        toast.success('Organización actualizada');
+      } else {
+        await createTenant.mutateAsync(formData);
+        toast.success('Organización creada');
+      }
       setModalOpen(false);
+      setEditingTenant(null);
       reset();
       refetch();
     } catch (error) {
-      console.error('Error creating tenant:', error);
+      toast.error(error.response?.data?.message || 'Error al guardar');
+    }
+  };
+
+  const handleEdit = (tenant) => {
+    setEditingTenant(tenant);
+    setValue('name', tenant.name);
+    setValue('slug', tenant.slug);
+    setValue('domain', tenant.domain || '');
+    setValue('plan', tenant.plan || 'free');
+    setModalOpen(true);
+    setActiveMenu(null);
+  };
+
+  const handleToggleActive = async (tenant) => {
+    try {
+      await api.patch(`/tenants/${tenant.id}/toggle-active`);
+      toast.success(tenant.is_active ? 'Organización pausada' : 'Organización activada');
+      refetch();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Error al cambiar estado');
+    }
+    setActiveMenu(null);
+  };
+
+  const handleDelete = async () => {
+    try {
+      await api.delete(`/tenants/${deleteModal.tenant.id}`);
+      toast.success('Organización eliminada');
+      setDeleteModal({ open: false, tenant: null });
+      refetch();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Error al eliminar');
     }
   };
 
   const openModal = () => {
-    reset();
+    setEditingTenant(null);
+    reset({ name: '', slug: '', domain: '', plan: 'free' });
     setModalOpen(true);
   };
 
@@ -106,10 +165,12 @@ function TenantsPage() {
                 />
               ) : (
                 tenants.map((tenant) => (
-                  <TableRow key={tenant.id}>
+                  <TableRow key={tenant.id} className={!tenant.is_active ? 'opacity-60' : ''}>
                     <TableCell>
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-primary-100 rounded-lg flex items-center justify-center text-primary-600">
+                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                          tenant.is_active ? 'bg-primary-100 text-primary-600' : 'bg-slate-100 text-slate-400'
+                        }`}>
                           <Building2 className="w-5 h-5" />
                         </div>
                         <div>
@@ -127,22 +188,66 @@ function TenantsPage() {
                     </TableCell>
                     <TableCell>{tenant.user_count || 0}</TableCell>
                     <TableCell>
-                      <Badge variant={tenant.plan === 'enterprise' ? 'purple' : 'default'}>
+                      <Badge variant={tenant.plan === 'enterprise' ? 'purple' : tenant.plan === 'pro' ? 'blue' : 'default'}>
                         {tenant.plan}
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <Badge variant={tenant.is_active ? 'success' : 'danger'}>
-                        {tenant.is_active ? 'Activo' : 'Inactivo'}
+                      <Badge variant={tenant.is_active ? 'success' : 'warning'}>
+                        {tenant.is_active ? 'Activo' : 'Pausado'}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-slate-500 text-sm">
                       {formatDate(tenant.created_at)}
                     </TableCell>
                     <TableCell>
-                      <button className="p-2 hover:bg-slate-100 rounded-lg transition-colors">
-                        <MoreVertical className="w-4 h-4 text-slate-400" />
-                      </button>
+                      <div className="relative" ref={activeMenu === tenant.id ? menuRef : null}>
+                        <button 
+                          onClick={() => setActiveMenu(activeMenu === tenant.id ? null : tenant.id)}
+                          className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                        >
+                          <MoreVertical className="w-4 h-4 text-slate-400" />
+                        </button>
+                        
+                        {activeMenu === tenant.id && (
+                          <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-lg border border-slate-200 py-1 z-50">
+                            <button
+                              onClick={() => handleEdit(tenant)}
+                              className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                            >
+                              <Edit className="w-4 h-4" />
+                              Editar
+                            </button>
+                            <button
+                              onClick={() => handleToggleActive(tenant)}
+                              className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                            >
+                              {tenant.is_active ? (
+                                <>
+                                  <PowerOff className="w-4 h-4 text-orange-500" />
+                                  <span>Pausar</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Power className="w-4 h-4 text-green-500" />
+                                  <span>Activar</span>
+                                </>
+                              )}
+                            </button>
+                            <hr className="my-1 border-slate-100" />
+                            <button
+                              onClick={() => {
+                                setDeleteModal({ open: true, tenant });
+                                setActiveMenu(null);
+                              }}
+                              className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                              Eliminar
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))
@@ -152,10 +257,10 @@ function TenantsPage() {
         </CardContent>
       </Card>
 
-      {/* Create Modal */}
-      <Modal open={modalOpen} onClose={() => setModalOpen(false)}>
-        <ModalHeader onClose={() => setModalOpen(false)}>
-          <ModalTitle>Nueva Organización</ModalTitle>
+      {/* Create/Edit Modal */}
+      <Modal open={modalOpen} onClose={() => { setModalOpen(false); setEditingTenant(null); }}>
+        <ModalHeader onClose={() => { setModalOpen(false); setEditingTenant(null); }}>
+          <ModalTitle>{editingTenant ? 'Editar Organización' : 'Nueva Organización'}</ModalTitle>
         </ModalHeader>
         <form onSubmit={handleSubmit(onSubmit)}>
           <ModalContent className="space-y-4">
@@ -169,6 +274,7 @@ function TenantsPage() {
               label="Slug (URL)"
               placeholder="mi-empresa"
               error={errors.slug?.message}
+              disabled={!!editingTenant}
               {...register('slug')}
             />
             <Input
@@ -177,20 +283,65 @@ function TenantsPage() {
               error={errors.domain?.message}
               {...register('domain')}
             />
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Plan</label>
+              <select
+                {...register('plan')}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+              >
+                <option value="free">Free</option>
+                <option value="pro">Pro</option>
+                <option value="enterprise">Enterprise</option>
+              </select>
+            </div>
           </ModalContent>
           <ModalFooter>
             <Button 
               type="button" 
               variant="secondary" 
-              onClick={() => setModalOpen(false)}
+              onClick={() => { setModalOpen(false); setEditingTenant(null); }}
             >
               Cancelar
             </Button>
             <Button type="submit" loading={isSubmitting}>
-              Crear Organización
+              {editingTenant ? 'Guardar Cambios' : 'Crear Organización'}
             </Button>
           </ModalFooter>
         </form>
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal open={deleteModal.open} onClose={() => setDeleteModal({ open: false, tenant: null })}>
+        <ModalHeader onClose={() => setDeleteModal({ open: false, tenant: null })}>
+          <ModalTitle className="flex items-center gap-2 text-red-600">
+            <AlertTriangle className="w-5 h-5" />
+            Eliminar Organización
+          </ModalTitle>
+        </ModalHeader>
+        <ModalContent>
+          <p className="text-slate-600">
+            ¿Estás seguro de que querés eliminar la organización <strong>{deleteModal.tenant?.name}</strong>?
+          </p>
+          <p className="mt-2 text-sm text-red-600 bg-red-50 p-3 rounded-lg">
+            Esta acción eliminará todos los usuarios, datos y configuraciones asociados. No se puede deshacer.
+          </p>
+        </ModalContent>
+        <ModalFooter>
+          <Button 
+            type="button" 
+            variant="secondary" 
+            onClick={() => setDeleteModal({ open: false, tenant: null })}
+          >
+            Cancelar
+          </Button>
+          <Button 
+            type="button" 
+            variant="danger"
+            onClick={handleDelete}
+          >
+            Eliminar
+          </Button>
+        </ModalFooter>
       </Modal>
     </Layout>
   );

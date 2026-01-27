@@ -39,8 +39,23 @@ router.get('/:id',
 
 // Actualizar tenant
 router.put('/:id',
+  requireRole('root'),
   uuidValidation('id'),
   tenantController.updateTenant
+);
+
+// Activar/Pausar tenant
+router.patch('/:id/toggle-active',
+  requireRole('root'),
+  uuidValidation('id'),
+  tenantController.toggleTenantActive
+);
+
+// Eliminar tenant
+router.delete('/:id',
+  requireRole('root'),
+  uuidValidation('id'),
+  tenantController.deleteTenant
 );
 
 // ===========================================

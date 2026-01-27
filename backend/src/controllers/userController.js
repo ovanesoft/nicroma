@@ -689,6 +689,224 @@ const getProfile = async (req, res) => {
   }
 };
 
+// Activar/Desactivar usuario (root only)
+const toggleUserActive = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const result = await query(
+      `UPDATE users 
+       SET is_active = NOT is_active, updated_at = NOW() 
+       WHERE id = $1 
+       RETURNING id, email, first_name, last_name, is_active`,
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Usuario no encontrado'
+      });
+    }
+
+    const user = result.rows[0];
+
+    // Log de auditoría
+    await query(
+      `SELECT log_audit($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+      [
+        null, req.user.id, 
+        user.is_active ? 'USER_ACTIVATED' : 'USER_DEACTIVATED', 
+        'users', id,
+        JSON.stringify({ is_active: !user.is_active }),
+        JSON.stringify({ is_active: user.is_active }),
+        req.ip, req.headers['user-agent']
+      ]
+    ).catch(err => console.error('Error en auditoría:', err));
+
+    res.json({
+      success: true,
+      message: user.is_active ? 'Usuario activado' : 'Usuario desactivado',
+      data: { user }
+    });
+
+  } catch (error) {
+    console.error('Error toggling user active:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al cambiar estado del usuario'
+    });
+  }
+};
+
+// Bloquear/Desbloquear usuario (root only)
+const toggleUserLock = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const result = await query(
+      `UPDATE users 
+       SET is_locked = NOT COALESCE(is_locked, false), 
+           locked_until = CASE WHEN NOT COALESCE(is_locked, false) THEN NOW() + INTERVAL '100 years' ELSE NULL END,
+           updated_at = NOW() 
+       WHERE id = $1 
+       RETURNING id, email, first_name, last_name, is_locked`,
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Usuario no encontrado'
+      });
+    }
+
+    const user = result.rows[0];
+
+    // Log de auditoría
+    await query(
+      `SELECT log_audit($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+      [
+        null, req.user.id, 
+        user.is_locked ? 'USER_LOCKED' : 'USER_UNLOCKED', 
+        'users', id,
+        JSON.stringify({ is_locked: !user.is_locked }),
+        JSON.stringify({ is_locked: user.is_locked }),
+        req.ip, req.headers['user-agent']
+      ]
+    ).catch(err => console.error('Error en auditoría:', err));
+
+    res.json({
+      success: true,
+      message: user.is_locked ? 'Usuario bloqueado' : 'Usuario desbloqueado',
+      data: { user }
+    });
+
+  } catch (error) {
+    console.error('Error toggling user lock:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al cambiar bloqueo del usuario'
+    });
+  }
+};
+
+// Cambiar rol de usuario (root only)
+const changeUserRole = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { role } = req.body;
+
+    const validRoles = ['root', 'admin', 'manager', 'user', 'client'];
+    if (!validRoles.includes(role)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Rol inválido'
+      });
+    }
+
+    // Obtener rol anterior
+    const current = await query('SELECT role FROM users WHERE id = $1', [id]);
+    if (current.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Usuario no encontrado'
+      });
+    }
+    const oldRole = current.rows[0].role;
+
+    const result = await query(
+      `UPDATE users 
+       SET role = $1, updated_at = NOW() 
+       WHERE id = $2 
+       RETURNING id, email, first_name, last_name, role`,
+      [role, id]
+    );
+
+    const user = result.rows[0];
+
+    // Log de auditoría
+    await query(
+      `SELECT log_audit($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+      [
+        null, req.user.id, 'USER_ROLE_CHANGED', 'users', id,
+        JSON.stringify({ role: oldRole }),
+        JSON.stringify({ role: user.role }),
+        req.ip, req.headers['user-agent']
+      ]
+    ).catch(err => console.error('Error en auditoría:', err));
+
+    res.json({
+      success: true,
+      message: 'Rol actualizado',
+      data: { user }
+    });
+
+  } catch (error) {
+    console.error('Error changing user role:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al cambiar rol del usuario'
+    });
+  }
+};
+
+// Eliminar usuario (root only)
+const deleteUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // No permitir eliminar el propio usuario
+    if (id === req.user.id) {
+      return res.status(400).json({
+        success: false,
+        message: 'No podés eliminar tu propia cuenta'
+      });
+    }
+
+    // Obtener datos del usuario antes de eliminar
+    const userResult = await query(
+      'SELECT id, email, first_name, last_name, role FROM users WHERE id = $1',
+      [id]
+    );
+
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Usuario no encontrado'
+      });
+    }
+
+    const user = userResult.rows[0];
+
+    // Eliminar usuario
+    await query('DELETE FROM users WHERE id = $1', [id]);
+
+    // Log de auditoría
+    await query(
+      `SELECT log_audit($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+      [
+        null, req.user.id, 'USER_DELETED', 'users', id,
+        JSON.stringify({ email: user.email, name: `${user.first_name} ${user.last_name}` }),
+        null,
+        req.ip, req.headers['user-agent']
+      ]
+    ).catch(err => console.error('Error en auditoría:', err));
+
+    res.json({
+      success: true,
+      message: 'Usuario eliminado'
+    });
+
+  } catch (error) {
+    console.error('Error deleting user:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al eliminar usuario'
+    });
+  }
+};
+
 module.exports = {
   updateProfile,
   changePassword,
@@ -697,6 +915,10 @@ module.exports = {
   updateUser,
   createUser,
   deactivateUser,
-  listAllUsers
+  listAllUsers,
+  toggleUserActive,
+  toggleUserLock,
+  changeUserRole,
+  deleteUser
 };
 

@@ -60,11 +60,32 @@ router.put('/:id',
   userController.updateUser
 );
 
+// Activar/Desactivar usuario
+router.patch('/:id/toggle-active',
+  requireRole('root'),
+  uuidValidation('id'),
+  userController.toggleUserActive
+);
+
+// Bloquear/Desbloquear usuario
+router.patch('/:id/toggle-lock',
+  requireRole('root'),
+  uuidValidation('id'),
+  userController.toggleUserLock
+);
+
+// Cambiar rol de usuario
+router.patch('/:id/role',
+  requireRole('root'),
+  uuidValidation('id'),
+  userController.changeUserRole
+);
+
 // Desactivar usuario
 router.delete('/:id',
-  requireTenantAdmin,
+  requireRole('root'),
   uuidValidation('id'),
-  userController.deactivateUser
+  userController.deleteUser
 );
 
 module.exports = router;

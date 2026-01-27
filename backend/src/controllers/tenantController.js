@@ -1035,11 +1035,136 @@ const getPortalInfo = async (req, res) => {
   }
 };
 
+// Activar/Pausar tenant
+const toggleTenantActive = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const result = await query(
+      `UPDATE tenants 
+       SET is_active = NOT is_active, updated_at = NOW() 
+       WHERE id = $1 
+       RETURNING id, name, is_active`,
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Organización no encontrada'
+      });
+    }
+
+    const tenant = result.rows[0];
+
+    // Log de auditoría
+    await query(
+      `SELECT log_audit($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+      [
+        id, req.user.id, 
+        tenant.is_active ? 'TENANT_ACTIVATED' : 'TENANT_PAUSED', 
+        'tenants', id,
+        JSON.stringify({ is_active: !tenant.is_active }),
+        JSON.stringify({ is_active: tenant.is_active }),
+        req.ip, req.headers['user-agent']
+      ]
+    ).catch(err => console.error('Error en auditoría:', err));
+
+    res.json({
+      success: true,
+      message: tenant.is_active ? 'Organización activada' : 'Organización pausada',
+      data: { tenant }
+    });
+
+  } catch (error) {
+    console.error('Error toggling tenant:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al cambiar estado de la organización'
+    });
+  }
+};
+
+// Eliminar tenant
+const deleteTenant = async (req, res) => {
+  const client = await getClient();
+  
+  try {
+    const { id } = req.params;
+    
+    await client.query('BEGIN');
+    
+    // Verificar que existe
+    const tenantResult = await client.query(
+      'SELECT id, name FROM tenants WHERE id = $1',
+      [id]
+    );
+
+    if (tenantResult.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({
+        success: false,
+        message: 'Organización no encontrada'
+      });
+    }
+
+    const tenant = tenantResult.rows[0];
+
+    // Eliminar usuarios del tenant (o desasociar)
+    await client.query(
+      'DELETE FROM users WHERE tenant_id = $1',
+      [id]
+    );
+
+    // Eliminar invitaciones
+    await client.query(
+      'DELETE FROM invitations WHERE tenant_id = $1',
+      [id]
+    );
+
+    // Eliminar el tenant
+    await client.query(
+      'DELETE FROM tenants WHERE id = $1',
+      [id]
+    );
+
+    await client.query('COMMIT');
+
+    // Log de auditoría
+    await query(
+      `SELECT log_audit($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+      [
+        null, req.user.id, 'TENANT_DELETED', 'tenants', id,
+        JSON.stringify({ name: tenant.name }),
+        null,
+        req.ip, req.headers['user-agent']
+      ]
+    ).catch(err => console.error('Error en auditoría:', err));
+
+    res.json({
+      success: true,
+      message: 'Organización eliminada correctamente'
+    });
+
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('Error deleting tenant:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al eliminar la organización'
+    });
+  } finally {
+    client.release();
+  }
+};
+
 module.exports = {
   createTenant,
   listTenants,
   getTenantById,
   updateTenant,
+  toggleTenantActive,
+  deleteTenant,
   inviteUser,
   acceptInvitation,
   listInvitations,
