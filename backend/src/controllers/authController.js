@@ -152,12 +152,15 @@ const login = async (req, res) => {
     const { email, password } = req.body;
     const normalizedEmail = email.toLowerCase().trim();
 
-    // Buscar usuario
+    // Buscar usuario - priorizar usuarios del sistema (no clientes)
+    // Si hay múltiples usuarios con el mismo email, elegir el que NO es cliente
     const result = await query(
       `SELECT u.*, t.name as tenant_name, t.slug as tenant_slug, t.is_active as tenant_active
        FROM users u
        LEFT JOIN tenants t ON u.tenant_id = t.id
-       WHERE LOWER(u.email) = $1`,
+       WHERE LOWER(u.email) = $1
+       ORDER BY CASE WHEN u.role = 'client' THEN 1 ELSE 0 END, u.created_at ASC
+       LIMIT 1`,
       [normalizedEmail]
     );
 
@@ -872,17 +875,17 @@ const registerPortalClient = async (req, res) => {
       });
     }
 
-    // Verificar si el email ya existe
+    // Verificar si el email ya existe EN ESTE TENANT
     const existingUser = await dbClient.query(
-      'SELECT id FROM users WHERE LOWER(email) = $1',
-      [normalizedEmail]
+      'SELECT id FROM users WHERE LOWER(email) = $1 AND tenant_id = $2',
+      [normalizedEmail, tenantId]
     );
 
     if (existingUser.rows.length > 0) {
       await dbClient.query('ROLLBACK');
       return res.status(409).json({
         success: false,
-        message: 'Este email ya está registrado'
+        message: 'Ya tenés una cuenta en esta organización'
       });
     }
 
@@ -972,6 +975,153 @@ const registerPortalClient = async (req, res) => {
   }
 };
 
+// Login desde portal de clientes (email + tenant específico)
+const loginPortalClient = async (req, res) => {
+  try {
+    const { email, password, portalSlug } = req.body;
+    const normalizedEmail = email.toLowerCase().trim();
+
+    if (!portalSlug) {
+      return res.status(400).json({
+        success: false,
+        message: 'Portal no especificado'
+      });
+    }
+
+    // Buscar tenant por portal_slug
+    const tenantResult = await query(
+      'SELECT id, name, portal_enabled FROM tenants WHERE portal_slug = $1 AND is_active = true',
+      [portalSlug.toLowerCase()]
+    );
+
+    if (tenantResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Portal no encontrado'
+      });
+    }
+
+    const tenant = tenantResult.rows[0];
+
+    if (!tenant.portal_enabled) {
+      return res.status(400).json({
+        success: false,
+        message: 'El portal no está habilitado'
+      });
+    }
+
+    // Buscar usuario por email + tenant_id
+    const result = await query(
+      `SELECT u.*, t.name as tenant_name, t.slug as tenant_slug
+       FROM users u
+       JOIN tenants t ON u.tenant_id = t.id
+       WHERE LOWER(u.email) = $1 AND u.tenant_id = $2`,
+      [normalizedEmail, tenant.id]
+    );
+
+    const user = result.rows[0];
+
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Credenciales inválidas'
+      });
+    }
+
+    // Verificar cuenta bloqueada
+    if (user.is_locked && user.locked_until && user.locked_until > new Date()) {
+      const minutesLeft = Math.ceil((user.locked_until - new Date()) / 60000);
+      return res.status(403).json({
+        success: false,
+        message: `Cuenta bloqueada. Intente en ${minutesLeft} minutos.`
+      });
+    }
+
+    // Verificar cuenta activa
+    if (!user.is_active) {
+      return res.status(403).json({
+        success: false,
+        message: 'Cuenta desactivada'
+      });
+    }
+
+    // Verificar si tiene contraseña
+    if (!user.password_hash) {
+      return res.status(401).json({
+        success: false,
+        message: `Esta cuenta usa inicio de sesión con ${user.auth_provider}`
+      });
+    }
+
+    // Verificar contraseña
+    const isValidPassword = await bcrypt.compare(password, user.password_hash);
+
+    if (!isValidPassword) {
+      await query(
+        'UPDATE users SET failed_login_attempts = failed_login_attempts + 1, last_failed_login = NOW() WHERE id = $1',
+        [user.id]
+      );
+
+      if (user.failed_login_attempts >= 4) {
+        await query(
+          'UPDATE users SET is_locked = true, locked_until = NOW() + INTERVAL \'15 minutes\' WHERE id = $1',
+          [user.id]
+        );
+        return res.status(403).json({
+          success: false,
+          message: 'Cuenta bloqueada por múltiples intentos fallidos'
+        });
+      }
+
+      return res.status(401).json({
+        success: false,
+        message: 'Credenciales inválidas'
+      });
+    }
+
+    // Login exitoso - limpiar intentos fallidos
+    await query(
+      `UPDATE users SET 
+        failed_login_attempts = 0, is_locked = false, locked_until = NULL,
+        last_login = NOW(), login_count = COALESCE(login_count, 0) + 1
+       WHERE id = $1`,
+      [user.id]
+    );
+
+    // Generar tokens
+    const accessToken = generateAccessToken(user);
+    const refreshToken = await generateRefreshToken(user, req);
+
+    setTokenCookies(res, accessToken, refreshToken);
+
+    res.json({
+      success: true,
+      message: 'Login exitoso',
+      data: {
+        user: {
+          id: user.id,
+          email: user.email,
+          firstName: user.first_name,
+          lastName: user.last_name,
+          role: user.role,
+          tenantId: user.tenant_id,
+          tenantName: tenant.name
+        },
+        accessToken,
+        refreshToken: refreshToken.token,
+        expiresAt: refreshToken.expiresAt
+      }
+    });
+
+  } catch (error) {
+    console.error('Error en login portal:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al iniciar sesión'
+    });
+  }
+};
+
 module.exports = {
   register,
   login,
@@ -985,6 +1135,7 @@ module.exports = {
   changePassword,
   getCurrentUser,
   oauthCallback,
-  registerPortalClient
+  registerPortalClient,
+  loginPortalClient
 };
 

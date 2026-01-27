@@ -69,6 +69,13 @@ router.post('/register-portal',
   authController.registerPortalClient
 );
 
+// Login desde portal de clientes (busca por email + tenant del portal)
+router.post('/login-portal',
+  authLimiter,
+  loginValidation,
+  authController.loginPortalClient
+);
+
 // ===========================================
 // Rutas OAuth
 // ===========================================
