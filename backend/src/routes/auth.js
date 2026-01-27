@@ -178,23 +178,25 @@ router.get('/google/callback', async (req, res) => {
           'UPDATE users SET google_id = $1, email_verified = true WHERE id = $2',
           [googleUser.id, user.id]
         );
+        user.google_id = googleUser.id;
       }
+      
+      // Pasar el usuario al controlador de OAuth
+      req.user = user;
+      return authController.oauthCallback(req, res);
     } else {
-      // Crear nuevo usuario
-      const insertResult = await query(
-        `INSERT INTO users (
-          email, first_name, last_name, google_id, 
-          auth_provider, email_verified, is_active, role, login_count
-        ) VALUES ($1, $2, $3, $4, 'google', true, true, 'user', 0)
-        RETURNING *`,
-        [email, googleUser.given_name || 'Usuario', googleUser.family_name || '', googleUser.id]
-      );
-      user = insertResult.rows[0];
+      // Usuario NO existe - redirigir al registro con datos de Google
+      // Guardamos los datos en la URL para el registro
+      const registerData = encodeURIComponent(JSON.stringify({
+        email,
+        firstName: googleUser.given_name || '',
+        lastName: googleUser.family_name || '',
+        googleId: googleUser.id,
+        provider: 'google'
+      }));
+      
+      return res.redirect(`${process.env.FRONTEND_URL}/register?oauth=${registerData}`);
     }
-
-    // Pasar el usuario al controlador de OAuth
-    req.user = user;
-    return authController.oauthCallback(req, res);
 
   } catch (err) {
     console.error('Google OAuth error:', err);

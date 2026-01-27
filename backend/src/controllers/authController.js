@@ -24,14 +24,23 @@ const register = async (req, res) => {
   const client = await getClient();
   
   try {
-    const { email, password, firstName, lastName, companyName } = req.body;
+    const { email, password, firstName, lastName, companyName, googleId, provider } = req.body;
     const normalizedEmail = email.toLowerCase().trim();
+    const isOAuthRegister = provider === 'google' && googleId;
+
+    // Validar contraseña solo si no es OAuth
+    if (!isOAuthRegister && (!password || password.length < 8)) {
+      return res.status(400).json({
+        success: false,
+        message: 'La contraseña debe tener al menos 8 caracteres'
+      });
+    }
 
     await client.query('BEGIN');
 
-    // Verificar si el email ya existe
+    // Verificar si el email ya existe (sin tenant = registro nuevo de empresa)
     const existingUser = await client.query(
-      'SELECT id FROM users WHERE LOWER(email) = $1',
+      'SELECT id FROM users WHERE LOWER(email) = $1 AND tenant_id IS NOT NULL',
       [normalizedEmail]
     );
 
@@ -39,7 +48,7 @@ const register = async (req, res) => {
       await client.query('ROLLBACK');
       return res.status(409).json({
         success: false,
-        message: 'Este email ya está registrado'
+        message: 'Este email ya está registrado en otra organización'
       });
     }
 
@@ -73,24 +82,38 @@ const register = async (req, res) => {
     );
     const tenant = tenantResult.rows[0];
 
-    // Hash de contraseña (cost factor 12)
-    const saltRounds = 12;
-    const passwordHash = await bcrypt.hash(password, saltRounds);
+    // Hash de contraseña solo si no es OAuth
+    let passwordHash = null;
+    if (!isOAuthRegister) {
+      const saltRounds = 12;
+      passwordHash = await bcrypt.hash(password, saltRounds);
+    }
 
-    // Generar token de verificación
-    const verificationToken = generateEmailVerificationToken();
-    const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 horas
+    // Generar token de verificación solo para registro local
+    const verificationToken = isOAuthRegister ? null : generateEmailVerificationToken();
+    const verificationExpires = isOAuthRegister ? null : new Date(Date.now() + 24 * 60 * 60 * 1000);
 
     // Crear usuario como admin del tenant
     const result = await client.query(
       `INSERT INTO users (
         email, password_hash, first_name, last_name,
-        tenant_id, role,
+        tenant_id, role, google_id,
         email_verification_token, email_verification_expires,
-        auth_provider, is_active
-      ) VALUES ($1, $2, $3, $4, $5, 'admin', $6, $7, 'local', true)
+        auth_provider, email_verified, is_active
+      ) VALUES ($1, $2, $3, $4, $5, 'admin', $6, $7, $8, $9, $10, true)
       RETURNING id, email, first_name, last_name, role, tenant_id`,
-      [normalizedEmail, passwordHash, firstName, lastName, tenant.id, verificationToken, verificationExpires]
+      [
+        normalizedEmail, 
+        passwordHash, 
+        firstName, 
+        lastName, 
+        tenant.id, 
+        isOAuthRegister ? googleId : null,
+        verificationToken, 
+        verificationExpires,
+        isOAuthRegister ? 'google' : 'local',
+        isOAuthRegister ? true : false // email_verified = true para OAuth
+      ]
     );
 
     const newUser = result.rows[0];
@@ -101,12 +124,14 @@ const register = async (req, res) => {
       [newUser.id, tenant.id]
     );
 
-    // Enviar email de verificación
-    try {
-      await sendVerificationEmail(normalizedEmail, firstName, verificationToken);
-    } catch (emailError) {
-      console.error('Error enviando email de verificación:', emailError);
-      // Continuamos aunque falle el email
+    // Enviar email de verificación solo para registro local
+    if (!isOAuthRegister && verificationToken) {
+      try {
+        await sendVerificationEmail(normalizedEmail, firstName, verificationToken);
+      } catch (emailError) {
+        console.error('Error enviando email de verificación:', emailError);
+        // Continuamos aunque falle el email
+      }
     }
 
     await client.query('COMMIT');
@@ -115,11 +140,37 @@ const register = async (req, res) => {
     await query(
       `SELECT log_audit($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
       [
-        null, newUser.id, 'USER_REGISTERED', 'users', newUser.id,
-        null, JSON.stringify({ email: normalizedEmail }),
+        tenant.id, newUser.id, 'USER_REGISTERED', 'users', newUser.id,
+        null, JSON.stringify({ email: normalizedEmail, provider: isOAuthRegister ? 'google' : 'local' }),
         req.ip, req.headers['user-agent']
       ]
     ).catch(err => console.error('Error en auditoría:', err));
+
+    // Si es OAuth, generar tokens y responder con ellos para auto-login
+    if (isOAuthRegister) {
+      const accessToken = generateAccessToken({ ...newUser, tenant_id: tenant.id });
+      const refreshToken = await generateRefreshToken({ ...newUser, tenant_id: tenant.id }, req);
+      
+      setTokenCookies(res, accessToken, refreshToken);
+      
+      return res.status(201).json({
+        success: true,
+        message: 'Registro exitoso',
+        data: {
+          user: {
+            id: newUser.id,
+            email: newUser.email,
+            firstName: newUser.first_name,
+            lastName: newUser.last_name,
+            role: newUser.role,
+            tenantId: tenant.id,
+            tenantName: tenant.name
+          },
+          accessToken,
+          refreshToken: refreshToken.token
+        }
+      });
+    }
 
     res.status(201).json({
       success: true,
