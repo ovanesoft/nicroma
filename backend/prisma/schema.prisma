@@ -338,6 +338,7 @@ model Cliente {
   carpetasShipper    Carpeta[] @relation("CarpetaShipper")
   facturas           Factura[]
   prefacturas        Prefactura[]
+  presupuestos       Presupuesto[]
 
   @@unique([tenantId, numeroDocumento])
   @@index([tenantId])
@@ -429,6 +430,7 @@ model Carpeta {
   tarifasContenedor TarifaContenedor[]
   prefacturas     Prefactura[]
   facturas        Factura[]
+  presupuesto     Presupuesto?
 
   @@unique([tenantId, numero])
   @@index([tenantId])
@@ -1059,4 +1061,138 @@ model ComprobanteFiscal {
   @@index([facturaId])
   @@index([cae])
   @@map("comprobantes_fiscales")
+}
+
+// =============================================
+// PRESUPUESTOS
+// =============================================
+model Presupuesto {
+  id              String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenantId        String   @map("tenant_id") @db.Uuid
+  numero          String   @db.VarChar(50)
+  
+  // Estado del presupuesto
+  estado          String   @default("PENDIENTE") @db.VarChar(30)
+  // PENDIENTE - Recién creado/solicitado
+  // EN_PROCESO - El tenant está trabajando en él
+  // ENVIADO - Enviado al cliente para revisión
+  // APROBADO - Cliente aprobó
+  // RECHAZADO - Cliente rechazó
+  // CONVERTIDO - Convertido a carpeta
+  // VENCIDO - Pasó la fecha de validez
+  
+  // Cliente
+  clienteId       String?  @map("cliente_id") @db.Uuid
+  cliente         Cliente? @relation(fields: [clienteId], references: [id])
+  
+  // Datos del solicitante (puede ser un cliente no registrado)
+  solicitanteNombre   String?  @map("solicitante_nombre") @db.VarChar(255)
+  solicitanteEmail    String?  @map("solicitante_email") @db.VarChar(255)
+  solicitanteTelefono String?  @map("solicitante_telefono") @db.VarChar(50)
+  solicitanteEmpresa  String?  @map("solicitante_empresa") @db.VarChar(255)
+  
+  // Descripción del pedido inicial del cliente
+  descripcionPedido   String?  @map("descripcion_pedido")
+  
+  // Clasificación
+  area            String   @default("Marítimo") @db.VarChar(20)
+  sector          String   @default("Importación") @db.VarChar(20)
+  tipoOperacion   String?  @map("tipo_operacion") @db.VarChar(50)
+  
+  // Origen y Destino
+  puertoOrigen    String?  @map("puerto_origen") @db.VarChar(100)
+  puertoDestino   String?  @map("puerto_destino") @db.VarChar(100)
+  
+  // Fechas
+  fechaSolicitud      DateTime @default(now()) @map("fecha_solicitud") @db.Timestamptz(6)
+  fechaValidez        DateTime? @map("fecha_validez") @db.Timestamptz(6)
+  fechaRespuesta      DateTime? @map("fecha_respuesta") @db.Timestamptz(6)
+  fechaAprobacion     DateTime? @map("fecha_aprobacion") @db.Timestamptz(6)
+  
+  // Incoterm y condiciones
+  incoterm        String?  @db.VarChar(10)
+  condiciones     String?
+  
+  // Totales calculados
+  totalVenta      Float?   @map("total_venta")
+  totalCosto      Float?   @map("total_costo")
+  moneda          String   @default("USD") @db.VarChar(10)
+  
+  // Observaciones
+  observaciones       String?
+  notasInternas       String?  @map("notas_internas")
+  motivoRechazo       String?  @map("motivo_rechazo")
+  
+  // Relación con carpeta cuando se convierte
+  carpetaId       String?  @unique @map("carpeta_id") @db.Uuid
+  carpeta         Carpeta? @relation(fields: [carpetaId], references: [id])
+  
+  // Usuario que creó/gestiona
+  usuarioId       String   @map("usuario_id") @db.Uuid
+  
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  
+  // Relaciones
+  items           ItemPresupuesto[]
+  mensajes        MensajePresupuesto[]
+
+  @@unique([tenantId, numero])
+  @@index([tenantId])
+  @@index([clienteId])
+  @@index([estado])
+  @@index([fechaSolicitud])
+  @@map("presupuestos")
+}
+
+// Items del presupuesto (gastos/servicios cotizados)
+model ItemPresupuesto {
+  id              String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  presupuestoId   String   @map("presupuesto_id") @db.Uuid
+  presupuesto     Presupuesto @relation(fields: [presupuestoId], references: [id], onDelete: Cascade)
+  
+  concepto        String   @db.VarChar(255)
+  descripcion     String?
+  prepaidCollect  String   @default("P") @map("prepaid_collect") @db.VarChar(10)
+  divisa          String   @default("USD") @db.VarChar(10)
+  montoVenta      Float    @map("monto_venta")
+  montoCosto      Float    @map("monto_costo")
+  base            String?  @db.VarChar(50)
+  cantidad        Float    @default(1)
+  totalVenta      Float    @map("total_venta")
+  totalCosto      Float    @map("total_costo")
+  
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([presupuestoId])
+  @@map("items_presupuesto")
+}
+
+// Mensajes/Chat del presupuesto
+model MensajePresupuesto {
+  id              String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  presupuestoId   String   @map("presupuesto_id") @db.Uuid
+  presupuesto     Presupuesto @relation(fields: [presupuestoId], references: [id], onDelete: Cascade)
+  
+  // Quién envió el mensaje
+  tipoRemitente   String   @map("tipo_remitente") @db.VarChar(20) // CLIENTE, TENANT, SISTEMA
+  usuarioId       String?  @map("usuario_id") @db.Uuid
+  nombreRemitente String   @map("nombre_remitente") @db.VarChar(255)
+  
+  // Contenido
+  mensaje         String
+  
+  // Adjuntos (opcional)
+  adjuntos        Json?    // Array de URLs de archivos
+  
+  // Estado
+  leido           Boolean  @default(false)
+  leidoAt         DateTime? @map("leido_at") @db.Timestamptz(6)
+  
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([presupuestoId])
+  @@index([createdAt])
+  @@map("mensajes_presupuesto")
 }

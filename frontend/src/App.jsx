@@ -34,6 +34,10 @@ import CarpetasPage from './pages/carpetas/CarpetasPage';
 import CarpetaForm from './pages/carpetas/CarpetaForm';
 import ClientesPage from './pages/clientes/ClientesPage';
 
+// Pages - Presupuestos
+import PresupuestosPage from './pages/presupuestos/PresupuestosPage';
+import PresupuestoForm from './pages/presupuestos/PresupuestoForm';
+
 // Pages - Facturación
 import PrefacturasPage from './pages/facturacion/PrefacturasPage';
 import PrefacturaDetalle from './pages/facturacion/PrefacturaDetalle';
@@ -63,6 +67,8 @@ import EnvioDetalle from './pages/portal/EnvioDetalle';
 import MisFacturas from './pages/portal/MisFacturas';
 import FacturaClienteDetalle from './pages/portal/FacturaDetalle';
 import Pagos from './pages/portal/Pagos';
+import SolicitarPresupuesto from './pages/portal/SolicitarPresupuesto';
+import MisPresupuestos from './pages/portal/MisPresupuestos';
 
 // Loading component
 const LoadingScreen = () => (
@@ -190,6 +196,23 @@ function AppRoutes() {
         </ProtectedRoute>
       } />
 
+      {/* ==================== PRESUPUESTOS ROUTES ==================== */}
+      <Route path="/presupuestos" element={
+        <ProtectedRoute allowedRoles={['admin', 'manager', 'user']}>
+          <PresupuestosPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/presupuestos/nuevo" element={
+        <ProtectedRoute allowedRoles={['admin', 'manager']}>
+          <PresupuestoForm />
+        </ProtectedRoute>
+      } />
+      <Route path="/presupuestos/:id" element={
+        <ProtectedRoute allowedRoles={['admin', 'manager', 'user', 'client']}>
+          <PresupuestoForm />
+        </ProtectedRoute>
+      } />
+
       {/* ==================== LOGÍSTICA ROUTES (Admin/Manager) ==================== */}
       <Route path="/carpetas" element={
         <ProtectedRoute allowedRoles={['admin', 'manager', 'user']}>
@@ -301,6 +324,16 @@ function AppRoutes() {
       <Route path="/pagos" element={
         <ProtectedRoute allowedRoles={['client', 'admin', 'manager', 'user']}>
           <Pagos />
+        </ProtectedRoute>
+      } />
+      <Route path="/solicitar-presupuesto" element={
+        <ProtectedRoute allowedRoles={['client']}>
+          <SolicitarPresupuesto />
+        </ProtectedRoute>
+      } />
+      <Route path="/mis-presupuestos" element={
+        <ProtectedRoute allowedRoles={['client']}>
+          <MisPresupuestos />
         </ProtectedRoute>
       } />
 

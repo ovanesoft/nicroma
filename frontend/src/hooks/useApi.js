@@ -767,3 +767,145 @@ export function usePortalMiCuenta() {
     }
   });
 }
+
+// =============================================
+// PRESUPUESTOS
+// =============================================
+
+// Lista de presupuestos (tenant)
+export function usePresupuestos(params = {}) {
+  return useQuery({
+    queryKey: ['presupuestos', params],
+    queryFn: async () => {
+      const searchParams = new URLSearchParams();
+      if (params.page) searchParams.append('page', params.page);
+      if (params.limit) searchParams.append('limit', params.limit);
+      if (params.search) searchParams.append('search', params.search);
+      if (params.estado) searchParams.append('estado', params.estado);
+      if (params.clienteId) searchParams.append('clienteId', params.clienteId);
+      const response = await api.get(`/presupuestos?${searchParams.toString()}`);
+      return response.data;
+    }
+  });
+}
+
+// Presupuesto por ID
+export function usePresupuesto(id) {
+  return useQuery({
+    queryKey: ['presupuesto', id],
+    queryFn: async () => {
+      const response = await api.get(`/presupuestos/${id}`);
+      return response.data;
+    },
+    enabled: !!id
+  });
+}
+
+// Crear presupuesto
+export function useCreatePresupuesto() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (data) => {
+      const response = await api.post('/presupuestos', data);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['presupuestos'] });
+    }
+  });
+}
+
+// Actualizar presupuesto
+export function useUpdatePresupuesto(id) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (data) => {
+      const response = await api.put(`/presupuestos/${id}`, data);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['presupuestos'] });
+      queryClient.invalidateQueries({ queryKey: ['presupuesto', id] });
+    }
+  });
+}
+
+// Cambiar estado de presupuesto
+export function useCambiarEstadoPresupuesto() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, estado, motivoRechazo }) => {
+      const response = await api.post(`/presupuestos/${id}/estado`, { estado, motivoRechazo });
+      return response.data;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['presupuestos'] });
+      queryClient.invalidateQueries({ queryKey: ['presupuesto', variables.id] });
+    }
+  });
+}
+
+// Convertir presupuesto a carpeta
+export function useConvertirPresupuesto() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id) => {
+      const response = await api.post(`/presupuestos/${id}/convertir`);
+      return response.data;
+    },
+    onSuccess: (_, id) => {
+      queryClient.invalidateQueries({ queryKey: ['presupuestos'] });
+      queryClient.invalidateQueries({ queryKey: ['presupuesto', id] });
+      queryClient.invalidateQueries({ queryKey: ['carpetas'] });
+    }
+  });
+}
+
+// Mensajes de presupuesto
+export function useMensajesPresupuesto(id) {
+  return useQuery({
+    queryKey: ['presupuestoMensajes', id],
+    queryFn: async () => {
+      const response = await api.get(`/presupuestos/${id}/mensajes`);
+      return response.data;
+    },
+    enabled: !!id,
+    refetchInterval: 10000 // Refrescar cada 10 segundos para simular "tiempo real"
+  });
+}
+
+// Agregar mensaje
+export function useAgregarMensaje() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ presupuestoId, mensaje, adjuntos }) => {
+      const response = await api.post(`/presupuestos/${presupuestoId}/mensajes`, { mensaje, adjuntos });
+      return response.data;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['presupuestoMensajes', variables.presupuestoId] });
+      queryClient.invalidateQueries({ queryKey: ['presupuesto', variables.presupuestoId] });
+    }
+  });
+}
+
+// Solicitar presupuesto desde portal (público/cliente)
+export function useSolicitarPresupuesto() {
+  return useMutation({
+    mutationFn: async ({ portalSlug, data }) => {
+      const response = await api.post(`/presupuestos/solicitar/${portalSlug}`, data);
+      return response.data;
+    }
+  });
+}
+
+// Presupuestos del cliente (portal)
+export function usePresupuestosCliente() {
+  return useQuery({
+    queryKey: ['presupuestosCliente'],
+    queryFn: async () => {
+      const response = await api.get('/presupuestos/mis-presupuestos');
+      return response.data;
+    }
+  });
+}

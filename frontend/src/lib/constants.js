@@ -16,7 +16,9 @@ import {
   Receipt,
   CreditCard,
   User,
-  Activity
+  Activity,
+  Calculator,
+  MessageSquare
 } from 'lucide-react';
 
 // Navegación según rol
@@ -50,11 +52,12 @@ export const getNavigation = (role) => {
         { name: 'Configuración', href: '/org/settings', icon: Settings },
       ]
     },
-    // Aquí irán los módulos de logística
+    // Módulos de logística
     { 
       name: 'Comercial',
       icon: Ship,
       children: [
+        { name: 'Presupuestos', href: '/presupuestos', icon: Calculator },
         { name: 'Carpetas', href: '/carpetas', icon: FileText },
         { name: 'Clientes', href: '/clientes', icon: Users },
         { name: 'Proveedores', href: '/proveedores', icon: Package },
@@ -87,6 +90,7 @@ export const getNavigation = (role) => {
       name: 'Comercial',
       icon: Ship,
       children: [
+        { name: 'Presupuestos', href: '/presupuestos', icon: Calculator },
         { name: 'Carpetas', href: '/carpetas', icon: FileText },
         { name: 'Clientes', href: '/clientes', icon: Users },
       ]
@@ -110,6 +114,8 @@ export const getNavigation = (role) => {
   // Navegación para clientes del portal
   const clientNav = [
     ...common,
+    { name: 'Solicitar Presupuesto', href: '/solicitar-presupuesto', icon: Calculator },
+    { name: 'Mis Presupuestos', href: '/mis-presupuestos', icon: MessageSquare },
     { name: 'Mis Envíos', href: '/mis-envios', icon: Ship },
     { name: 'Mis Facturas', href: '/mis-facturas', icon: FileText },
     { name: 'Tracking', href: '/tracking', icon: MapPin },
