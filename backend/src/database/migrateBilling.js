@@ -7,10 +7,18 @@
 require('dotenv').config();
 const { Pool } = require('pg');
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
-});
+// Pool singleton para evitar múltiples conexiones
+let pool = null;
+const getPool = () => {
+  if (!pool) {
+    pool = new Pool({
+      connectionString: process.env.DATABASE_URL,
+      ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+      max: 1 // Solo necesitamos una conexión para migraciones
+    });
+  }
+  return pool;
+};
 
 const migrations = [
   // Campos para subscription_plans
@@ -49,9 +57,10 @@ const migrations = [
 ];
 
 async function runMigrations() {
-  console.log('🔄 Ejecutando migraciones de billing...\n');
+  console.log('🔄 Ejecutando migraciones de billing...');
   
-  const client = await pool.connect();
+  const currentPool = getPool();
+  const client = await currentPool.connect();
   
   try {
     for (const sql of migrations) {
@@ -70,10 +79,13 @@ async function runMigrations() {
       }
     }
     
-    console.log('\n✨ Migraciones de billing completadas!\n');
+    console.log('✨ Migraciones de billing completadas!');
   } finally {
     client.release();
-    await pool.end();
+    // Solo cerrar el pool si se ejecuta directamente
+    if (require.main === module) {
+      await currentPool.end();
+    }
   }
 }
 

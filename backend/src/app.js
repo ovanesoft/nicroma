@@ -232,6 +232,15 @@ const startServer = async () => {
     await query('SELECT NOW()');
     console.log('✅ Conexión a PostgreSQL establecida');
 
+    // Ejecutar migraciones de billing al iniciar
+    try {
+      const { runMigrations } = require('./database/migrateBilling');
+      await runMigrations();
+      console.log('✅ Migraciones de billing verificadas');
+    } catch (migrationError) {
+      console.log('⚠️ Migraciones de billing:', migrationError.message);
+    }
+
     app.listen(PORT, () => {
       console.log(`
 🚀 Nicroma API iniciada
