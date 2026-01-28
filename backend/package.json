@@ -4,12 +4,13 @@
   "description": "Backend API para Nicroma - Sistema Multi-tenant",
   "main": "src/app.js",
   "scripts": {
-    "start": "npx prisma generate && node src/app.js",
+    "start": "node src/app.js",
     "dev": "nodemon src/app.js",
     "db:init": "node src/database/init.js",
     "db:push": "npx prisma db push --accept-data-loss",
     "prisma:generate": "npx prisma generate",
-    "build": "npm run prisma:generate && (npm run db:init || true) && (npm run db:push || true)"
+    "postinstall": "npx prisma generate",
+    "build": "rm -rf node_modules/.prisma && npm run prisma:generate && (npm run db:init || true)"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
