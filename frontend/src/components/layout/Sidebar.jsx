@@ -20,20 +20,11 @@ function Sidebar() {
   const navigation = getNavigation(user?.role);
   const notificaciones = notificacionesData?.data?.notificaciones || {};
   
-  // Debug: ver qué datos llegan
-  useEffect(() => {
-    if (notificacionesData) {
-      console.log('Notificaciones data:', notificacionesData);
-    }
-  }, [notificacionesData]);
-  
   // Mapear notificaciones a rutas
   const getBadgeCount = (href, itemName) => {
-    // Para usuarios del tenant
     if (href === '/presupuestos' || itemName === 'Presupuestos') {
       return notificaciones.presupuestosPendientes || 0;
     }
-    // Para clientes del portal
     if (href === '/mis-presupuestos' || itemName === 'Mis Presupuestos') {
       const total = (notificaciones.presupuestosParaRevisar || 0) + (notificaciones.mensajesNoLeidos || 0);
       return total;
@@ -70,7 +61,6 @@ function Sidebar() {
     }
   };
 
-  // Limpiar timeout al desmontar
   useEffect(() => {
     return () => {
       if (hoverTimeoutRef.current) {
@@ -79,7 +69,6 @@ function Sidebar() {
     };
   }, []);
 
-  // Cerrar popover cuando se expande el sidebar
   useEffect(() => {
     if (!sidebarCollapsed) {
       setHoveredItem(null);
@@ -108,7 +97,6 @@ function Sidebar() {
     const isHovered = hoveredItem === item.name;
     const badgeCount = getBadgeCount(item.href, item.name);
     
-    // Calcular badge total para items con hijos
     const childrenBadgeTotal = hasChildren 
       ? item.children.reduce((total, child) => total + getBadgeCount(child.href, child.name), 0)
       : 0;
@@ -124,16 +112,16 @@ function Sidebar() {
             onClick={() => !sidebarCollapsed && toggleExpanded(item.name)}
             className={cn(
               'w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-left transition-colors',
-              isActiveParent(item)
-                ? 'text-primary-700 bg-primary-50'
-                : 'text-slate-600 hover:bg-slate-100',
               sidebarCollapsed && 'justify-center px-2'
             )}
+            style={{
+              color: isActiveParent(item) ? 'var(--color-sidebarActive)' : 'var(--color-sidebarText)',
+              backgroundColor: isActiveParent(item) ? 'var(--color-primary)20' : 'transparent'
+            }}
             title={sidebarCollapsed ? item.name : undefined}
           >
             <div className="relative">
               <item.icon className="w-5 h-5 flex-shrink-0" />
-              {/* Badge cuando sidebar está colapsado */}
               {sidebarCollapsed && childrenBadgeTotal > 0 && (
                 <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] font-bold min-w-[14px] h-3.5 rounded-full flex items-center justify-center px-1">
                   {childrenBadgeTotal > 99 ? '99+' : childrenBadgeTotal}
@@ -154,9 +142,12 @@ function Sidebar() {
             )}
           </button>
           
-          {/* Submenú expandido (sidebar abierto) */}
+          {/* Submenú expandido */}
           {!sidebarCollapsed && isExpanded && (
-            <div className="mt-1 ml-4 pl-4 border-l border-slate-200 space-y-1">
+            <div 
+              className="mt-1 ml-4 pl-4 space-y-1"
+              style={{ borderLeft: '1px solid var(--color-border)' }}
+            >
               {item.children.map((child) => (
                 <NavItem key={child.name} item={child} depth={depth + 1} />
               ))}
@@ -170,26 +161,34 @@ function Sidebar() {
               onMouseEnter={() => handleMouseEnter(item.name)}
               onMouseLeave={handleMouseLeave}
             >
-              {/* Puente invisible para mantener el hover */}
               <div className="absolute left-0 top-0 w-3 h-full -translate-x-full" />
-              <div className="bg-white rounded-xl shadow-lg border border-slate-200 py-2 min-w-[200px]">
-                <div className="px-4 py-2 border-b border-slate-100">
-                  <span className="font-semibold text-slate-800">{item.name}</span>
+              <div 
+                className="rounded-xl shadow-lg py-2 min-w-[200px]"
+                style={{ 
+                  backgroundColor: 'var(--color-card)', 
+                  border: '1px solid var(--color-border)' 
+                }}
+              >
+                <div 
+                  className="px-4 py-2"
+                  style={{ borderBottom: '1px solid var(--color-border)' }}
+                >
+                  <span className="font-semibold" style={{ color: 'var(--color-text)' }}>{item.name}</span>
                 </div>
                 <div className="py-1">
                   {item.children.map((child) => {
                     const childBadge = getBadgeCount(child.href, child.name);
+                    const isChildActive = location.pathname === child.href;
                     return (
                       <NavLink
                         key={child.name}
                         to={child.href}
                         onClick={() => setHoveredItem(null)}
-                        className={({ isActive }) => cn(
-                          'flex items-center gap-3 px-4 py-2 transition-colors',
-                          isActive
-                            ? 'bg-primary-50 text-primary-700'
-                            : 'text-slate-600 hover:bg-slate-50'
-                        )}
+                        className="flex items-center gap-3 px-4 py-2 transition-colors"
+                        style={{
+                          color: isChildActive ? 'var(--color-sidebarActive)' : 'var(--color-text)',
+                          backgroundColor: isChildActive ? 'var(--color-primary)20' : 'transparent'
+                        }}
                       >
                         <child.icon className="w-4 h-4" />
                         <span className="text-sm flex-1">{child.name}</span>
@@ -208,19 +207,20 @@ function Sidebar() {
     return (
       <NavLink
         to={item.href}
-        className={({ isActive }) => cn(
+        className={cn(
           'flex items-center gap-3 px-4 py-2.5 rounded-xl transition-colors',
-          isActive
-            ? 'bg-primary-50 text-primary-700 font-medium'
-            : 'text-slate-600 hover:bg-slate-100',
           sidebarCollapsed && 'justify-center px-2',
           depth > 0 && 'py-2'
         )}
+        style={{
+          color: isActive ? 'var(--color-sidebarActive)' : 'var(--color-sidebarText)',
+          backgroundColor: isActive ? 'var(--color-primary)20' : 'transparent',
+          fontWeight: isActive ? '500' : 'normal'
+        }}
         title={sidebarCollapsed ? item.name : undefined}
       >
         <div className="relative">
           <item.icon className={cn('flex-shrink-0', depth > 0 ? 'w-4 h-4' : 'w-5 h-5')} />
-          {/* Badge cuando sidebar está colapsado */}
           {sidebarCollapsed && badgeCount > 0 && (
             <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] font-bold min-w-[14px] h-3.5 rounded-full flex items-center justify-center px-1">
               {badgeCount > 99 ? '99+' : badgeCount}
@@ -252,10 +252,13 @@ function Sidebar() {
       }}
     >
       {/* Header - Logo del Tenant */}
-      <div className={cn(
-        'flex items-center border-b border-slate-100',
-        sidebarCollapsed ? 'justify-center px-2 h-16' : 'gap-3 px-6 h-16'
-      )}>
+      <div 
+        className={cn(
+          'flex items-center',
+          sidebarCollapsed ? 'justify-center px-2 h-16' : 'gap-3 px-6 h-16'
+        )}
+        style={{ borderBottom: '1px solid var(--color-border)' }}
+      >
         {companyLogo ? (
           <>
             <img 
@@ -267,7 +270,10 @@ function Sidebar() {
               )} 
             />
             {!sidebarCollapsed && (
-              <span className="text-lg text-slate-800 font-semibold truncate">
+              <span 
+                className="text-lg font-semibold truncate"
+                style={{ color: 'var(--color-sidebarText)' }}
+              >
                 {companyName}
               </span>
             )}
@@ -276,14 +282,20 @@ function Sidebar() {
           <>
             {user?.role !== 'root' && user?.tenantName ? (
               <>
-                <div className={cn(
-                  'bg-gradient-to-br from-primary-400 to-purple-500 rounded-lg flex items-center justify-center text-white font-bold',
-                  sidebarCollapsed ? 'w-10 h-10 text-sm' : 'w-10 h-10 text-sm'
-                )}>
+                <div 
+                  className={cn(
+                    'rounded-lg flex items-center justify-center text-white font-bold',
+                    sidebarCollapsed ? 'w-10 h-10 text-sm' : 'w-10 h-10 text-sm'
+                  )}
+                  style={{ backgroundColor: 'var(--color-primary)' }}
+                >
                   {user.tenantName.substring(0, 2).toUpperCase()}
                 </div>
                 {!sidebarCollapsed && (
-                  <span className="text-lg text-slate-800 font-semibold truncate">
+                  <span 
+                    className="text-lg font-semibold truncate"
+                    style={{ color: 'var(--color-sidebarText)' }}
+                  >
                     {user.tenantName}
                   </span>
                 )}
@@ -292,7 +304,12 @@ function Sidebar() {
               <>
                 <img src="/logo.png" alt="NicRoma" className="w-10 h-10 object-contain" />
                 {!sidebarCollapsed && (
-                  <span className="text-xl text-slate-800 font-semibold">NicRoma</span>
+                  <span 
+                    className="text-xl font-semibold"
+                    style={{ color: 'var(--color-sidebarText)' }}
+                  >
+                    NicRoma
+                  </span>
                 )}
               </>
             )}
@@ -308,13 +325,14 @@ function Sidebar() {
       </nav>
 
       {/* Toggle Button */}
-      <div className="p-4 border-t border-slate-100">
+      <div style={{ borderTop: '1px solid var(--color-border)' }} className="p-4">
         <button
           onClick={toggleSidebar}
           className={cn(
-            'w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-slate-500 hover:bg-slate-100 transition-colors',
+            'w-full flex items-center gap-3 px-4 py-2.5 rounded-xl transition-colors',
             sidebarCollapsed && 'justify-center px-2'
           )}
+          style={{ color: 'var(--color-sidebarText)' }}
         >
           <ChevronLeft className={cn(
             'w-5 h-5 transition-transform',
@@ -324,15 +342,23 @@ function Sidebar() {
         </button>
       </div>
 
-      {/* Powered by NicRoma (solo si el tenant tiene logo propio) */}
+      {/* Powered by NicRoma */}
       {companyLogo && (
-        <div className={cn(
-          'border-t border-slate-100 flex items-center',
-          sidebarCollapsed ? 'justify-center p-3' : 'gap-2 px-4 py-3'
-        )}>
-          <img src="/logo.png" alt="NicRoma" className="w-6 h-6 object-contain opacity-60" />
+        <div 
+          className={cn(
+            'flex items-center',
+            sidebarCollapsed ? 'justify-center p-3' : 'gap-2 px-4 py-3'
+          )}
+          style={{ borderTop: '1px solid var(--color-border)' }}
+        >
+          <img src="/logo.png" alt="NicRoma" className="w-6 h-6 object-contain" />
           {!sidebarCollapsed && (
-            <span className="text-xs text-slate-400">Powered by NicRoma</span>
+            <span 
+              className="text-xs"
+              style={{ color: 'var(--color-sidebarText)' }}
+            >
+              Powered by NicRoma
+            </span>
           )}
         </div>
       )}

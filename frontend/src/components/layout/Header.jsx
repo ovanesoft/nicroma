@@ -32,23 +32,37 @@ function Header({ title, subtitle }) {
           {/* Mobile menu button */}
           <button
             onClick={toggleMobileSidebar}
-            className="lg:hidden p-2 text-slate-600 hover:bg-slate-100 rounded-lg"
+            className="lg:hidden p-2 rounded-lg"
+            style={{ color: 'var(--color-text)' }}
           >
             <Menu className="w-5 h-5" />
           </button>
 
           {/* Title */}
           <div>
-            <h1 className="text-lg font-semibold text-slate-800">{title}</h1>
+            <h1 
+              className="text-lg font-semibold"
+              style={{ color: 'var(--color-text)' }}
+            >
+              {title}
+            </h1>
             {subtitle && (
-              <p className="text-sm text-slate-500">{subtitle}</p>
+              <p 
+                className="text-sm"
+                style={{ color: 'var(--color-textSecondary)' }}
+              >
+                {subtitle}
+              </p>
             )}
           </div>
         </div>
 
         <div className="flex items-center gap-3">
           {/* Notifications */}
-          <button className="relative p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">
+          <button 
+            className="relative p-2 rounded-lg transition-colors"
+            style={{ color: 'var(--color-text)' }}
+          >
             <Bell className="w-5 h-5" />
             <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full"></span>
           </button>
@@ -57,18 +71,33 @@ function Header({ title, subtitle }) {
           <div className="relative">
             <button
               onClick={() => setDropdownOpen(!dropdownOpen)}
-              className="flex items-center gap-3 p-1.5 pr-3 rounded-xl hover:bg-slate-100 transition-colors"
+              className="flex items-center gap-3 p-1.5 pr-3 rounded-xl transition-colors"
+              style={{ color: 'var(--color-text)' }}
             >
-              <div className="w-9 h-9 bg-gradient-to-br from-primary-400 to-purple-500 rounded-lg flex items-center justify-center text-white text-sm font-semibold">
+              <div 
+                className="w-9 h-9 rounded-lg flex items-center justify-center text-white text-sm font-semibold"
+                style={{ backgroundColor: 'var(--color-primary)' }}
+              >
                 {getInitials(user?.firstName, user?.lastName)}
               </div>
               <div className="hidden md:block text-left">
-                <p className="text-sm font-medium text-slate-700">
+                <p 
+                  className="text-sm font-medium"
+                  style={{ color: 'var(--color-text)' }}
+                >
                   {user?.firstName} {user?.lastName}
                 </p>
-                <p className="text-xs text-slate-500">{user?.tenantName || 'Sistema'}</p>
+                <p 
+                  className="text-xs"
+                  style={{ color: 'var(--color-textSecondary)' }}
+                >
+                  {user?.tenantName || 'Sistema'}
+                </p>
               </div>
-              <ChevronDown className="w-4 h-4 text-slate-400 hidden md:block" />
+              <ChevronDown 
+                className="w-4 h-4 hidden md:block"
+                style={{ color: 'var(--color-text)' }}
+              />
             </button>
 
             {dropdownOpen && (
@@ -77,13 +106,30 @@ function Header({ title, subtitle }) {
                   className="fixed inset-0 z-40"
                   onClick={() => setDropdownOpen(false)}
                 />
-                <div className="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-xl border border-slate-200 py-2 z-50 animate-fade-in">
+                <div 
+                  className="absolute right-0 mt-2 w-64 rounded-xl shadow-xl py-2 z-50 animate-fade-in"
+                  style={{ 
+                    backgroundColor: 'var(--color-card)',
+                    border: '1px solid var(--color-border)'
+                  }}
+                >
                   {/* User info */}
-                  <div className="px-4 py-3 border-b border-slate-100">
-                    <p className="text-sm font-medium text-slate-800">
+                  <div 
+                    className="px-4 py-3"
+                    style={{ borderBottom: '1px solid var(--color-border)' }}
+                  >
+                    <p 
+                      className="text-sm font-medium"
+                      style={{ color: 'var(--color-text)' }}
+                    >
                       {user?.firstName} {user?.lastName}
                     </p>
-                    <p className="text-xs text-slate-500">{user?.email}</p>
+                    <p 
+                      className="text-xs"
+                      style={{ color: 'var(--color-textSecondary)' }}
+                    >
+                      {user?.email}
+                    </p>
                     <div className="flex items-center gap-2 mt-2">
                       <span className={cn(
                         'inline-flex px-2 py-0.5 rounded-full text-xs font-medium',
@@ -92,7 +138,10 @@ function Header({ title, subtitle }) {
                         {getRoleLabel(user?.role)}
                       </span>
                       {user?.tenantName && (
-                        <span className="text-xs text-slate-500 flex items-center gap-1">
+                        <span 
+                          className="text-xs flex items-center gap-1"
+                          style={{ color: 'var(--color-textSecondary)' }}
+                        >
                           <Building2 className="w-3 h-3" />
                           {user?.tenantName}
                         </span>
@@ -107,7 +156,8 @@ function Header({ title, subtitle }) {
                         setDropdownOpen(false);
                         navigate('/profile');
                       }}
-                      className="flex items-center gap-3 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 w-full text-left"
+                      className="flex items-center gap-3 px-4 py-2 text-sm w-full text-left transition-colors"
+                      style={{ color: 'var(--color-text)' }}
                     >
                       <User className="w-4 h-4" />
                       Mi perfil
@@ -117,7 +167,8 @@ function Header({ title, subtitle }) {
                         setDropdownOpen(false);
                         navigate('/settings');
                       }}
-                      className="flex items-center gap-3 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 w-full text-left"
+                      className="flex items-center gap-3 px-4 py-2 text-sm w-full text-left transition-colors"
+                      style={{ color: 'var(--color-text)' }}
                     >
                       <Settings className="w-4 h-4" />
                       Configuración
@@ -125,10 +176,10 @@ function Header({ title, subtitle }) {
                   </div>
 
                   {/* Logout */}
-                  <div className="border-t border-slate-100 py-1">
+                  <div style={{ borderTop: '1px solid var(--color-border)' }} className="py-1">
                     <button
                       onClick={handleLogout}
-                      className="flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50 w-full text-left"
+                      className="flex items-center gap-3 px-4 py-2 text-sm text-red-500 hover:bg-red-500/10 w-full text-left transition-colors"
                     >
                       <LogOut className="w-4 h-4" />
                       Cerrar sesión
