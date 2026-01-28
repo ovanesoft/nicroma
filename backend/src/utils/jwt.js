@@ -145,37 +145,22 @@ const generatePasswordResetToken = () => {
 };
 
 // Configurar cookies de tokens
+// NOTA: Deshabilitado - usamos solo localStorage para evitar conflictos entre sesiones
 const setTokenCookies = (res, accessToken, refreshToken) => {
-  const isProduction = process.env.NODE_ENV === 'production';
-  
-  // Configuración para cross-domain (api.nicroma.com -> nicroma.com)
-  const cookieOptions = {
-    httpOnly: true,
-    secure: isProduction, // HTTPS en producción
-    sameSite: isProduction ? 'none' : 'lax', // 'none' permite cross-site con secure
-    domain: isProduction ? '.nicroma.com' : undefined // Compartir entre subdominios
-  };
-  
-  // Cookie para access token (httpOnly, más corta duración)
-  res.cookie('accessToken', accessToken, {
-    ...cookieOptions,
-    maxAge: 15 * 60 * 1000 // 15 minutos
-  });
-
-  // Cookie para refresh token (httpOnly, más larga duración)
-  if (refreshToken) {
-    res.cookie('refreshToken', refreshToken.token, {
-      ...cookieOptions,
-      path: '/api/auth/refresh', // Solo accesible en refresh endpoint
-      maxAge: 30 * 24 * 60 * 60 * 1000 // 30 días
-    });
-  }
+  // No seteamos cookies, el frontend maneja tokens via localStorage
+  // Esto evita problemas de sesiones cruzadas entre navegadores/incógnito
 };
 
-// Limpiar cookies de tokens
+// Limpiar cookies de tokens (limpia cookies legacy si existen)
 const clearTokenCookies = (res) => {
+  // Limpiar cualquier cookie existente de sesiones anteriores
   res.clearCookie('accessToken');
   res.clearCookie('refreshToken', { path: '/api/auth/refresh' });
+  // También limpiar sin path específico por si acaso
+  res.clearCookie('refreshToken');
+  // Limpiar con dominio explícito para producción
+  res.clearCookie('accessToken', { domain: '.nicroma.com' });
+  res.clearCookie('refreshToken', { domain: '.nicroma.com' });
 };
 
 module.exports = {
