@@ -5,7 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { 
   ArrowLeft, Save, Ship, Package, DollarSign, FileText,
-  Plus, Trash2, Search, Receipt, MapPin, RefreshCw
+  Plus, Trash2, Search, Receipt, MapPin, RefreshCw, MessageSquare
 } from 'lucide-react';
 import Layout from '../../components/layout/Layout';
 import { 
@@ -17,7 +17,7 @@ import {
 } from '../../hooks/useApi';
 import toast from 'react-hot-toast';
 import { AREAS, SECTORES, TIPOS_OPERACION, CARPETA_ESTADOS, INCOTERMS, TIPOS_CONTENEDOR } from '../../lib/constants';
-import { cn } from '../../lib/utils';
+import { cn, formatDate } from '../../lib/utils';
 
 const carpetaSchema = z.object({
   area: z.enum(['Marítimo', 'Aéreo', 'Terrestre']),
@@ -287,10 +287,21 @@ function CarpetaForm() {
     setGastos([...gastos.slice(0, index + 1), gasto, ...gastos.slice(index + 1)]);
   };
 
+  // Obtener presupuesto vinculado si existe
+  const presupuestoVinculado = carpetaData?.data?.carpeta?.presupuesto;
+  const mensajesPresupuesto = presupuestoVinculado?.mensajes || [];
+
   const tabs = [
     { id: 'general', label: 'General', icon: Ship },
     { id: 'mercancias', label: 'Mercancías', icon: Package },
-    { id: 'gastos', label: 'Gastos', icon: DollarSign }
+    { id: 'gastos', label: 'Gastos', icon: DollarSign },
+    // Mostrar tab de conversación solo si hay presupuesto vinculado con mensajes
+    ...(presupuestoVinculado ? [{ 
+      id: 'conversacion', 
+      label: 'Conversación', 
+      icon: MessageSquare,
+      badge: mensajesPresupuesto.length 
+    }] : [])
   ];
 
   if (loadingCarpeta && isEditing) {
@@ -348,6 +359,11 @@ function CarpetaForm() {
           >
             <tab.icon className="w-4 h-4" />
             {tab.label}
+            {tab.badge > 0 && (
+              <span className="ml-1 px-1.5 py-0.5 bg-primary-100 text-primary-700 text-xs rounded-full">
+                {tab.badge}
+              </span>
+            )}
           </button>
         ))}
       </div>
@@ -1126,6 +1142,94 @@ function CarpetaForm() {
                   </div>
                 </div>
               )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Tab: Conversación (del presupuesto vinculado) */}
+        {activeTab === 'conversacion' && presupuestoVinculado && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <MessageSquare className="w-5 h-5" />
+                Conversación del Presupuesto
+                <Badge variant="secondary" className="ml-2">
+                  {presupuestoVinculado.numero}
+                </Badge>
+              </CardTitle>
+              <p className="text-sm text-slate-500 mt-1">
+                Historial de conversación desde la etapa de presupuesto
+              </p>
+            </CardHeader>
+            <CardContent>
+              {mensajesPresupuesto.length === 0 ? (
+                <div className="text-center py-12 text-slate-500">
+                  <MessageSquare className="w-12 h-12 mx-auto text-slate-300 mb-4" />
+                  <p>No hay mensajes en este presupuesto</p>
+                </div>
+              ) : (
+                <div className="space-y-4 max-h-[500px] overflow-y-auto p-2">
+                  {mensajesPresupuesto.map((msg) => {
+                    const isOwn = msg.tipoRemitente === 'TENANT';
+                    const isSystem = msg.tipoRemitente === 'SISTEMA';
+                    
+                    if (isSystem) {
+                      return (
+                        <div key={msg.id} className="text-center">
+                          <span className="inline-block px-3 py-1 bg-slate-100 text-slate-600 rounded-full text-xs">
+                            {msg.mensaje}
+                          </span>
+                          <p className="text-xs text-slate-400 mt-1">{formatDate(msg.createdAt)}</p>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div
+                        key={msg.id}
+                        className={cn('flex', isOwn ? 'justify-end' : 'justify-start')}
+                      >
+                        <div className={cn(
+                          'max-w-[70%] rounded-2xl px-4 py-2',
+                          isOwn
+                            ? 'bg-primary-500 text-white rounded-br-sm'
+                            : 'bg-slate-100 text-slate-800 rounded-bl-sm'
+                        )}>
+                          <p className={cn('text-xs mb-1 font-medium', isOwn ? 'text-primary-100' : 'text-slate-500')}>
+                            {msg.nombreRemitente}
+                          </p>
+                          <p className="text-sm whitespace-pre-wrap">{msg.mensaje}</p>
+                          <p className={cn('text-xs mt-1', isOwn ? 'text-primary-200' : 'text-slate-400')}>
+                            {formatDate(msg.createdAt)}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Info del presupuesto */}
+              <div className="mt-6 pt-4 border-t border-slate-200">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                  <div>
+                    <p className="text-slate-500">Presupuesto</p>
+                    <p className="font-medium">{presupuestoVinculado.numero}</p>
+                  </div>
+                  <div>
+                    <p className="text-slate-500">Estado</p>
+                    <Badge className="bg-emerald-100 text-emerald-800">Convertido</Badge>
+                  </div>
+                  <div>
+                    <p className="text-slate-500">Solicitado</p>
+                    <p className="font-medium">{formatDate(presupuestoVinculado.fechaSolicitud)}</p>
+                  </div>
+                  <div>
+                    <p className="text-slate-500">Aprobado</p>
+                    <p className="font-medium">{presupuestoVinculado.fechaAprobacion ? formatDate(presupuestoVinculado.fechaAprobacion) : '-'}</p>
+                  </div>
+                </div>
+              </div>
             </CardContent>
           </Card>
         )}

@@ -154,6 +154,14 @@ const obtenerCarpeta = async (req, res) => {
             total: true,
             estado: true
           }
+        },
+        // Incluir presupuesto asociado con sus mensajes
+        presupuesto: {
+          include: {
+            mensajes: {
+              orderBy: { createdAt: 'asc' }
+            }
+          }
         }
       }
     });
