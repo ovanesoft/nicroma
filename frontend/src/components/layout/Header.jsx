@@ -20,7 +20,13 @@ function Header({ title, subtitle }) {
   };
 
   return (
-    <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-slate-200">
+    <header 
+      className="sticky top-0 z-40 backdrop-blur-md transition-colors duration-300"
+      style={{ 
+        backgroundColor: 'color-mix(in srgb, var(--color-card) 80%, transparent)',
+        borderBottom: '1px solid var(--color-border)'
+      }}
+    >
       <div className="flex items-center justify-between px-4 py-3 lg:px-8">
         <div className="flex items-center gap-4">
           {/* Mobile menu button */}

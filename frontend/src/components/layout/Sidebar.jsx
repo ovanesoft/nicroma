@@ -175,9 +175,13 @@ function Sidebar() {
   return (
     <aside
       className={cn(
-        'hidden lg:fixed lg:inset-y-0 lg:flex lg:flex-col bg-white border-r border-slate-200 transition-all duration-300',
+        'hidden lg:fixed lg:inset-y-0 lg:flex lg:flex-col transition-all duration-300',
         sidebarCollapsed ? 'lg:w-20' : 'lg:w-72'
       )}
+      style={{ 
+        backgroundColor: 'var(--color-sidebar)', 
+        borderRight: '1px solid var(--color-border)' 
+      }}
     >
       {/* Header - Logo del Tenant */}
       <div className={cn(

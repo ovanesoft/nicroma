@@ -8,7 +8,10 @@ function Layout({ children, title, subtitle }) {
   const { sidebarCollapsed } = useUIStore();
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div 
+      className="min-h-screen transition-colors duration-300"
+      style={{ backgroundColor: 'var(--color-background)' }}
+    >
       {/* Sidebar - Desktop */}
       <Sidebar />
 

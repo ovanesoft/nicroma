@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { ThemeProvider } from './context/ThemeContext';
 
 // Pages - Auth
 import Login from './pages/Login';
@@ -18,6 +19,7 @@ import DashboardRouter from './pages/DashboardRouter';
 import TenantsPage from './pages/admin/TenantsPage';
 import UsersPage from './pages/admin/UsersPage';
 import SystemLogsPage from './pages/admin/SystemLogsPage';
+import SettingsPage from './pages/admin/SettingsPage';
 
 // Pages - Organization (Admin/Manager)
 import OrgUsersPage from './pages/org/OrgUsersPage';
@@ -149,6 +151,11 @@ function AppRoutes() {
       <Route path="/admin/logs" element={
         <ProtectedRoute allowedRoles={['root']}>
           <SystemLogsPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/settings" element={
+        <ProtectedRoute allowedRoles={['root']}>
+          <SettingsPage />
         </ProtectedRoute>
       } />
 
@@ -293,9 +300,11 @@ function AppRoutes() {
 function App() {
   return (
     <BrowserRouter>
-      <AuthProvider>
-        <AppRoutes />
-      </AuthProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <AppRoutes />
+        </AuthProvider>
+      </ThemeProvider>
     </BrowserRouter>
   );
 }

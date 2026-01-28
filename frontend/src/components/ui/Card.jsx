@@ -4,9 +4,13 @@ function Card({ className, children, ...props }) {
   return (
     <div
       className={cn(
-        'bg-white rounded-2xl border border-slate-200 shadow-sm',
+        'rounded-2xl shadow-sm transition-colors duration-300',
         className
       )}
+      style={{ 
+        backgroundColor: 'var(--color-card)', 
+        border: '1px solid var(--color-border)' 
+      }}
       {...props}
     >
       {children}
@@ -17,7 +21,8 @@ function Card({ className, children, ...props }) {
 function CardHeader({ className, children, ...props }) {
   return (
     <div
-      className={cn('p-6 border-b border-slate-100', className)}
+      className={cn('p-6', className)}
+      style={{ borderBottom: '1px solid var(--color-border)' }}
       {...props}
     >
       {children}
@@ -28,7 +33,8 @@ function CardHeader({ className, children, ...props }) {
 function CardTitle({ className, children, ...props }) {
   return (
     <h3
-      className={cn('text-lg font-semibold text-slate-800', className)}
+      className={cn('text-lg font-semibold', className)}
+      style={{ color: 'var(--color-text)' }}
       {...props}
     >
       {children}
@@ -39,7 +45,8 @@ function CardTitle({ className, children, ...props }) {
 function CardDescription({ className, children, ...props }) {
   return (
     <p
-      className={cn('text-sm text-slate-500 mt-1', className)}
+      className={cn('text-sm mt-1', className)}
+      style={{ color: 'var(--color-textSecondary)' }}
       {...props}
     >
       {children}
