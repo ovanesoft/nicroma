@@ -184,9 +184,10 @@ function CarpetaForm() {
   };
 
   // Mercancías handlers
-  const addMercancia = () => {
+  const addMercancia = (contenedorIndex = null) => {
     setMercancias([...mercancias, { 
-      descripcion: '', embalaje: '', bultos: 0, peso: 0, volumen: 0, hsCode: '' 
+      descripcion: '', embalaje: '', bultos: 0, peso: 0, volumen: 0, hsCode: '',
+      contenedorIndex: contenedorIndex // Índice del contenedor al que pertenece (null = sin contenedor)
     }]);
   };
 
@@ -203,7 +204,7 @@ function CarpetaForm() {
   // Contenedores handlers
   const addContenedor = () => {
     setContenedores([...contenedores, { 
-      tipo: '40DC', numero: '', cantidad: 1, precinto: '' 
+      tipo: '40DC', numero: '', cantidad: 1, precinto: '', tempId: Date.now()
     }]);
   };
 
@@ -214,8 +215,28 @@ function CarpetaForm() {
   };
 
   const removeContenedor = (index) => {
+    // También remover las mercancías asociadas a este contenedor
+    setMercancias(mercancias.filter(m => m.contenedorIndex !== index).map(m => ({
+      ...m,
+      // Ajustar índices de mercancías con contenedorIndex mayor
+      contenedorIndex: m.contenedorIndex !== null && m.contenedorIndex > index 
+        ? m.contenedorIndex - 1 
+        : m.contenedorIndex
+    })));
     setContenedores(contenedores.filter((_, i) => i !== index));
   };
+
+  // Obtener mercancías de un contenedor específico
+  const getMercanciasContenedor = (contenedorIndex) => {
+    return mercancias
+      .map((m, idx) => ({ ...m, originalIndex: idx }))
+      .filter(m => m.contenedorIndex === contenedorIndex);
+  };
+
+  // Mercancías sin contenedor asignado
+  const mercanciasSinContenedor = mercancias
+    .map((m, idx) => ({ ...m, originalIndex: idx }))
+    .filter(m => m.contenedorIndex === null || m.contenedorIndex === undefined);
 
   // Gastos handlers
   const addGasto = () => {
@@ -517,146 +538,249 @@ function CarpetaForm() {
         {/* Tab: Mercancías */}
         {activeTab === 'mercancias' && (
           <div className="space-y-6">
-            {/* Contenedores */}
+            {/* Contenedores con sus mercancías */}
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle>Contenedores</CardTitle>
+                <CardTitle className="flex items-center gap-2">
+                  <Package className="w-5 h-5" />
+                  Contenedores y Mercancías
+                </CardTitle>
                 <Button type="button" size="sm" onClick={addContenedor}>
                   <Plus className="w-4 h-4" />
-                  Agregar
+                  Agregar Contenedor
                 </Button>
               </CardHeader>
               <CardContent>
                 {contenedores.length === 0 ? (
-                  <p className="text-center text-slate-500 py-8">No hay contenedores agregados</p>
+                  <div className="text-center py-8">
+                    <Package className="w-12 h-12 mx-auto text-slate-300 mb-3" />
+                    <p className="text-slate-500">No hay contenedores agregados</p>
+                    <p className="text-sm text-slate-400">Agregá contenedores para asignar mercancías</p>
+                  </div>
                 ) : (
-                  <div className="space-y-3">
-                    {contenedores.map((cont, index) => (
-                      <div key={index} className="p-4 bg-slate-50 rounded-lg">
-                        <div className="flex items-start gap-4">
-                          <div className="flex-1 grid grid-cols-1 md:grid-cols-4 gap-3">
-                            <div>
-                              <label className="block text-xs text-slate-500 mb-1">Tipo</label>
-                              <select
-                                value={cont.tipo}
-                                onChange={(e) => updateContenedor(index, 'tipo', e.target.value)}
-                                className="w-full px-2 py-1.5 text-sm rounded border border-slate-300 bg-white"
-                              >
-                                {TIPOS_CONTENEDOR.map(t => <option key={t} value={t}>{t}</option>)}
-                              </select>
-                            </div>
-                            <div>
-                              <label className="block text-xs text-slate-500 mb-1">Número</label>
-                              <input
-                                type="text"
-                                value={cont.numero || ''}
-                                onChange={(e) => updateContenedor(index, 'numero', e.target.value)}
-                                placeholder="MSKU1234567"
-                                className="w-full px-2 py-1.5 text-sm rounded border border-slate-300"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-xs text-slate-500 mb-1">Cantidad</label>
-                              <input
-                                type="number"
-                                value={cont.cantidad || 1}
-                                onChange={(e) => updateContenedor(index, 'cantidad', parseInt(e.target.value) || 1)}
-                                className="w-full px-2 py-1.5 text-sm rounded border border-slate-300"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-xs text-slate-500 mb-1">Precinto</label>
-                              <input
-                                type="text"
-                                value={cont.precinto || ''}
-                                onChange={(e) => updateContenedor(index, 'precinto', e.target.value)}
-                                className="w-full px-2 py-1.5 text-sm rounded border border-slate-300"
-                              />
-                            </div>
-                          </div>
-                          <div className="flex gap-1">
-                            {cont.numero && hasActiveIntegrations && (
-                              <button 
-                                type="button"
-                                onClick={() => handleTrackContainer(cont.numero, index)}
-                                disabled={trackingLoading[index]}
-                                className="p-2 text-primary-500 hover:bg-primary-50 rounded disabled:opacity-50"
-                                title="Tracking"
-                              >
-                                {trackingLoading[index] ? (
-                                  <RefreshCw className="w-4 h-4 animate-spin" />
-                                ) : (
-                                  <MapPin className="w-4 h-4" />
+                  <div className="space-y-6">
+                    {contenedores.map((cont, contIndex) => {
+                      const mercContIndex = getMercanciasContenedor(contIndex);
+                      return (
+                        <div key={cont.tempId || contIndex} className="border border-slate-200 rounded-xl overflow-hidden">
+                          {/* Header del contenedor */}
+                          <div className="bg-slate-100 p-4">
+                            <div className="flex items-start gap-4">
+                              <div className="flex-1 grid grid-cols-1 md:grid-cols-4 gap-3">
+                                <div>
+                                  <label className="block text-xs text-slate-500 mb-1">Tipo</label>
+                                  <select
+                                    value={cont.tipo}
+                                    onChange={(e) => updateContenedor(contIndex, 'tipo', e.target.value)}
+                                    className="w-full px-2 py-1.5 text-sm rounded border border-slate-300 bg-white"
+                                  >
+                                    {TIPOS_CONTENEDOR.map(t => <option key={t} value={t}>{t}</option>)}
+                                  </select>
+                                </div>
+                                <div>
+                                  <label className="block text-xs text-slate-500 mb-1">Número</label>
+                                  <input
+                                    type="text"
+                                    value={cont.numero || ''}
+                                    onChange={(e) => updateContenedor(contIndex, 'numero', e.target.value)}
+                                    placeholder="MSKU1234567"
+                                    className="w-full px-2 py-1.5 text-sm rounded border border-slate-300"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-xs text-slate-500 mb-1">Cantidad</label>
+                                  <input
+                                    type="number"
+                                    value={cont.cantidad || 1}
+                                    onChange={(e) => updateContenedor(contIndex, 'cantidad', parseInt(e.target.value) || 1)}
+                                    className="w-full px-2 py-1.5 text-sm rounded border border-slate-300"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-xs text-slate-500 mb-1">Precinto</label>
+                                  <input
+                                    type="text"
+                                    value={cont.precinto || ''}
+                                    onChange={(e) => updateContenedor(contIndex, 'precinto', e.target.value)}
+                                    className="w-full px-2 py-1.5 text-sm rounded border border-slate-300"
+                                  />
+                                </div>
+                              </div>
+                              <div className="flex gap-1">
+                                {cont.numero && hasActiveIntegrations && (
+                                  <button 
+                                    type="button"
+                                    onClick={() => handleTrackContainer(cont.numero, contIndex)}
+                                    disabled={trackingLoading[contIndex]}
+                                    className="p-2 text-primary-500 hover:bg-primary-50 rounded disabled:opacity-50"
+                                    title="Tracking"
+                                  >
+                                    {trackingLoading[contIndex] ? (
+                                      <RefreshCw className="w-4 h-4 animate-spin" />
+                                    ) : (
+                                      <MapPin className="w-4 h-4" />
+                                    )}
+                                  </button>
                                 )}
-                              </button>
+                                <button 
+                                  type="button"
+                                  onClick={() => removeContenedor(contIndex)}
+                                  className="p-2 text-red-500 hover:bg-red-50 rounded"
+                                  title="Eliminar contenedor"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </div>
+                            
+                            {/* Tracking info */}
+                            {trackingData[contIndex] && (
+                              <div className="mt-3 pt-3 border-t border-slate-200">
+                                <div className="flex items-center gap-2 text-sm">
+                                  <span className="px-2 py-0.5 bg-primary-100 text-primary-700 rounded text-xs font-medium">
+                                    {trackingData[contIndex].provider}
+                                  </span>
+                                  {trackingData[contIndex].currentStatus && (
+                                    <>
+                                      <span className="text-slate-600">
+                                        {trackingData[contIndex].currentStatus.status}
+                                      </span>
+                                      <span className="text-slate-400">•</span>
+                                      <span className="text-slate-500">
+                                        {trackingData[contIndex].currentStatus.location}
+                                      </span>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
                             )}
-                            <button 
-                              type="button"
-                              onClick={() => removeContenedor(index)}
-                              className="p-2 text-red-500 hover:bg-red-50 rounded"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
+                          </div>
+                          
+                          {/* Mercancías del contenedor */}
+                          <div className="p-4 bg-white">
+                            <div className="flex items-center justify-between mb-3">
+                              <h4 className="text-sm font-medium text-slate-700 flex items-center gap-2">
+                                <Package className="w-4 h-4" />
+                                Mercancías en este contenedor
+                                <Badge variant="secondary">{mercContIndex.length}</Badge>
+                              </h4>
+                              <Button 
+                                type="button" 
+                                size="sm" 
+                                variant="ghost"
+                                onClick={() => addMercancia(contIndex)}
+                              >
+                                <Plus className="w-3 h-3" />
+                                Agregar
+                              </Button>
+                            </div>
+                            
+                            {mercContIndex.length === 0 ? (
+                              <p className="text-center text-slate-400 py-4 text-sm">
+                                Sin mercancías asignadas
+                              </p>
+                            ) : (
+                              <div className="space-y-2">
+                                {mercContIndex.map((merc) => (
+                                  <div key={merc.originalIndex} className="flex items-start gap-3 p-3 bg-slate-50 rounded-lg">
+                                    <div className="flex-1 grid grid-cols-1 md:grid-cols-6 gap-2">
+                                      <div className="md:col-span-2">
+                                        <input
+                                          type="text"
+                                          value={merc.descripcion || ''}
+                                          onChange={(e) => updateMercancia(merc.originalIndex, 'descripcion', e.target.value)}
+                                          placeholder="Descripción"
+                                          className="w-full px-2 py-1 text-sm rounded border border-slate-300"
+                                        />
+                                      </div>
+                                      <div>
+                                        <input
+                                          type="text"
+                                          value={merc.embalaje || ''}
+                                          onChange={(e) => updateMercancia(merc.originalIndex, 'embalaje', e.target.value)}
+                                          placeholder="Embalaje"
+                                          className="w-full px-2 py-1 text-sm rounded border border-slate-300"
+                                        />
+                                      </div>
+                                      <div>
+                                        <input
+                                          type="number"
+                                          value={merc.bultos || ''}
+                                          onChange={(e) => updateMercancia(merc.originalIndex, 'bultos', parseInt(e.target.value) || 0)}
+                                          placeholder="Bultos"
+                                          className="w-full px-2 py-1 text-sm rounded border border-slate-300"
+                                        />
+                                      </div>
+                                      <div>
+                                        <input
+                                          type="number"
+                                          step="0.01"
+                                          value={merc.peso || ''}
+                                          onChange={(e) => updateMercancia(merc.originalIndex, 'peso', parseFloat(e.target.value) || 0)}
+                                          placeholder="Peso (kg)"
+                                          className="w-full px-2 py-1 text-sm rounded border border-slate-300"
+                                        />
+                                      </div>
+                                      <div>
+                                        <input
+                                          type="text"
+                                          value={merc.hsCode || ''}
+                                          onChange={(e) => updateMercancia(merc.originalIndex, 'hsCode', e.target.value)}
+                                          placeholder="HS Code"
+                                          className="w-full px-2 py-1 text-sm rounded border border-slate-300"
+                                        />
+                                      </div>
+                                    </div>
+                                    <button 
+                                      type="button"
+                                      onClick={() => removeMercancia(merc.originalIndex)}
+                                      className="p-1.5 text-red-500 hover:bg-red-50 rounded"
+                                    >
+                                      <Trash2 className="w-3 h-3" />
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
                           </div>
                         </div>
-                        
-                        {/* Tracking info */}
-                        {trackingData[index] && (
-                          <div className="mt-3 pt-3 border-t border-slate-200">
-                            <div className="flex items-center gap-2 text-sm">
-                              <span className="px-2 py-0.5 bg-primary-100 text-primary-700 rounded text-xs font-medium">
-                                {trackingData[index].provider}
-                              </span>
-                              {trackingData[index].currentStatus && (
-                                <>
-                                  <span className="text-slate-600">
-                                    {trackingData[index].currentStatus.status}
-                                  </span>
-                                  <span className="text-slate-400">•</span>
-                                  <span className="text-slate-500">
-                                    {trackingData[index].currentStatus.location}
-                                  </span>
-                                </>
-                              )}
-                            </div>
-                            {trackingData[index].events?.length > 0 && (
-                              <p className="text-xs text-slate-400 mt-1">
-                                Último evento: {new Date(trackingData[index].events[0].eventDateTime).toLocaleString('es-AR')}
-                              </p>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </CardContent>
             </Card>
 
-            {/* Mercancías */}
+            {/* Mercancías sin contenedor asignado */}
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle>Mercancías</CardTitle>
-                <Button type="button" size="sm" onClick={addMercancia}>
+                <CardTitle className="flex items-center gap-2">
+                  <FileText className="w-5 h-5" />
+                  Mercancías Sueltas
+                  <span className="text-xs font-normal text-slate-500">(sin contenedor asignado)</span>
+                </CardTitle>
+                <Button type="button" size="sm" variant="secondary" onClick={() => addMercancia(null)}>
                   <Plus className="w-4 h-4" />
                   Agregar
                 </Button>
               </CardHeader>
               <CardContent>
-                {mercancias.length === 0 ? (
-                  <p className="text-center text-slate-500 py-8">No hay mercancías agregadas</p>
+                {mercanciasSinContenedor.length === 0 ? (
+                  <p className="text-center text-slate-400 py-6 text-sm">
+                    Todas las mercancías están asignadas a contenedores
+                  </p>
                 ) : (
-                  <div className="space-y-3">
-                    {mercancias.map((merc, index) => (
-                      <div key={index} className="flex items-start gap-4 p-4 bg-slate-50 rounded-lg">
-                        <div className="flex-1 grid grid-cols-1 md:grid-cols-6 gap-3">
+                  <div className="space-y-2">
+                    {mercanciasSinContenedor.map((merc) => (
+                      <div key={merc.originalIndex} className="flex items-start gap-3 p-3 bg-slate-50 rounded-lg">
+                        <div className="flex-1 grid grid-cols-1 md:grid-cols-7 gap-2">
                           <div className="md:col-span-2">
                             <label className="block text-xs text-slate-500 mb-1">Descripción</label>
                             <input
                               type="text"
                               value={merc.descripcion || ''}
-                              onChange={(e) => updateMercancia(index, 'descripcion', e.target.value)}
-                              placeholder="Descripción de la mercancía"
+                              onChange={(e) => updateMercancia(merc.originalIndex, 'descripcion', e.target.value)}
+                              placeholder="Descripción"
                               className="w-full px-2 py-1.5 text-sm rounded border border-slate-300"
                             />
                           </div>
@@ -665,7 +789,7 @@ function CarpetaForm() {
                             <input
                               type="text"
                               value={merc.embalaje || ''}
-                              onChange={(e) => updateMercancia(index, 'embalaje', e.target.value)}
+                              onChange={(e) => updateMercancia(merc.originalIndex, 'embalaje', e.target.value)}
                               placeholder="Cajas"
                               className="w-full px-2 py-1.5 text-sm rounded border border-slate-300"
                             />
@@ -675,7 +799,7 @@ function CarpetaForm() {
                             <input
                               type="number"
                               value={merc.bultos || ''}
-                              onChange={(e) => updateMercancia(index, 'bultos', parseInt(e.target.value) || 0)}
+                              onChange={(e) => updateMercancia(merc.originalIndex, 'bultos', parseInt(e.target.value) || 0)}
                               className="w-full px-2 py-1.5 text-sm rounded border border-slate-300"
                             />
                           </div>
@@ -685,7 +809,7 @@ function CarpetaForm() {
                               type="number"
                               step="0.01"
                               value={merc.peso || ''}
-                              onChange={(e) => updateMercancia(index, 'peso', parseFloat(e.target.value) || 0)}
+                              onChange={(e) => updateMercancia(merc.originalIndex, 'peso', parseFloat(e.target.value) || 0)}
                               className="w-full px-2 py-1.5 text-sm rounded border border-slate-300"
                             />
                           </div>
@@ -694,16 +818,37 @@ function CarpetaForm() {
                             <input
                               type="text"
                               value={merc.hsCode || ''}
-                              onChange={(e) => updateMercancia(index, 'hsCode', e.target.value)}
+                              onChange={(e) => updateMercancia(merc.originalIndex, 'hsCode', e.target.value)}
                               placeholder="8471.30"
                               className="w-full px-2 py-1.5 text-sm rounded border border-slate-300"
                             />
                           </div>
+                          {contenedores.length > 0 && (
+                            <div>
+                              <label className="block text-xs text-slate-500 mb-1">Asignar a</label>
+                              <select
+                                value=""
+                                onChange={(e) => {
+                                  if (e.target.value !== '') {
+                                    updateMercancia(merc.originalIndex, 'contenedorIndex', parseInt(e.target.value));
+                                  }
+                                }}
+                                className="w-full px-2 py-1.5 text-sm rounded border border-slate-300 bg-white"
+                              >
+                                <option value="">Sin contenedor</option>
+                                {contenedores.map((c, idx) => (
+                                  <option key={idx} value={idx}>
+                                    {c.numero || `${c.tipo} #${idx + 1}`}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          )}
                         </div>
                         <button 
                           type="button"
-                          onClick={() => removeMercancia(index)}
-                          className="p-2 text-red-500 hover:bg-red-50 rounded"
+                          onClick={() => removeMercancia(merc.originalIndex)}
+                          className="p-1.5 text-red-500 hover:bg-red-50 rounded mt-5"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -713,6 +858,36 @@ function CarpetaForm() {
                 )}
               </CardContent>
             </Card>
+
+            {/* Resumen */}
+            {(contenedores.length > 0 || mercancias.length > 0) && (
+              <Card>
+                <CardContent className="p-4">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                    <div>
+                      <p className="text-2xl font-bold text-slate-800">{contenedores.length}</p>
+                      <p className="text-xs text-slate-500">Contenedores</p>
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold text-slate-800">{mercancias.length}</p>
+                      <p className="text-xs text-slate-500">Mercancías</p>
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold text-slate-800">
+                        {mercancias.reduce((sum, m) => sum + (parseInt(m.bultos) || 0), 0)}
+                      </p>
+                      <p className="text-xs text-slate-500">Total Bultos</p>
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold text-slate-800">
+                        {mercancias.reduce((sum, m) => sum + (parseFloat(m.peso) || 0), 0).toFixed(2)}
+                      </p>
+                      <p className="text-xs text-slate-500">Total Peso (kg)</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
         )}
 

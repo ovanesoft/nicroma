@@ -444,6 +444,10 @@ model Mercancia {
   carpetaId       String   @map("carpeta_id") @db.Uuid
   carpeta         Carpeta  @relation(fields: [carpetaId], references: [id], onDelete: Cascade)
   
+  // Relación opcional con contenedor (una mercancía puede estar en un contenedor)
+  contenedorId    String?  @map("contenedor_id") @db.Uuid
+  contenedor      Contenedor? @relation(fields: [contenedorId], references: [id], onDelete: SetNull)
+  
   descripcion     String
   embalaje        String?  @db.VarChar(100)
   marcas          String?  @db.VarChar(255)
@@ -458,6 +462,7 @@ model Mercancia {
   updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@index([carpetaId])
+  @@index([contenedorId])
   @@map("mercancias")
 }
 
@@ -466,6 +471,9 @@ model Contenedor {
   id              String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
   carpetaId       String   @map("carpeta_id") @db.Uuid
   carpeta         Carpeta  @relation(fields: [carpetaId], references: [id], onDelete: Cascade)
+  
+  // Mercancías dentro de este contenedor
+  mercancias      Mercancia[]
   
   tipo            String   @db.VarChar(20)
   numero          String?  @db.VarChar(20)

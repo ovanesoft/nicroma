@@ -358,42 +358,131 @@ const actualizarCarpeta = async (req, res) => {
     delete data.numero;
     delete data.tenantId;
 
+    // Extraer relaciones antes de procesarlas
+    const { mercancias, contenedores, gastos, ...restData } = data;
+
     // Preparar datos para actualizar
     const updateData = {
-      ...data,
+      ...restData,
       // Convertir fechas
-      fechaEmision: data.fechaEmision ? new Date(data.fechaEmision) : undefined,
-      fechaSalidaEstimada: data.etd ? new Date(data.etd) : undefined,
-      fechaSalidaConfirmada: data.atd ? new Date(data.atd) : undefined,
-      fechaLlegadaEstimada: data.eta ? new Date(data.eta) : undefined,
-      fechaLlegadaConfirmada: data.ata ? new Date(data.ata) : undefined,
-      fechaCarga: data.fechaCarga ? new Date(data.fechaCarga) : undefined,
-      fechaDescarga: data.fechaDescarga ? new Date(data.fechaDescarga) : undefined,
-      cutOffDoc: data.cutOffDoc ? new Date(data.cutOffDoc) : undefined,
-      cutOffFisico: data.cutOffFisico ? new Date(data.cutOffFisico) : undefined,
-      cutOffIMO: data.cutOffIMO ? new Date(data.cutOffIMO) : undefined,
-      cutOffVGM: data.cutOffVGM ? new Date(data.cutOffVGM) : undefined
+      fechaEmision: restData.fechaEmision ? new Date(restData.fechaEmision) : undefined,
+      fechaSalidaEstimada: restData.etd ? new Date(restData.etd) : undefined,
+      fechaSalidaConfirmada: restData.atd ? new Date(restData.atd) : undefined,
+      fechaLlegadaEstimada: restData.eta ? new Date(restData.eta) : undefined,
+      fechaLlegadaConfirmada: restData.ata ? new Date(restData.ata) : undefined,
+      fechaCarga: restData.fechaCarga ? new Date(restData.fechaCarga) : undefined,
+      fechaDescarga: restData.fechaDescarga ? new Date(restData.fechaDescarga) : undefined,
+      cutOffDoc: restData.cutOffDoc ? new Date(restData.cutOffDoc) : undefined,
+      cutOffFisico: restData.cutOffFisico ? new Date(restData.cutOffFisico) : undefined,
+      cutOffIMO: restData.cutOffIMO ? new Date(restData.cutOffIMO) : undefined,
+      cutOffVGM: restData.cutOffVGM ? new Date(restData.cutOffVGM) : undefined
     };
 
-    // Eliminar campos undefined
+    // Eliminar campos undefined y los que no son del modelo Carpeta
+    const fieldsToRemove = ['etd', 'atd', 'eta', 'ata', 'cliente', 'id'];
     Object.keys(updateData).forEach(key => {
-      if (updateData[key] === undefined) delete updateData[key];
+      if (updateData[key] === undefined || fieldsToRemove.includes(key)) {
+        delete updateData[key];
+      }
     });
 
-    // Eliminar arrays de relaciones del update directo
-    delete updateData.mercancias;
-    delete updateData.contenedores;
-    delete updateData.gastos;
+    // Usar transacción para actualizar todo
+    const carpeta = await prisma.$transaction(async (tx) => {
+      // 1. Actualizar datos principales de la carpeta
+      await tx.carpeta.update({
+        where: { id },
+        data: updateData
+      });
 
-    const carpeta = await prisma.carpeta.update({
-      where: { id },
-      data: updateData,
-      include: {
-        cliente: true,
-        mercancias: true,
-        contenedores: true,
-        gastos: true
+      // 2. Actualizar mercancías (eliminar existentes y crear nuevas)
+      if (mercancias !== undefined) {
+        await tx.mercancia.deleteMany({ where: { carpetaId: id } });
+        
+        if (mercancias && mercancias.length > 0) {
+          await tx.mercancia.createMany({
+            data: mercancias.filter(m => m.descripcion).map(m => ({
+              carpetaId: id,
+              descripcion: m.descripcion,
+              embalaje: m.embalaje || null,
+              marcas: m.marcas || null,
+              bultos: parseInt(m.bultos) || 0,
+              volumen: parseFloat(m.volumen) || 0,
+              peso: parseFloat(m.peso) || 0,
+              valorMercaderia: m.valorMercaderia ? parseFloat(m.valorMercaderia) : null,
+              valorCIF: m.valorCIF ? parseFloat(m.valorCIF) : null,
+              hsCode: m.hsCode || null,
+              contenedorId: m.contenedorId || null
+            }))
+          });
+        }
       }
+
+      // 3. Actualizar contenedores (eliminar existentes y crear nuevos)
+      if (contenedores !== undefined) {
+        // Primero desvincular mercancías de contenedores que se eliminarán
+        await tx.mercancia.updateMany({
+          where: { carpetaId: id, contenedorId: { not: null } },
+          data: { contenedorId: null }
+        });
+        
+        await tx.contenedor.deleteMany({ where: { carpetaId: id } });
+        
+        if (contenedores && contenedores.length > 0) {
+          for (const c of contenedores.filter(c => c.tipo)) {
+            await tx.contenedor.create({
+              data: {
+                carpetaId: id,
+                tipo: c.tipo,
+                numero: c.numero || null,
+                condicion: c.condicion || null,
+                precinto: c.precinto || null,
+                cantidad: parseInt(c.cantidad) || 1,
+                tara: c.tara ? parseFloat(c.tara) : null,
+                pesoMaximo: c.pesoMaximo ? parseFloat(c.pesoMaximo) : null
+              }
+            });
+          }
+        }
+      }
+
+      // 4. Actualizar gastos (eliminar existentes y crear nuevos)
+      if (gastos !== undefined) {
+        await tx.gasto.deleteMany({ where: { carpetaId: id } });
+        
+        if (gastos && gastos.length > 0) {
+          await tx.gasto.createMany({
+            data: gastos.filter(g => g.concepto).map(g => ({
+              carpetaId: id,
+              concepto: g.concepto,
+              prepaidCollect: g.prepaidCollect || 'Prepaid',
+              divisa: g.divisa || 'USD',
+              montoVenta: parseFloat(g.montoVenta) || 0,
+              montoCosto: parseFloat(g.montoCosto) || 0,
+              base: g.base || null,
+              cantidad: parseFloat(g.cantidad) || 1,
+              totalVenta: (parseFloat(g.montoVenta) || 0) * (parseFloat(g.cantidad) || 1),
+              totalCosto: (parseFloat(g.montoCosto) || 0) * (parseFloat(g.cantidad) || 1),
+              gravado: g.gravado !== false,
+              porcentajeIVA: parseFloat(g.porcentajeIVA) || 21
+            }))
+          });
+        }
+      }
+
+      // 5. Retornar carpeta actualizada con relaciones
+      return tx.carpeta.findFirst({
+        where: { id },
+        include: {
+          cliente: true,
+          mercancias: {
+            include: { contenedor: true }
+          },
+          contenedores: {
+            include: { mercancias: true }
+          },
+          gastos: { orderBy: { createdAt: 'asc' } }
+        }
+      });
     });
 
     res.json({
@@ -405,7 +494,8 @@ const actualizarCarpeta = async (req, res) => {
     console.error('Error actualizando carpeta:', error);
     res.status(500).json({
       success: false,
-      message: 'Error al actualizar carpeta'
+      message: 'Error al actualizar carpeta',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 };
