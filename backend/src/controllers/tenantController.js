@@ -780,10 +780,12 @@ const updateCompanyConfig = async (req, res) => {
     updates.push(`updated_at = NOW()`);
     values.push(tenantId);
 
-    const result = await query(
-      `UPDATE tenants SET ${updates.join(', ')} WHERE id = $${paramCount} RETURNING *`,
-      values
-    );
+    const queryText = `UPDATE tenants SET ${updates.join(', ')} WHERE id = $${paramCount} RETURNING *`;
+    console.log('Ejecutando UPDATE:', queryText);
+    console.log('Valores:', values);
+    
+    const result = await query(queryText, values);
+    console.log('Resultado UPDATE:', result.rowCount, 'filas afectadas');
 
     // Log de auditoría
     await query(
@@ -805,7 +807,8 @@ const updateCompanyConfig = async (req, res) => {
     console.error('Error actualizando config empresa:', error);
     res.status(500).json({
       success: false,
-      message: 'Error al actualizar configuración'
+      message: 'Error al actualizar configuración',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 };

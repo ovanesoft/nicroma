@@ -29,7 +29,7 @@ const COLORS = [
 ];
 
 function CompanySettingsPage() {
-  const { data: configData, isLoading } = useCompanyConfig();
+  const { data: configData, isLoading, refetch } = useCompanyConfig();
   const updateConfig = useUpdateCompanyConfig();
   const uploadLogo = useUploadCompanyLogo();
   const deleteLogo = useDeleteCompanyLogo();
@@ -83,9 +83,14 @@ function CompanySettingsPage() {
     }
 
     try {
-      await updateConfig.mutateAsync(form);
+      console.log('Guardando configuración:', form);
+      const result = await updateConfig.mutateAsync(form);
+      console.log('Resultado:', result);
       toast.success('Configuración guardada');
+      // Forzar refetch para asegurar que los datos se actualicen
+      await refetch();
     } catch (error) {
+      console.error('Error guardando:', error);
       toast.error(error.response?.data?.message || 'Error al guardar');
     }
   };
