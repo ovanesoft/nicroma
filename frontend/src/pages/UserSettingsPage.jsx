@@ -168,8 +168,8 @@ function UserSettingsPage() {
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between p-3 rounded-lg border border-[var(--color-border)]">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
-                  <Bell className="w-5 h-5 text-blue-600" />
+                <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'var(--color-primary)20' }}>
+                  <Bell className="w-5 h-5" style={{ color: 'var(--color-primary)' }} />
                 </div>
                 <div>
                   <p className="font-medium text-[var(--color-text)]">Notificaciones por email</p>
@@ -178,9 +178,8 @@ function UserSettingsPage() {
               </div>
               <button
                 onClick={() => handleNotificationChange('email')}
-                className={`w-12 h-6 rounded-full transition-colors ${
-                  notifications.email ? 'bg-[var(--color-primary)]' : 'bg-slate-300'
-                }`}
+                className="w-12 h-6 rounded-full transition-colors"
+                style={{ backgroundColor: notifications.email ? 'var(--color-primary)' : 'var(--color-border)' }}
               >
                 <div className={`w-5 h-5 rounded-full bg-white shadow transition-transform ${
                   notifications.email ? 'translate-x-6' : 'translate-x-0.5'
@@ -190,8 +189,8 @@ function UserSettingsPage() {
 
             <div className="flex items-center justify-between p-3 rounded-lg border border-[var(--color-border)]">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center">
-                  <Monitor className="w-5 h-5 text-purple-600" />
+                <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'var(--color-accent)20' }}>
+                  <Monitor className="w-5 h-5" style={{ color: 'var(--color-accent)' }} />
                 </div>
                 <div>
                   <p className="font-medium text-[var(--color-text)]">Notificaciones push</p>
@@ -200,9 +199,8 @@ function UserSettingsPage() {
               </div>
               <button
                 onClick={() => handleNotificationChange('push')}
-                className={`w-12 h-6 rounded-full transition-colors ${
-                  notifications.push ? 'bg-[var(--color-primary)]' : 'bg-slate-300'
-                }`}
+                className="w-12 h-6 rounded-full transition-colors"
+                style={{ backgroundColor: notifications.push ? 'var(--color-primary)' : 'var(--color-border)' }}
               >
                 <div className={`w-5 h-5 rounded-full bg-white shadow transition-transform ${
                   notifications.push ? 'translate-x-6' : 'translate-x-0.5'
@@ -212,11 +210,11 @@ function UserSettingsPage() {
 
             <div className="flex items-center justify-between p-3 rounded-lg border border-[var(--color-border)]">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#10b98120' }}>
                   {notifications.sound ? (
-                    <Volume2 className="w-5 h-5 text-green-600" />
+                    <Volume2 className="w-5 h-5 text-emerald-500" />
                   ) : (
-                    <VolumeX className="w-5 h-5 text-green-600" />
+                    <VolumeX className="w-5 h-5 text-emerald-500" />
                   )}
                 </div>
                 <div>
@@ -226,9 +224,8 @@ function UserSettingsPage() {
               </div>
               <button
                 onClick={() => handleNotificationChange('sound')}
-                className={`w-12 h-6 rounded-full transition-colors ${
-                  notifications.sound ? 'bg-[var(--color-primary)]' : 'bg-slate-300'
-                }`}
+                className="w-12 h-6 rounded-full transition-colors"
+                style={{ backgroundColor: notifications.sound ? 'var(--color-primary)' : 'var(--color-border)' }}
               >
                 <div className={`w-5 h-5 rounded-full bg-white shadow transition-transform ${
                   notifications.sound ? 'translate-x-6' : 'translate-x-0.5'
@@ -252,8 +249,8 @@ function UserSettingsPage() {
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between p-3 rounded-lg border border-[var(--color-border)]">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center">
-                  <Monitor className="w-5 h-5 text-amber-600" />
+                <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#f59e0b20' }}>
+                  <Monitor className="w-5 h-5 text-amber-500" />
                 </div>
                 <div>
                   <p className="font-medium text-[var(--color-text)]">Modo compacto</p>
@@ -262,9 +259,8 @@ function UserSettingsPage() {
               </div>
               <button
                 onClick={() => handleDisplayChange('compactMode')}
-                className={`w-12 h-6 rounded-full transition-colors ${
-                  display.compactMode ? 'bg-[var(--color-primary)]' : 'bg-slate-300'
-                }`}
+                className="w-12 h-6 rounded-full transition-colors"
+                style={{ backgroundColor: display.compactMode ? 'var(--color-primary)' : 'var(--color-border)' }}
               >
                 <div className={`w-5 h-5 rounded-full bg-white shadow transition-transform ${
                   display.compactMode ? 'translate-x-6' : 'translate-x-0.5'
@@ -274,8 +270,8 @@ function UserSettingsPage() {
 
             <div className="flex items-center justify-between p-3 rounded-lg border border-[var(--color-border)]">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center">
-                  <Sun className="w-5 h-5 text-pink-600" />
+                <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#ec489920' }}>
+                  <Sun className="w-5 h-5 text-pink-500" />
                 </div>
                 <div>
                   <p className="font-medium text-[var(--color-text)]">Animaciones</p>
@@ -284,9 +280,8 @@ function UserSettingsPage() {
               </div>
               <button
                 onClick={() => handleDisplayChange('animations')}
-                className={`w-12 h-6 rounded-full transition-colors ${
-                  display.animations ? 'bg-[var(--color-primary)]' : 'bg-slate-300'
-                }`}
+                className="w-12 h-6 rounded-full transition-colors"
+                style={{ backgroundColor: display.animations ? 'var(--color-primary)' : 'var(--color-border)' }}
               >
                 <div className={`w-5 h-5 rounded-full bg-white shadow transition-transform ${
                   display.animations ? 'translate-x-6' : 'translate-x-0.5'
@@ -296,8 +291,8 @@ function UserSettingsPage() {
 
             <div className="flex items-center justify-between p-3 rounded-lg border border-[var(--color-border)]">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-cyan-100 flex items-center justify-center">
-                  <Eye className="w-5 h-5 text-cyan-600" />
+                <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#06b6d420' }}>
+                  <Eye className="w-5 h-5 text-cyan-500" />
                 </div>
                 <div>
                   <p className="font-medium text-[var(--color-text)]">Mostrar avatares</p>
@@ -306,9 +301,8 @@ function UserSettingsPage() {
               </div>
               <button
                 onClick={() => handleDisplayChange('showAvatars')}
-                className={`w-12 h-6 rounded-full transition-colors ${
-                  display.showAvatars ? 'bg-[var(--color-primary)]' : 'bg-slate-300'
-                }`}
+                className="w-12 h-6 rounded-full transition-colors"
+                style={{ backgroundColor: display.showAvatars ? 'var(--color-primary)' : 'var(--color-border)' }}
               >
                 <div className={`w-5 h-5 rounded-full bg-white shadow transition-transform ${
                   display.showAvatars ? 'translate-x-6' : 'translate-x-0.5'

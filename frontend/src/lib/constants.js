@@ -121,6 +121,7 @@ export const getNavigation = (role) => {
     { name: 'Tracking', href: '/tracking', icon: MapPin },
     { name: 'Pagos', href: '/pagos', icon: CreditCard },
     { name: 'Mi Perfil', href: '/profile', icon: User },
+    { name: 'Configuración', href: '/settings', icon: Settings },
   ];
 
   const navByRole = {
