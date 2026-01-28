@@ -241,6 +241,15 @@ const startServer = async () => {
       console.log('⚠️ Migraciones de billing:', migrationError.message);
     }
 
+    // Seed de planes (solo crea si no existen)
+    try {
+      const { seedPlans } = require('./database/seedPlans');
+      await seedPlans();
+      console.log('✅ Planes de suscripción verificados');
+    } catch (seedError) {
+      console.log('⚠️ Seed de planes:', seedError.message);
+    }
+
     app.listen(PORT, () => {
       console.log(`
 🚀 Nicroma API iniciada
