@@ -14,6 +14,45 @@ const {
 router.use(authenticateToken);
 
 // ===========================================
+// Rutas /my/* (deben ir ANTES de /:id para evitar conflictos)
+// ===========================================
+
+// Listar usuarios de mi organización (para admins/managers)
+router.get('/my/users',
+  requireRole('admin', 'manager'),
+  tenantController.listMyTenantUsers
+);
+
+// Obtener configuración de la empresa actual
+router.get('/my/company',
+  tenantController.getCompanyConfig
+);
+
+// Actualizar configuración de la empresa
+router.put('/my/company',
+  requireRole('admin', 'root'),
+  tenantController.updateCompanyConfig
+);
+
+// Subir logo de la empresa
+router.post('/my/company/logo',
+  requireRole('admin', 'root'),
+  tenantController.uploadCompanyLogo
+);
+
+// Eliminar logo de la empresa
+router.delete('/my/company/logo',
+  requireRole('admin', 'root'),
+  tenantController.deleteCompanyLogo
+);
+
+// Generar/habilitar link del portal de clientes
+router.post('/my/company/portal',
+  requireRole('admin', 'root'),
+  tenantController.generatePortalSlug
+);
+
+// ===========================================
 // Rutas de tenants (solo root)
 // ===========================================
 
@@ -97,45 +136,6 @@ router.get('/:id/invitations',
 router.delete('/invitations/:invitationId',
   uuidValidation('invitationId'),
   tenantController.cancelInvitation
-);
-
-// ===========================================
-// Rutas de configuración de empresa
-// ===========================================
-
-// Listar usuarios de mi organización (para admins/managers)
-router.get('/my/users',
-  requireRole('admin', 'manager'),
-  tenantController.listMyTenantUsers
-);
-
-// Obtener configuración de la empresa actual
-router.get('/my/company',
-  tenantController.getCompanyConfig
-);
-
-// Actualizar configuración de la empresa
-router.put('/my/company',
-  requireRole('admin', 'root'),
-  tenantController.updateCompanyConfig
-);
-
-// Subir logo de la empresa
-router.post('/my/company/logo',
-  requireRole('admin', 'root'),
-  tenantController.uploadCompanyLogo
-);
-
-// Eliminar logo de la empresa
-router.delete('/my/company/logo',
-  requireRole('admin', 'root'),
-  tenantController.deleteCompanyLogo
-);
-
-// Generar/habilitar link del portal de clientes
-router.post('/my/company/portal',
-  requireRole('admin', 'root'),
-  tenantController.generatePortalSlug
 );
 
 module.exports = router;
