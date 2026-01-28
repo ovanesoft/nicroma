@@ -19,6 +19,21 @@ model Tenant {
   createdAt            DateTime?             @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt            DateTime?             @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   createdBy            String?               @map("created_by") @db.Uuid
+  
+  // Portal de clientes
+  portalEnabled        Boolean?              @default(false) @map("portal_enabled")
+  portalSlug           String?               @unique @map("portal_slug") @db.VarChar(100)
+  portalWelcomeMessage String?               @map("portal_welcome_message")
+  portalPrimaryColor   String?               @default("#6366f1") @map("portal_primary_color") @db.VarChar(20)
+  
+  // Datos de la empresa
+  companyEmail         String?               @map("company_email") @db.VarChar(255)
+  companyPhone         String?               @map("company_phone") @db.VarChar(50)
+  companyAddress       String?               @map("company_address")
+  companyCity          String?               @map("company_city") @db.VarChar(100)
+  companyCountry       String?               @map("company_country") @db.VarChar(100)
+  companyWebsite       String?               @map("company_website") @db.VarChar(255)
+  
   audit_logs           AuditLog[]
   payments             payments[]
   promotion_uses       promotion_uses[]
