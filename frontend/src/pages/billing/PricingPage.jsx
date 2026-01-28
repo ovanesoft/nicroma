@@ -523,26 +523,25 @@ const PricingPage = () => {
         </div>
       </section>
 
-      {/* Accompaniment Section */}
+      {/* CTA Section */}
       <section className="py-16 px-4">
         <div className="max-w-4xl mx-auto">
           <div className="rounded-3xl p-8 md:p-12 bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-center relative overflow-hidden">
             <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4xIj48Y2lyY2xlIGN4PSIzMCIgY3k9IjMwIiByPSIyIi8+PC9nPjwvZz48L3N2Zz4=')] opacity-50" />
             <div className="relative">
               <h2 className="text-3xl md:text-4xl font-bold mb-4">
-                ¿Estás empezando? Te acompañamos.
+                Empezá hoy. Sin riesgos.
               </h2>
               <p className="text-xl text-indigo-100 mb-8 max-w-2xl mx-auto">
-                Sabemos que cada peso cuenta cuando arrancás. Si el precio es un problema, 
-                tenemos una oferta especial: <strong>$10.000/mes los primeros 2 meses</strong>. 
-                Queremos que crezcas con nosotros.
+                7 días de prueba gratis con acceso completo al plan Profesional.
+                Sin tarjeta de crédito. Cancelá cuando quieras.
               </p>
               <Button 
                 size="lg"
                 className="bg-white text-indigo-600 hover:bg-indigo-50 shadow-xl"
                 onClick={() => navigate('/register')}
               >
-                Empezar ahora
+                Empezar prueba gratis
                 <ArrowRight className="w-5 h-5" />
               </Button>
             </div>
