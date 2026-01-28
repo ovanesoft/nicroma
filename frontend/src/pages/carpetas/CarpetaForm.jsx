@@ -238,21 +238,53 @@ function CarpetaForm() {
     .map((m, idx) => ({ ...m, originalIndex: idx }))
     .filter(m => m.contenedorIndex === null || m.contenedorIndex === undefined);
 
+  // Opciones de base para gastos
+  const BASES_GASTO = [
+    { value: 'CANT_CONTENEDORES', label: 'Cant. Contenedores' },
+    { value: 'IMPORTE_FIJO', label: 'Importe Fijo' },
+    { value: 'KILOS', label: 'Kilos' },
+    { value: 'POR_CONTENEDOR', label: 'Por Contenedor' },
+    { value: 'POR_CNT_FLETE', label: 'Por Cnt Flete' },
+    { value: 'POR_ESCALA', label: 'Por Escala' },
+    { value: 'TONELADA', label: 'Tonelada' },
+    { value: 'TONELADA_M3', label: 'Tonelada/m3' },
+    { value: 'VOLUMEN', label: 'Volumen' }
+  ];
+
   // Gastos handlers
   const addGasto = () => {
     setGastos([...gastos, { 
-      concepto: '', montoVenta: 0, montoCosto: 0, cantidad: 1, divisa: 'USD' 
+      concepto: '', 
+      prepaidCollect: 'P', 
+      divisa: 'USD',
+      montoVenta: 0, 
+      montoCosto: 0, 
+      base: 'CANT_CONTENEDORES',
+      cantidad: 1,
+      gravado: true,
+      porcentajeIVA: 21
     }]);
   };
 
   const updateGasto = (index, field, value) => {
     const updated = [...gastos];
-    updated[index][field] = field.includes('monto') || field === 'cantidad' ? parseFloat(value) || 0 : value;
+    if (field === 'montoVenta' || field === 'montoCosto' || field === 'cantidad' || field === 'porcentajeIVA') {
+      updated[index][field] = parseFloat(value) || 0;
+    } else if (field === 'gravado') {
+      updated[index][field] = value;
+    } else {
+      updated[index][field] = value;
+    }
     setGastos(updated);
   };
 
   const removeGasto = (index) => {
     setGastos(gastos.filter((_, i) => i !== index));
+  };
+
+  const duplicateGasto = (index) => {
+    const gasto = { ...gastos[index] };
+    setGastos([...gastos.slice(0, index + 1), gasto, ...gastos.slice(index + 1)]);
   };
 
   const tabs = [
@@ -895,7 +927,10 @@ function CarpetaForm() {
         {activeTab === 'gastos' && (
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>Gastos</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <DollarSign className="w-5 h-5" />
+                Gastos
+              </CardTitle>
               <Button type="button" size="sm" onClick={addGasto}>
                 <Plus className="w-4 h-4" />
                 Agregar Gasto
@@ -903,112 +938,192 @@ function CarpetaForm() {
             </CardHeader>
             <CardContent>
               {gastos.length === 0 ? (
-                <p className="text-center text-slate-500 py-8">No hay gastos agregados</p>
+                <div className="text-center py-8">
+                  <DollarSign className="w-12 h-12 mx-auto text-slate-300 mb-3" />
+                  <p className="text-slate-500">No hay gastos agregados</p>
+                </div>
               ) : (
                 <div className="overflow-x-auto">
-                  <table className="w-full">
+                  <table className="w-full min-w-[900px]">
                     <thead>
-                      <tr className="text-left text-xs text-slate-500 border-b">
-                        <th className="pb-2 font-medium">Concepto</th>
-                        <th className="pb-2 font-medium">Divisa</th>
-                        <th className="pb-2 font-medium text-right">Venta</th>
-                        <th className="pb-2 font-medium text-right">Costo</th>
-                        <th className="pb-2 font-medium text-right">Cantidad</th>
-                        <th className="pb-2 font-medium text-right">Total Venta</th>
-                        <th className="pb-2 font-medium text-right">Total Costo</th>
-                        <th className="pb-2 w-10"></th>
+                      <tr className="text-xs text-slate-500 border-b border-slate-200 bg-slate-50">
+                        <th className="py-3 px-2 text-left font-medium w-[200px]">Gasto</th>
+                        <th className="py-3 px-2 text-center font-medium w-[60px]">P/C</th>
+                        <th className="py-3 px-2 text-center font-medium w-[80px]">Divisa</th>
+                        <th className="py-3 px-2 text-right font-medium w-[100px]">Venta</th>
+                        <th className="py-3 px-2 text-right font-medium w-[100px]">Costo</th>
+                        <th className="py-3 px-2 text-center font-medium w-[160px]">Base</th>
+                        <th className="py-3 px-2 text-right font-medium w-[100px]">Total Venta</th>
+                        <th className="py-3 px-2 text-right font-medium w-[100px]">Total Costo</th>
+                        <th className="py-3 px-2 text-center font-medium w-[80px]">Acciones</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {gastos.map((gasto, index) => (
-                        <tr key={index} className="border-b border-slate-100">
-                          <td className="py-2 pr-2">
-                            <input
-                              type="text"
-                              value={gasto.concepto || ''}
-                              onChange={(e) => updateGasto(index, 'concepto', e.target.value)}
-                              placeholder="FLETE MARITIMO"
-                              className="w-full px-2 py-1.5 text-sm rounded border border-slate-300"
-                            />
-                          </td>
-                          <td className="py-2 pr-2">
-                            <select
-                              value={gasto.divisa || 'USD'}
-                              onChange={(e) => updateGasto(index, 'divisa', e.target.value)}
-                              className="w-20 px-2 py-1.5 text-sm rounded border border-slate-300 bg-white"
-                            >
-                              <option value="USD">USD</option>
-                              <option value="ARS">ARS</option>
-                              <option value="EUR">EUR</option>
-                            </select>
-                          </td>
-                          <td className="py-2 pr-2">
-                            <input
-                              type="number"
-                              step="0.01"
-                              value={gasto.montoVenta || ''}
-                              onChange={(e) => updateGasto(index, 'montoVenta', e.target.value)}
-                              className="w-24 px-2 py-1.5 text-sm rounded border border-slate-300 text-right"
-                            />
-                          </td>
-                          <td className="py-2 pr-2">
-                            <input
-                              type="number"
-                              step="0.01"
-                              value={gasto.montoCosto || ''}
-                              onChange={(e) => updateGasto(index, 'montoCosto', e.target.value)}
-                              className="w-24 px-2 py-1.5 text-sm rounded border border-slate-300 text-right"
-                            />
-                          </td>
-                          <td className="py-2 pr-2">
-                            <input
-                              type="number"
-                              value={gasto.cantidad || 1}
-                              onChange={(e) => updateGasto(index, 'cantidad', e.target.value)}
-                              className="w-16 px-2 py-1.5 text-sm rounded border border-slate-300 text-right"
-                            />
-                          </td>
-                          <td className="py-2 pr-2 text-right text-sm font-medium text-slate-700">
-                            {((gasto.montoVenta || 0) * (gasto.cantidad || 1)).toFixed(2)}
-                          </td>
-                          <td className="py-2 pr-2 text-right text-sm font-medium text-slate-700">
-                            {((gasto.montoCosto || 0) * (gasto.cantidad || 1)).toFixed(2)}
-                          </td>
-                          <td className="py-2">
-                            <button 
-                              type="button"
-                              onClick={() => removeGasto(index)}
-                              className="p-1 text-red-500 hover:bg-red-50 rounded"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
+                      {gastos.map((gasto, index) => {
+                        const totalVenta = (gasto.montoVenta || 0) * (gasto.cantidad || 1);
+                        const totalCosto = (gasto.montoCosto || 0) * (gasto.cantidad || 1);
+                        return (
+                          <tr key={index} className="border-b border-slate-100 hover:bg-slate-50/50">
+                            {/* Gasto (Concepto) */}
+                            <td className="py-2 px-2">
+                              <input
+                                type="text"
+                                value={gasto.concepto || ''}
+                                onChange={(e) => updateGasto(index, 'concepto', e.target.value)}
+                                placeholder="FLETE MARITIMO"
+                                className="w-full px-2 py-1.5 text-sm rounded border border-slate-300 focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
+                              />
+                              <div className="flex items-center gap-2 mt-1">
+                                <label className="flex items-center gap-1 text-xs text-slate-500">
+                                  <input
+                                    type="checkbox"
+                                    checked={gasto.gravado !== false}
+                                    onChange={(e) => updateGasto(index, 'gravado', e.target.checked)}
+                                    className="w-3 h-3 rounded border-slate-300"
+                                  />
+                                  Gravado {gasto.gravado !== false ? `${gasto.porcentajeIVA || 21}%` : ''}
+                                </label>
+                              </div>
+                            </td>
+                            
+                            {/* P/C (Prepaid/Collect) */}
+                            <td className="py-2 px-2">
+                              <select
+                                value={gasto.prepaidCollect || 'P'}
+                                onChange={(e) => updateGasto(index, 'prepaidCollect', e.target.value)}
+                                className="w-full px-1 py-1.5 text-sm rounded border border-slate-300 bg-white text-center"
+                              >
+                                <option value="P">P</option>
+                                <option value="C">C</option>
+                              </select>
+                            </td>
+                            
+                            {/* Divisa */}
+                            <td className="py-2 px-2">
+                              <select
+                                value={gasto.divisa || 'USD'}
+                                onChange={(e) => updateGasto(index, 'divisa', e.target.value)}
+                                className="w-full px-1 py-1.5 text-sm rounded border border-slate-300 bg-white"
+                              >
+                                <option value="USD">USD</option>
+                                <option value="ARS">ARS</option>
+                                <option value="EUR">EUR</option>
+                              </select>
+                            </td>
+                            
+                            {/* Venta */}
+                            <td className="py-2 px-2">
+                              <input
+                                type="number"
+                                step="0.01"
+                                value={gasto.montoVenta || ''}
+                                onChange={(e) => updateGasto(index, 'montoVenta', e.target.value)}
+                                placeholder="0.00"
+                                className="w-full px-2 py-1.5 text-sm rounded border border-slate-300 text-right"
+                              />
+                            </td>
+                            
+                            {/* Costo */}
+                            <td className="py-2 px-2">
+                              <input
+                                type="number"
+                                step="0.01"
+                                value={gasto.montoCosto || ''}
+                                onChange={(e) => updateGasto(index, 'montoCosto', e.target.value)}
+                                placeholder="0.00"
+                                className="w-full px-2 py-1.5 text-sm rounded border border-slate-300 text-right"
+                              />
+                            </td>
+                            
+                            {/* Base */}
+                            <td className="py-2 px-2">
+                              <select
+                                value={gasto.base || 'CANT_CONTENEDORES'}
+                                onChange={(e) => updateGasto(index, 'base', e.target.value)}
+                                className="w-full px-1 py-1.5 text-sm rounded border border-slate-300 bg-white"
+                              >
+                                {BASES_GASTO.map(b => (
+                                  <option key={b.value} value={b.value}>{b.label}</option>
+                                ))}
+                              </select>
+                            </td>
+                            
+                            {/* Total Venta */}
+                            <td className="py-2 px-2 text-right">
+                              <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-50 text-green-700 rounded text-sm font-medium">
+                                {gasto.divisa || 'USD'}
+                                <span>{totalVenta.toFixed(2)}</span>
+                              </span>
+                            </td>
+                            
+                            {/* Total Costo */}
+                            <td className="py-2 px-2 text-right">
+                              <span className="inline-flex items-center gap-1 px-2 py-1 bg-red-50 text-red-700 rounded text-sm font-medium">
+                                {gasto.divisa || 'USD'}
+                                <span>{totalCosto.toFixed(2)}</span>
+                              </span>
+                            </td>
+                            
+                            {/* Acciones */}
+                            <td className="py-2 px-2">
+                              <div className="flex items-center justify-center gap-1">
+                                <button 
+                                  type="button"
+                                  onClick={() => duplicateGasto(index)}
+                                  className="p-1.5 text-slate-400 hover:text-primary-500 hover:bg-primary-50 rounded"
+                                  title="Duplicar"
+                                >
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                  </svg>
+                                </button>
+                                <button 
+                                  type="button"
+                                  onClick={() => removeGasto(index)}
+                                  className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded"
+                                  title="Eliminar"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
-                    <tfoot>
-                      <tr className="font-medium text-slate-800">
-                        <td colSpan={5} className="pt-4 text-right">Totales:</td>
-                        <td className="pt-4 text-right">
-                          {gastos.reduce((sum, g) => sum + (g.montoVenta || 0) * (g.cantidad || 1), 0).toFixed(2)}
-                        </td>
-                        <td className="pt-4 text-right">
-                          {gastos.reduce((sum, g) => sum + (g.montoCosto || 0) * (g.cantidad || 1), 0).toFixed(2)}
-                        </td>
-                        <td></td>
-                      </tr>
-                      <tr className="text-green-600 font-medium">
-                        <td colSpan={5} className="pt-2 text-right">Margen:</td>
-                        <td colSpan={2} className="pt-2 text-right">
-                          {(
+                  </table>
+                  
+                  {/* Totales */}
+                  <div className="mt-4 pt-4 border-t border-slate-200">
+                    <div className="flex justify-end gap-8">
+                      <div className="text-right">
+                        <p className="text-xs text-slate-500 mb-1">Total Venta</p>
+                        <p className="text-lg font-bold text-green-600">
+                          USD {gastos.reduce((sum, g) => sum + (g.montoVenta || 0) * (g.cantidad || 1), 0).toFixed(2)}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs text-slate-500 mb-1">Total Costo</p>
+                        <p className="text-lg font-bold text-red-600">
+                          USD {gastos.reduce((sum, g) => sum + (g.montoCosto || 0) * (g.cantidad || 1), 0).toFixed(2)}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs text-slate-500 mb-1">Margen</p>
+                        <p className={`text-lg font-bold ${
+                          gastos.reduce((sum, g) => sum + (g.montoVenta || 0) * (g.cantidad || 1), 0) -
+                          gastos.reduce((sum, g) => sum + (g.montoCosto || 0) * (g.cantidad || 1), 0) >= 0
+                            ? 'text-emerald-600'
+                            : 'text-red-600'
+                        }`}>
+                          USD {(
                             gastos.reduce((sum, g) => sum + (g.montoVenta || 0) * (g.cantidad || 1), 0) -
                             gastos.reduce((sum, g) => sum + (g.montoCosto || 0) * (g.cantidad || 1), 0)
                           ).toFixed(2)}
-                        </td>
-                        <td></td>
-                      </tr>
-                    </tfoot>
-                  </table>
+                        </p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )}
             </CardContent>
