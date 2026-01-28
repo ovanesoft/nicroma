@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import api from '../api/axios';
 
 // Hook genérico para GET requests
@@ -134,15 +134,31 @@ export function useCarpetas(params = {}) {
   const queryString = new URLSearchParams(
     Object.entries(params).filter(([_, v]) => v !== undefined && v !== '')
   ).toString();
-  return useApiQuery(
-    ['carpetas', params], 
-    `/carpetas${queryString ? `?${queryString}` : ''}`
-  );
+  return useQuery({
+    queryKey: ['carpetas', params],
+    queryFn: async () => {
+      const response = await api.get(`/carpetas${queryString ? `?${queryString}` : ''}`);
+      return response.data;
+    },
+    refetchInterval: 15000,
+    staleTime: 10000,
+    refetchOnWindowFocus: false,
+    placeholderData: keepPreviousData
+  });
 }
 
 export function useCarpeta(id) {
-  return useApiQuery(['carpeta', id], `/carpetas/${id}`, {
-    enabled: !!id
+  return useQuery({
+    queryKey: ['carpeta', id],
+    queryFn: async () => {
+      const response = await api.get(`/carpetas/${id}`);
+      return response.data;
+    },
+    enabled: !!id,
+    refetchInterval: 15000,
+    staleTime: 10000,
+    refetchOnWindowFocus: false,
+    placeholderData: keepPreviousData
   });
 }
 
@@ -785,7 +801,11 @@ export function usePresupuestos(params = {}) {
       if (params.clienteId) searchParams.append('clienteId', params.clienteId);
       const response = await api.get(`/presupuestos?${searchParams.toString()}`);
       return response.data;
-    }
+    },
+    refetchInterval: 15000,
+    staleTime: 10000,
+    refetchOnWindowFocus: false,
+    placeholderData: keepPreviousData // Mantiene datos mientras refresca
   });
 }
 
@@ -797,7 +817,11 @@ export function usePresupuesto(id) {
       const response = await api.get(`/presupuestos/${id}`);
       return response.data;
     },
-    enabled: !!id
+    enabled: !!id,
+    refetchInterval: 15000,
+    staleTime: 10000,
+    refetchOnWindowFocus: false,
+    placeholderData: keepPreviousData
   });
 }
 
@@ -870,7 +894,10 @@ export function useMensajesPresupuesto(id) {
       return response.data;
     },
     enabled: !!id,
-    refetchInterval: 10000 // Refrescar cada 10 segundos para simular "tiempo real"
+    refetchInterval: 10000,
+    staleTime: 5000,
+    refetchOnWindowFocus: false,
+    placeholderData: keepPreviousData
   });
 }
 
@@ -906,7 +933,11 @@ export function usePresupuestosCliente() {
     queryFn: async () => {
       const response = await api.get('/presupuestos/mis-presupuestos');
       return response.data;
-    }
+    },
+    refetchInterval: 15000,
+    staleTime: 10000,
+    refetchOnWindowFocus: false,
+    placeholderData: keepPreviousData
   });
 }
 
@@ -923,8 +954,10 @@ export function useNotificaciones() {
         return { data: { notificaciones: {} } };
       }
     },
-    refetchInterval: 30000, // Refrescar cada 30 segundos
-    staleTime: 10000, // Considerar datos frescos por 10 segundos
+    refetchInterval: 15000,
+    staleTime: 10000,
+    refetchOnWindowFocus: false,
+    placeholderData: keepPreviousData,
     retry: 1
   });
 }
