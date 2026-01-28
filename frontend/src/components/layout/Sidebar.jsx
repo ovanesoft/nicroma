@@ -20,6 +20,13 @@ function Sidebar() {
   const navigation = getNavigation(user?.role);
   const notificaciones = notificacionesData?.data?.notificaciones || {};
   
+  // Debug: ver qué datos llegan
+  useEffect(() => {
+    if (notificacionesData) {
+      console.log('Notificaciones data:', notificacionesData);
+    }
+  }, [notificacionesData]);
+  
   // Mapear notificaciones a rutas
   const getBadgeCount = (href, itemName) => {
     // Para usuarios del tenant

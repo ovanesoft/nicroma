@@ -915,11 +915,17 @@ export function useNotificaciones() {
   return useQuery({
     queryKey: ['notificaciones'],
     queryFn: async () => {
-      const response = await api.get('/presupuestos/notificaciones');
-      return response.data;
+      try {
+        const response = await api.get('/presupuestos/notificaciones');
+        return response.data;
+      } catch (error) {
+        console.error('Error fetching notificaciones:', error);
+        return { data: { notificaciones: {} } };
+      }
     },
     refetchInterval: 30000, // Refrescar cada 30 segundos
-    staleTime: 10000 // Considerar datos frescos por 10 segundos
+    staleTime: 10000, // Considerar datos frescos por 10 segundos
+    retry: 1
   });
 }
 
