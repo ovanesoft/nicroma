@@ -4,7 +4,7 @@
   "description": "Backend API para Nicroma - Sistema Multi-tenant",
   "main": "src/app.js",
   "scripts": {
-    "start": "node src/app.js",
+    "start": "npx prisma generate && node src/app.js",
     "dev": "nodemon src/app.js",
     "db:init": "node src/database/init.js",
     "db:push": "npx prisma db push --accept-data-loss",
