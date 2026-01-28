@@ -396,6 +396,145 @@ model NotificationRead {
   @@map("notification_reads")
 }
 
+// ===========================================
+// SISTEMA DE MENSAJERÍA / CONVERSACIONES
+// ===========================================
+
+// Tipo de conversación
+enum ConversationType {
+  SUPPORT       // Soporte técnico (usuario → root)
+  BILLING       // Consultas de facturación (tenant → root)
+  GENERAL       // Consulta general
+  CLIENT_TENANT // Comunicación cliente ↔ tenant
+}
+
+// Estado de la conversación
+enum ConversationStatus {
+  OPEN
+  PENDING     // Esperando respuesta
+  RESOLVED
+  CLOSED
+}
+
+// Conversaciones
+model Conversation {
+  id              String             @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  
+  // Tipo y estado
+  type            ConversationType   @default(GENERAL)
+  status          ConversationStatus @default(OPEN)
+  
+  // Asunto
+  subject         String             @db.VarChar(255)
+  
+  // Participantes
+  // Iniciador de la conversación
+  createdByUserId String             @map("created_by_user_id") @db.Uuid
+  createdByTenantId String?          @map("created_by_tenant_id") @db.Uuid
+  
+  // Destinatario (puede ser null si es al root/soporte)
+  // Para CLIENT_TENANT: el tenant del cliente
+  targetTenantId  String?            @map("target_tenant_id") @db.Uuid
+  // Para soporte específico a un usuario
+  targetUserId    String?            @map("target_user_id") @db.Uuid
+  // Si es true, el root/admin puede ver esta conversación
+  isRootConversation Boolean         @default(false) @map("is_root_conversation")
+  
+  // Asignación (para soporte)
+  assignedToUserId String?           @map("assigned_to_user_id") @db.Uuid
+  
+  // Metadata
+  priority        NotificationPriority @default(NORMAL)
+  tags            Json?              @default("[]")
+  
+  // Fechas
+  createdAt       DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime           @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  lastMessageAt   DateTime?          @map("last_message_at") @db.Timestamptz(6)
+  resolvedAt      DateTime?          @map("resolved_at") @db.Timestamptz(6)
+  
+  // Relaciones
+  messages        ConversationMessage[]
+  participants    ConversationParticipant[]
+
+  @@index([createdByUserId], map: "idx_conversations_created_by")
+  @@index([targetTenantId], map: "idx_conversations_target_tenant")
+  @@index([status], map: "idx_conversations_status")
+  @@index([type], map: "idx_conversations_type")
+  @@index([lastMessageAt(sort: Desc)], map: "idx_conversations_last_message")
+  @@map("conversations")
+}
+
+// Mensajes de conversación
+model ConversationMessage {
+  id              String       @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  conversationId  String       @map("conversation_id") @db.Uuid
+  conversation    Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  
+  // Autor
+  authorUserId    String       @map("author_user_id") @db.Uuid
+  authorName      String       @map("author_name") @db.VarChar(255)
+  authorRole      String       @map("author_role") @db.VarChar(50) // root, admin, manager, user, client
+  
+  // Contenido
+  content         String
+  
+  // Adjuntos (URLs)
+  attachments     Json?        @default("[]")
+  
+  // Sistema (mensajes automáticos)
+  isSystemMessage Boolean      @default(false) @map("is_system_message")
+  
+  // Fechas
+  createdAt       DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  editedAt        DateTime?    @map("edited_at") @db.Timestamptz(6)
+  
+  // Lecturas
+  reads           MessageRead[]
+
+  @@index([conversationId], map: "idx_conversation_messages_conversation")
+  @@index([createdAt], map: "idx_conversation_messages_created")
+  @@map("conversation_messages")
+}
+
+// Participantes de conversación (para tracking de lecturas y notificaciones)
+model ConversationParticipant {
+  id              String       @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  conversationId  String       @map("conversation_id") @db.Uuid
+  conversation    Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  userId          String       @map("user_id") @db.Uuid
+  
+  // Rol en la conversación
+  role            String       @default("participant") @db.VarChar(50) // creator, participant, assigned
+  
+  // Notificaciones
+  notificationsEnabled Boolean @default(true) @map("notifications_enabled")
+  
+  // Última lectura
+  lastReadAt      DateTime?    @map("last_read_at") @db.Timestamptz(6)
+  
+  // Fechas
+  joinedAt        DateTime     @default(now()) @map("joined_at") @db.Timestamptz(6)
+  leftAt          DateTime?    @map("left_at") @db.Timestamptz(6)
+
+  @@unique([conversationId, userId])
+  @@index([userId], map: "idx_conversation_participants_user")
+  @@map("conversation_participants")
+}
+
+// Lecturas de mensajes
+model MessageRead {
+  id              String              @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  messageId       String              @map("message_id") @db.Uuid
+  message         ConversationMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  userId          String              @map("user_id") @db.Uuid
+  readAt          DateTime            @default(now()) @map("read_at") @db.Timestamptz(6)
+
+  @@unique([messageId, userId])
+  @@index([userId], map: "idx_message_reads_user")
+  @@map("message_reads")
+}
+
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model tenant_subscriptions {
   id                   String            @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid

@@ -1301,3 +1301,93 @@ export function useDeactivateNotification() {
     }
   });
 }
+
+// =====================================================
+// CONVERSACIONES / MENSAJERÍA
+// =====================================================
+
+// Obtener mis conversaciones
+export function useMyConversations(filters = {}) {
+  const params = new URLSearchParams();
+  if (filters.status) params.append('status', filters.status);
+  if (filters.type) params.append('type', filters.type);
+  
+  return useQuery({
+    queryKey: ['myConversations', filters],
+    queryFn: async () => {
+      const response = await api.get(`/conversations/my?${params}`);
+      return response.data;
+    },
+    refetchInterval: 30000 // Refrescar cada 30 segundos
+  });
+}
+
+// Obtener conteo de conversaciones no leídas
+export function useUnreadConversationsCount() {
+  return useQuery({
+    queryKey: ['unreadConversationsCount'],
+    queryFn: async () => {
+      const response = await api.get('/conversations/unread-count');
+      return response.data;
+    },
+    refetchInterval: 60000
+  });
+}
+
+// Obtener una conversación con mensajes
+export function useConversation(id) {
+  return useQuery({
+    queryKey: ['conversation', id],
+    queryFn: async () => {
+      const response = await api.get(`/conversations/${id}`);
+      return response.data;
+    },
+    enabled: !!id,
+    refetchInterval: 10000 // Refrescar cada 10 segundos cuando está abierta
+  });
+}
+
+// Crear nueva conversación
+export function useCreateConversation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (data) => {
+      const response = await api.post('/conversations', data);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['myConversations'] });
+      queryClient.invalidateQueries({ queryKey: ['unreadConversationsCount'] });
+    }
+  });
+}
+
+// Agregar mensaje a conversación
+export function useAddMessage() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ conversationId, content, attachments }) => {
+      const response = await api.post(`/conversations/${conversationId}/messages`, { content, attachments });
+      return response.data;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['conversation', variables.conversationId] });
+      queryClient.invalidateQueries({ queryKey: ['myConversations'] });
+    }
+  });
+}
+
+// Cambiar estado de conversación
+export function useUpdateConversationStatus() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ conversationId, status }) => {
+      const response = await api.patch(`/conversations/${conversationId}/status`, { status });
+      return response.data;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['conversation', variables.conversationId] });
+      queryClient.invalidateQueries({ queryKey: ['myConversations'] });
+    }
+  });
+}

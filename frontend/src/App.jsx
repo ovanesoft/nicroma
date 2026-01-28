@@ -20,6 +20,10 @@ import TenantsPage from './pages/admin/TenantsPage';
 import UsersPage from './pages/admin/UsersPage';
 import SystemLogsPage from './pages/admin/SystemLogsPage';
 import SettingsPage from './pages/admin/SettingsPage';
+import NotificationsPage from './pages/admin/NotificationsPage';
+
+// Pages - Messages
+import MessagesPage from './pages/MessagesPage';
 
 // Pages - User Settings
 import UserSettingsPage from './pages/UserSettingsPage';
@@ -215,6 +219,19 @@ function AppRoutes() {
           <BillingPromotions />
         </ProtectedRoute>
       } />
+      <Route path="/admin/notifications" element={
+        <ProtectedRoute allowedRoles={['root']}>
+          <NotificationsPage />
+        </ProtectedRoute>
+      } />
+      
+      {/* ==================== MENSAJES (Todos los usuarios) ==================== */}
+      <Route path="/messages" element={
+        <ProtectedRoute>
+          <MessagesPage />
+        </ProtectedRoute>
+      } />
+
       <Route path="/settings" element={
         <ProtectedRoute>
           <SettingsRouter />

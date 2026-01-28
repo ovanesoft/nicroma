@@ -19,7 +19,9 @@ import {
   Activity,
   Calculator,
   MessageSquare,
-  Sparkles
+  Sparkles,
+  Bell,
+  Megaphone
 } from 'lucide-react';
 
 // Navegación según rol
@@ -30,12 +32,14 @@ export const getNavigation = (role) => {
 
   const rootNav = [
     ...common,
+    { name: 'Mensajes', href: '/messages', icon: MessageSquare },
     { 
       name: 'Administración',
       icon: Building2,
       children: [
         { name: 'Organizaciones', href: '/admin/tenants', icon: Building2 },
         { name: 'Usuarios', href: '/admin/users', icon: Users },
+        { name: 'Notificaciones', href: '/admin/notifications', icon: Megaphone },
         { name: 'Logs del Sistema', href: '/admin/logs', icon: Activity },
       ]
     },
@@ -53,6 +57,7 @@ export const getNavigation = (role) => {
 
   const adminNav = [
     ...common,
+    { name: 'Mensajes', href: '/messages', icon: MessageSquare },
     { 
       name: 'Mi Organización',
       icon: Building2,
@@ -133,8 +138,9 @@ export const getNavigation = (role) => {
   // Navegación para clientes del portal
   const clientNav = [
     ...common,
+    { name: 'Mensajes', href: '/messages', icon: MessageSquare },
     { name: 'Solicitar Presupuesto', href: '/solicitar-presupuesto', icon: Calculator },
-    { name: 'Mis Presupuestos', href: '/mis-presupuestos', icon: MessageSquare },
+    { name: 'Mis Presupuestos', href: '/mis-presupuestos', icon: Mail },
     { name: 'Mis Envíos', href: '/mis-envios', icon: Ship },
     { name: 'Mis Facturas', href: '/mis-facturas', icon: FileText },
     { name: 'Tracking', href: '/tracking', icon: MapPin },
