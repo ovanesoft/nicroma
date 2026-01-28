@@ -12,6 +12,9 @@ router.get('/mis-presupuestos', authenticateToken, presupuestoController.listarP
 // Rutas protegidas para tenant
 router.use(authenticateToken);
 
+// Notificaciones (para todos los usuarios autenticados)
+router.get('/notificaciones', presupuestoController.obtenerNotificaciones);
+
 // CRUD de presupuestos
 router.get('/', requireRole('admin', 'manager', 'user'), presupuestoController.listarPresupuestos);
 router.get('/:id', presupuestoController.obtenerPresupuesto);
@@ -25,5 +28,6 @@ router.post('/:id/convertir', requireRole('admin', 'manager'), presupuestoContro
 // Mensajes/Chat
 router.get('/:id/mensajes', presupuestoController.obtenerMensajes);
 router.post('/:id/mensajes', presupuestoController.agregarMensaje);
+router.post('/:id/mensajes/leidos', presupuestoController.marcarMensajesLeidos);
 
 module.exports = router;

@@ -5,11 +5,12 @@ import { cn } from '../../lib/utils';
 import { getNavigation } from '../../lib/constants';
 import { useUIStore } from '../../stores/uiStore';
 import { useAuth } from '../../context/AuthContext';
-import { useCompanyConfig } from '../../hooks/useApi';
+import { useCompanyConfig, useNotificaciones } from '../../hooks/useApi';
 
 function Sidebar() {
   const { user } = useAuth();
   const { data: companyData } = useCompanyConfig();
+  const { data: notificacionesData } = useNotificaciones();
   const location = useLocation();
   const { sidebarCollapsed, toggleSidebar } = useUIStore();
   const [expandedItems, setExpandedItems] = useState({});
@@ -17,6 +18,21 @@ function Sidebar() {
   const hoverTimeoutRef = useRef(null);
   
   const navigation = getNavigation(user?.role);
+  const notificaciones = notificacionesData?.data?.notificaciones || {};
+  
+  // Mapear notificaciones a rutas
+  const getBadgeCount = (href, itemName) => {
+    // Para usuarios del tenant
+    if (href === '/presupuestos' || itemName === 'Presupuestos') {
+      return notificaciones.presupuestosPendientes || 0;
+    }
+    // Para clientes del portal
+    if (href === '/mis-presupuestos' || itemName === 'Mis Presupuestos') {
+      const total = (notificaciones.presupuestosParaRevisar || 0) + (notificaciones.mensajesNoLeidos || 0);
+      return total;
+    }
+    return 0;
+  };
 
   const toggleExpanded = (name) => {
     setExpandedItems(prev => ({
@@ -63,11 +79,32 @@ function Sidebar() {
     }
   }, [sidebarCollapsed]);
 
+  // Componente Badge de notificación
+  const NotificationBadge = ({ count, small = false }) => {
+    if (!count || count === 0) return null;
+    return (
+      <span className={cn(
+        'bg-red-500 text-white font-bold rounded-full flex items-center justify-center animate-pulse',
+        small 
+          ? 'min-w-[16px] h-4 text-[10px] px-1' 
+          : 'min-w-[20px] h-5 text-xs px-1.5'
+      )}>
+        {count > 99 ? '99+' : count}
+      </span>
+    );
+  };
+
   const NavItem = ({ item, depth = 0 }) => {
     const hasChildren = item.children && item.children.length > 0;
     const isExpanded = expandedItems[item.name] || isActiveParent(item);
     const isActive = location.pathname === item.href;
     const isHovered = hoveredItem === item.name;
+    const badgeCount = getBadgeCount(item.href, item.name);
+    
+    // Calcular badge total para items con hijos
+    const childrenBadgeTotal = hasChildren 
+      ? item.children.reduce((total, child) => total + getBadgeCount(child.href, child.name), 0)
+      : 0;
     
     if (hasChildren) {
       return (
@@ -87,10 +124,19 @@ function Sidebar() {
             )}
             title={sidebarCollapsed ? item.name : undefined}
           >
-            <item.icon className="w-5 h-5 flex-shrink-0" />
+            <div className="relative">
+              <item.icon className="w-5 h-5 flex-shrink-0" />
+              {/* Badge cuando sidebar está colapsado */}
+              {sidebarCollapsed && childrenBadgeTotal > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] font-bold min-w-[14px] h-3.5 rounded-full flex items-center justify-center px-1">
+                  {childrenBadgeTotal > 99 ? '99+' : childrenBadgeTotal}
+                </span>
+              )}
+            </div>
             {!sidebarCollapsed && (
               <>
                 <span className="flex-1 font-medium">{item.name}</span>
+                {childrenBadgeTotal > 0 && <NotificationBadge count={childrenBadgeTotal} />}
                 <ChevronDown 
                   className={cn(
                     'w-4 h-4 transition-transform',
@@ -124,22 +170,26 @@ function Sidebar() {
                   <span className="font-semibold text-slate-800">{item.name}</span>
                 </div>
                 <div className="py-1">
-                  {item.children.map((child) => (
-                    <NavLink
-                      key={child.name}
-                      to={child.href}
-                      onClick={() => setHoveredItem(null)}
-                      className={({ isActive }) => cn(
-                        'flex items-center gap-3 px-4 py-2 transition-colors',
-                        isActive
-                          ? 'bg-primary-50 text-primary-700'
-                          : 'text-slate-600 hover:bg-slate-50'
-                      )}
-                    >
-                      <child.icon className="w-4 h-4" />
-                      <span className="text-sm">{child.name}</span>
-                    </NavLink>
-                  ))}
+                  {item.children.map((child) => {
+                    const childBadge = getBadgeCount(child.href, child.name);
+                    return (
+                      <NavLink
+                        key={child.name}
+                        to={child.href}
+                        onClick={() => setHoveredItem(null)}
+                        className={({ isActive }) => cn(
+                          'flex items-center gap-3 px-4 py-2 transition-colors',
+                          isActive
+                            ? 'bg-primary-50 text-primary-700'
+                            : 'text-slate-600 hover:bg-slate-50'
+                        )}
+                      >
+                        <child.icon className="w-4 h-4" />
+                        <span className="text-sm flex-1">{child.name}</span>
+                        {childBadge > 0 && <NotificationBadge count={childBadge} small />}
+                      </NavLink>
+                    );
+                  })}
                 </div>
               </div>
             </div>
@@ -161,9 +211,20 @@ function Sidebar() {
         )}
         title={sidebarCollapsed ? item.name : undefined}
       >
-        <item.icon className={cn('flex-shrink-0', depth > 0 ? 'w-4 h-4' : 'w-5 h-5')} />
+        <div className="relative">
+          <item.icon className={cn('flex-shrink-0', depth > 0 ? 'w-4 h-4' : 'w-5 h-5')} />
+          {/* Badge cuando sidebar está colapsado */}
+          {sidebarCollapsed && badgeCount > 0 && (
+            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] font-bold min-w-[14px] h-3.5 rounded-full flex items-center justify-center px-1">
+              {badgeCount > 99 ? '99+' : badgeCount}
+            </span>
+          )}
+        </div>
         {!sidebarCollapsed && (
-          <span className={depth > 0 ? 'text-sm' : ''}>{item.name}</span>
+          <>
+            <span className={cn('flex-1', depth > 0 ? 'text-sm' : '')}>{item.name}</span>
+            {badgeCount > 0 && <NotificationBadge count={badgeCount} small={depth > 0} />}
+          </>
         )}
       </NavLink>
     );

@@ -766,6 +766,126 @@ const listarPresupuestosCliente = async (req, res) => {
   }
 };
 
+// Obtener conteos de notificaciones
+const obtenerNotificaciones = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const userRole = req.user.role;
+    const tenantId = req.user.tenant_id;
+
+    let notificaciones = {
+      presupuestosPendientes: 0,
+      presupuestosParaRevisar: 0,
+      mensajesNoLeidos: 0
+    };
+
+    if (userRole === 'client') {
+      // Para clientes del portal
+      const cliente = await prisma.cliente.findFirst({
+        where: { userId }
+      });
+
+      if (cliente) {
+        // Presupuestos enviados por el tenant para que el cliente revise
+        const presupuestosParaRevisar = await prisma.presupuesto.count({
+          where: {
+            clienteId: cliente.id,
+            estado: 'ENVIADO'
+          }
+        });
+
+        // Mensajes no leídos del tenant
+        const mensajesNoLeidos = await prisma.mensajePresupuesto.count({
+          where: {
+            presupuesto: {
+              clienteId: cliente.id
+            },
+            tipoRemitente: 'TENANT',
+            leido: false
+          }
+        });
+
+        notificaciones.presupuestosParaRevisar = presupuestosParaRevisar;
+        notificaciones.mensajesNoLeidos = mensajesNoLeidos;
+      }
+    } else if (tenantId && ['admin', 'manager', 'user'].includes(userRole)) {
+      // Para usuarios del tenant
+      // Presupuestos pendientes de atender
+      const presupuestosPendientes = await prisma.presupuesto.count({
+        where: {
+          tenantId,
+          estado: 'PENDIENTE'
+        }
+      });
+
+      // Mensajes no leídos de clientes
+      const mensajesNoLeidos = await prisma.mensajePresupuesto.count({
+        where: {
+          presupuesto: {
+            tenantId
+          },
+          tipoRemitente: 'CLIENTE',
+          leido: false
+        }
+      });
+
+      notificaciones.presupuestosPendientes = presupuestosPendientes;
+      notificaciones.mensajesNoLeidos = mensajesNoLeidos;
+    }
+
+    res.json({
+      success: true,
+      data: { notificaciones }
+    });
+  } catch (error) {
+    console.error('Error obteniendo notificaciones:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al obtener notificaciones'
+    });
+  }
+};
+
+// Marcar mensajes como leídos
+const marcarMensajesLeidos = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+    const userRole = req.user.role;
+
+    // Determinar qué mensajes marcar según el rol
+    let tipoRemitente;
+    if (userRole === 'client') {
+      tipoRemitente = 'TENANT'; // Clientes marcan mensajes del tenant
+    } else {
+      tipoRemitente = 'CLIENTE'; // Tenant marca mensajes del cliente
+    }
+
+    await prisma.mensajePresupuesto.updateMany({
+      where: {
+        presupuestoId: id,
+        tipoRemitente,
+        leido: false
+      },
+      data: {
+        leido: true,
+        leidoAt: new Date()
+      }
+    });
+
+    res.json({
+      success: true,
+      message: 'Mensajes marcados como leídos'
+    });
+  } catch (error) {
+    console.error('Error marcando mensajes:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al marcar mensajes como leídos'
+    });
+  }
+};
+
 module.exports = {
   listarPresupuestos,
   obtenerPresupuesto,
@@ -776,5 +896,7 @@ module.exports = {
   convertirACarpeta,
   agregarMensaje,
   obtenerMensajes,
-  listarPresupuestosCliente
+  listarPresupuestosCliente,
+  obtenerNotificaciones,
+  marcarMensajesLeidos
 };

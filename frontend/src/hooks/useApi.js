@@ -909,3 +909,32 @@ export function usePresupuestosCliente() {
     }
   });
 }
+
+// Notificaciones (presupuestos pendientes, mensajes no leídos)
+export function useNotificaciones() {
+  return useQuery({
+    queryKey: ['notificaciones'],
+    queryFn: async () => {
+      const response = await api.get('/presupuestos/notificaciones');
+      return response.data;
+    },
+    refetchInterval: 30000, // Refrescar cada 30 segundos
+    staleTime: 10000 // Considerar datos frescos por 10 segundos
+  });
+}
+
+// Marcar mensajes como leídos
+export function useMarcarMensajesLeidos() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (presupuestoId) => {
+      const response = await api.post(`/presupuestos/${presupuestoId}/mensajes/leidos`);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notificaciones'] });
+      queryClient.invalidateQueries({ queryKey: ['presupuesto'] });
+      queryClient.invalidateQueries({ queryKey: ['mensajesPresupuesto'] });
+    }
+  });
+}

@@ -11,7 +11,7 @@ import {
 import { 
   usePresupuesto, useCreatePresupuesto, useUpdatePresupuesto,
   useBuscarClientes, useCambiarEstadoPresupuesto, useConvertirPresupuesto,
-  useMensajesPresupuesto, useAgregarMensaje
+  useMensajesPresupuesto, useAgregarMensaje, useMarcarMensajesLeidos
 } from '../../hooks/useApi';
 import { useAuth } from '../../context/AuthContext';
 import toast from 'react-hot-toast';
@@ -81,6 +81,7 @@ function PresupuestoForm() {
   const cambiarEstado = useCambiarEstadoPresupuesto();
   const convertir = useConvertirPresupuesto();
   const agregarMensaje = useAgregarMensaje();
+  const marcarLeidos = useMarcarMensajesLeidos();
 
   const clientes = clientesData?.data?.clientes || [];
   const mensajes = mensajesData?.data?.mensajes || [];
@@ -118,6 +119,18 @@ function PresupuestoForm() {
       chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [mensajes, activeTab]);
+
+  // Marcar mensajes como leídos cuando se abre el chat
+  useEffect(() => {
+    if (id && activeTab === 'chat' && mensajes.length > 0) {
+      // Verificar si hay mensajes no leídos del otro lado
+      const tipoOpuesto = user?.role === 'client' ? 'TENANT' : 'CLIENTE';
+      const hayNoLeidos = mensajes.some(m => m.tipoRemitente === tipoOpuesto && !m.leido);
+      if (hayNoLeidos) {
+        marcarLeidos.mutate(id);
+      }
+    }
+  }, [id, activeTab, mensajes]);
 
   const handleChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
