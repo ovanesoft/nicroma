@@ -811,11 +811,12 @@ const obtenerNotificaciones = async (req, res) => {
       }
     } else if (tenantId && ['admin', 'manager', 'user'].includes(userRole)) {
       // Para usuarios del tenant
-      // Presupuestos pendientes de atender
+      // Presupuestos pendientes de atender (no vistos aún)
       const presupuestosPendientes = await prisma.presupuesto.count({
         where: {
           tenantId,
-          estado: 'PENDIENTE'
+          estado: 'PENDIENTE',
+          vistoPorTenant: false  // Solo contar los que no han visto
         }
       });
 
@@ -887,55 +888,86 @@ const marcarMensajesLeidos = async (req, res) => {
   }
 };
 
-// Marcar presupuesto como visto por el cliente
+// Marcar presupuesto como visto (cliente o tenant)
 const marcarPresupuestoVisto = async (req, res) => {
   try {
     const { id } = req.params;
     const userId = req.user.id;
     const userRole = req.user.role;
+    const tenantId = req.user.tenant_id;
 
-    // Solo clientes pueden marcar como visto
-    if (userRole !== 'client') {
-      return res.status(403).json({
-        success: false,
-        message: 'Solo clientes pueden marcar presupuestos como vistos'
+    let presupuesto;
+    let updateData = {};
+
+    if (userRole === 'client') {
+      // Para clientes: verificar que el presupuesto le pertenece
+      const cliente = await prisma.cliente.findFirst({
+        where: { userId }
       });
-    }
 
-    // Verificar que el presupuesto pertenece al cliente
-    const cliente = await prisma.cliente.findFirst({
-      where: { userId }
-    });
-
-    if (!cliente) {
-      return res.status(404).json({
-        success: false,
-        message: 'Cliente no encontrado'
-      });
-    }
-
-    const presupuesto = await prisma.presupuesto.findFirst({
-      where: {
-        id,
-        clienteId: cliente.id
+      if (!cliente) {
+        return res.status(404).json({
+          success: false,
+          message: 'Cliente no encontrado'
+        });
       }
-    });
 
-    if (!presupuesto) {
-      return res.status(404).json({
-        success: false,
-        message: 'Presupuesto no encontrado'
+      presupuesto = await prisma.presupuesto.findFirst({
+        where: {
+          id,
+          clienteId: cliente.id
+        }
       });
-    }
 
-    // Marcar como visto si no lo estaba
-    if (!presupuesto.vistoPorCliente) {
-      await prisma.presupuesto.update({
-        where: { id },
-        data: {
+      if (!presupuesto) {
+        return res.status(404).json({
+          success: false,
+          message: 'Presupuesto no encontrado'
+        });
+      }
+
+      // Marcar como visto por cliente
+      if (!presupuesto.vistoPorCliente) {
+        updateData = {
           vistoPorCliente: true,
           fechaVistoPorCliente: new Date()
+        };
+      }
+    } else if (['admin', 'manager', 'user'].includes(userRole) && tenantId) {
+      // Para usuarios del tenant: verificar que el presupuesto pertenece al tenant
+      presupuesto = await prisma.presupuesto.findFirst({
+        where: {
+          id,
+          tenantId
         }
+      });
+
+      if (!presupuesto) {
+        return res.status(404).json({
+          success: false,
+          message: 'Presupuesto no encontrado'
+        });
+      }
+
+      // Marcar como visto por tenant
+      if (!presupuesto.vistoPorTenant) {
+        updateData = {
+          vistoPorTenant: true,
+          fechaVistoPorTenant: new Date()
+        };
+      }
+    } else {
+      return res.status(403).json({
+        success: false,
+        message: 'No autorizado'
+      });
+    }
+
+    // Actualizar si hay datos
+    if (Object.keys(updateData).length > 0) {
+      await prisma.presupuesto.update({
+        where: { id },
+        data: updateData
       });
     }
 

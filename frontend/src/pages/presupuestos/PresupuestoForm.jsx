@@ -89,9 +89,17 @@ function PresupuestoForm() {
   const mensajes = mensajesData?.data?.mensajes || [];
   const presupuesto = presupuestoData?.data?.presupuesto;
 
-  // Marcar presupuesto como visto cuando el cliente lo abre
+  // Marcar presupuesto como visto cuando se abre
   useEffect(() => {
-    if (presupuesto && user?.role === 'client' && presupuesto.estado === 'ENVIADO' && !presupuesto.vistoPorCliente) {
+    if (!presupuesto || !user?.role) return;
+    
+    // Para clientes: marcar como visto si está ENVIADO y no lo ha visto
+    if (user.role === 'client' && presupuesto.estado === 'ENVIADO' && !presupuesto.vistoPorCliente) {
+      marcarVisto.mutate(id);
+    }
+    
+    // Para tenant: marcar como visto si está PENDIENTE y no lo han visto
+    if (['admin', 'manager', 'user'].includes(user.role) && presupuesto.estado === 'PENDIENTE' && !presupuesto.vistoPorTenant) {
       marcarVisto.mutate(id);
     }
   }, [presupuesto, user?.role, id]);
