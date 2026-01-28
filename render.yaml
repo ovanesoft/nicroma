@@ -35,6 +35,7 @@ services:
       npx prisma generate
       npx prisma db push --accept-data-loss
       npm run db:init || echo "DB init completed or skipped"
+      npm run db:seed-plans || echo "Plans seed completed or skipped"
     startCommand: npm start
     healthCheckPath: /health
     autoDeploy: true
@@ -81,6 +82,15 @@ services:
         sync: false
       - key: EMAIL_FROM
         value: NicRoma <noreply@nicroma.com>
+      # MercadoPago - Billing
+      - key: MP_ACCESS_TOKEN
+        sync: false
+      - key: MP_PUBLIC_KEY
+        sync: false
+      - key: MP_WEBHOOK_SECRET
+        sync: false
+      - key: BACKEND_URL
+        value: https://nicroma-backend.onrender.com
 
   # ===========================================
   # FRONTEND
