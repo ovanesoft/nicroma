@@ -531,15 +531,29 @@ const getUnreadCount = async (req, res) => {
     let whereConditions = {};
 
     if (userRole === 'root') {
-      whereConditions = { isRootConversation: true };
+      // Root ve conversaciones de soporte + las que creó
+      whereConditions = {
+        OR: [
+          { isRootConversation: true },
+          { createdByUserId: userId }
+        ]
+      };
     } else if (userRole === 'client') {
-      whereConditions = { createdByUserId: userId };
+      // Cliente ve sus conversaciones y las que le enviaron
+      whereConditions = {
+        OR: [
+          { createdByUserId: userId },
+          { targetUserId: userId }
+        ]
+      };
     } else {
+      // Admin/Manager/User ve conversaciones de su tenant + las dirigidas a ellos
       whereConditions = {
         OR: [
           { createdByTenantId: tenantId },
           { targetTenantId: tenantId },
-          { createdByUserId: userId }
+          { createdByUserId: userId },
+          { targetUserId: userId }
         ]
       };
     }

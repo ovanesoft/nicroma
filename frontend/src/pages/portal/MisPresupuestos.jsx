@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Calculator, Plus, Clock, CheckCircle, XCircle, Send, 
@@ -9,7 +9,7 @@ import {
   Card, CardContent, Button, Badge,
   Table, TableHeader, TableBody, TableRow, TableHead, TableCell
 } from '../../components/ui';
-import { usePresupuestosCliente, useCambiarEstadoPresupuesto } from '../../hooks/useApi';
+import { usePresupuestosCliente, useCambiarEstadoPresupuesto, useMarcarPresupuestoVisto } from '../../hooks/useApi';
 import { formatDate, formatCurrency, cn } from '../../lib/utils';
 import toast from 'react-hot-toast';
 
@@ -26,8 +26,28 @@ function MisPresupuestos() {
   const navigate = useNavigate();
   const { data, isLoading, refetch } = usePresupuestosCliente();
   const cambiarEstado = useCambiarEstadoPresupuesto();
+  const marcarVisto = useMarcarPresupuestoVisto();
 
   const presupuestos = data?.data?.presupuestos || [];
+  const marcadosRef = useRef(new Set());
+
+  // Marcar como vistos los presupuestos enviados al cargar la página
+  useEffect(() => {
+    if (!presupuestos.length) return;
+    
+    // Encontrar presupuestos enviados que no hayan sido vistos y que no hayamos marcado ya
+    const noVistos = presupuestos.filter(p => 
+      p.estado === 'ENVIADO' && 
+      !p.vistoPorCliente && 
+      !marcadosRef.current.has(p.id)
+    );
+    
+    // Marcar cada uno como visto
+    noVistos.forEach(p => {
+      marcadosRef.current.add(p.id);
+      marcarVisto.mutate(p.id);
+    });
+  }, [presupuestos]);
 
   const handleAprobar = async (id) => {
     if (!confirm('¿Confirmar aprobación de este presupuesto?')) return;
