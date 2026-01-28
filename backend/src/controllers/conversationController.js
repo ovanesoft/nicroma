@@ -263,18 +263,11 @@ const createConversation = async (req, res) => {
     });
     const authorName = `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || 'Usuario';
 
-    // Determinar si es conversación con root (si NO es root quien inicia)
-    // Si el root inicia una conversación hacia un usuario, no es "root conversation"
-    // Las conversaciones CLIENT_TENANT van al tenant, no al root
-    const isRootConversation = userRole !== 'root' && 
-      type !== 'CLIENT_TENANT' && 
-      (type === 'SUPPORT' || type === 'BILLING' || !targetTenantId);
-
-    // Si el root está iniciando hacia un usuario específico, obtener su tenantId
+    // Si se especifica un targetUserId, obtener info del usuario destino
     let finalTargetTenantId = targetTenantId;
     let finalTargetUserId = targetUserId;
     
-    if (userRole === 'root' && targetUserId) {
+    if (targetUserId) {
       const targetUser = await prisma.user.findUnique({
         where: { id: targetUserId },
         select: { tenantId: true }
@@ -289,6 +282,17 @@ const createConversation = async (req, res) => {
     if (type === 'CLIENT_TENANT' && userRole === 'client' && tenantId) {
       finalTargetTenantId = tenantId;
     }
+
+    // Determinar si es conversación con root (si NO es root quien inicia)
+    // NO es rootConversation si:
+    // - Es el root quien inicia
+    // - Es tipo CLIENT_TENANT (va al tenant)
+    // - Hay un targetUserId específico (va a ese usuario)
+    // - Hay un targetTenantId específico
+    const isRootConversation = userRole !== 'root' && 
+      type !== 'CLIENT_TENANT' && 
+      !finalTargetUserId &&
+      (type === 'SUPPORT' || type === 'BILLING' || !finalTargetTenantId);
 
     const conversation = await prisma.conversation.create({
       data: {
