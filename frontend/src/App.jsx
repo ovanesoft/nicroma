@@ -21,6 +21,9 @@ import UsersPage from './pages/admin/UsersPage';
 import SystemLogsPage from './pages/admin/SystemLogsPage';
 import SettingsPage from './pages/admin/SettingsPage';
 
+// Pages - User Settings
+import UserSettingsPage from './pages/UserSettingsPage';
+
 // Pages - Organization (Admin/Manager)
 import OrgUsersPage from './pages/org/OrgUsersPage';
 import InvitationsPage from './pages/org/InvitationsPage';
@@ -70,6 +73,17 @@ const LoadingScreen = () => (
     </div>
   </div>
 );
+
+// Settings Router - muestra diferente página según rol
+const SettingsRouter = () => {
+  const { user } = useAuth();
+  
+  if (user?.role === 'root') {
+    return <SettingsPage />;
+  }
+  
+  return <UserSettingsPage />;
+};
 
 // Protected Route - requires authentication
 const ProtectedRoute = ({ children, allowedRoles = null }) => {
@@ -154,8 +168,8 @@ function AppRoutes() {
         </ProtectedRoute>
       } />
       <Route path="/settings" element={
-        <ProtectedRoute allowedRoles={['root']}>
-          <SettingsPage />
+        <ProtectedRoute>
+          <SettingsRouter />
         </ProtectedRoute>
       } />
 
