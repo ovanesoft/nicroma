@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
+import { createPortal } from 'react-dom';
 import { ChevronDown, ChevronLeft, ChevronRight, Zap, Building2 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { getNavigation } from '../../lib/constants';
@@ -15,7 +16,9 @@ function Sidebar() {
   const { sidebarCollapsed, toggleSidebar } = useUIStore();
   const [expandedItems, setExpandedItems] = useState({});
   const [hoveredItem, setHoveredItem] = useState(null);
+  const [popoverPosition, setPopoverPosition] = useState({ top: 0, left: 80 });
   const hoverTimeoutRef = useRef(null);
+  const buttonRefs = useRef({});
   
   const navigation = getNavigation(user?.role);
   const notificaciones = notificacionesData?.data?.notificaciones || {};
@@ -44,10 +47,18 @@ function Sidebar() {
     return item.children.some(child => location.pathname === child.href);
   };
 
-  const handleMouseEnter = (itemName) => {
+  const handleMouseEnter = (itemName, buttonElement) => {
     if (sidebarCollapsed) {
       if (hoverTimeoutRef.current) {
         clearTimeout(hoverTimeoutRef.current);
+      }
+      // Calcular posición del popover basado en el botón
+      if (buttonElement) {
+        const rect = buttonElement.getBoundingClientRect();
+        setPopoverPosition({
+          top: rect.top,
+          left: 80 // Ancho del sidebar colapsado
+        });
       }
       setHoveredItem(itemName);
     }
@@ -96,6 +107,7 @@ function Sidebar() {
     const isActive = location.pathname === item.href;
     const isHovered = hoveredItem === item.name;
     const badgeCount = getBadgeCount(item.href, item.name);
+    const buttonRef = useRef(null);
     
     const childrenBadgeTotal = hasChildren 
       ? item.children.reduce((total, child) => total + getBadgeCount(child.href, child.name), 0)
@@ -105,10 +117,11 @@ function Sidebar() {
       return (
         <div 
           className="relative"
-          onMouseEnter={() => handleMouseEnter(item.name)}
+          onMouseEnter={() => handleMouseEnter(item.name, buttonRef.current)}
           onMouseLeave={handleMouseLeave}
         >
           <button
+            ref={buttonRef}
             onClick={() => !sidebarCollapsed && toggleExpanded(item.name)}
             className={cn(
               'w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-left transition-colors',
@@ -154,19 +167,23 @@ function Sidebar() {
             </div>
           )}
 
-          {/* Popover flotante (sidebar colapsado) */}
-          {sidebarCollapsed && isHovered && (
+          {/* Popover flotante (sidebar colapsado) - usando Portal */}
+          {sidebarCollapsed && isHovered && createPortal(
             <div 
-              className="absolute left-full top-0 z-50 pl-1"
-              onMouseEnter={() => handleMouseEnter(item.name)}
+              className="fixed z-[9999]"
+              style={{
+                left: `${popoverPosition.left}px`,
+                top: `${popoverPosition.top}px`
+              }}
+              onMouseEnter={() => handleMouseEnter(item.name, buttonRef.current)}
               onMouseLeave={handleMouseLeave}
             >
-              <div className="absolute left-0 top-0 w-3 h-full -translate-x-full" />
               <div 
-                className="rounded-xl shadow-lg py-2 min-w-[200px]"
+                className="rounded-xl shadow-xl py-2 min-w-[200px] ml-2"
                 style={{ 
                   backgroundColor: 'var(--color-card)', 
-                  border: '1px solid var(--color-border)' 
+                  border: '1px solid var(--color-border)',
+                  boxShadow: '0 10px 40px rgba(0,0,0,0.2)'
                 }}
               >
                 <div 
@@ -184,7 +201,7 @@ function Sidebar() {
                         key={child.name}
                         to={child.href}
                         onClick={() => setHoveredItem(null)}
-                        className="flex items-center gap-3 px-4 py-2 transition-colors"
+                        className="flex items-center gap-3 px-4 py-2 transition-colors hover:bg-[var(--color-background)]"
                         style={{
                           color: isChildActive ? 'var(--color-sidebarActive)' : 'var(--color-text)',
                           backgroundColor: isChildActive ? 'var(--color-primary)20' : 'transparent'
@@ -198,7 +215,8 @@ function Sidebar() {
                   })}
                 </div>
               </div>
-            </div>
+            </div>,
+            document.body
           )}
         </div>
       );
