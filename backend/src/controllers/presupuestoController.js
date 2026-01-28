@@ -786,11 +786,12 @@ const obtenerNotificaciones = async (req, res) => {
       });
 
       if (cliente) {
-        // Presupuestos enviados por el tenant para que el cliente revise
+        // Presupuestos enviados por el tenant para que el cliente revise (no vistos aún)
         const presupuestosParaRevisar = await prisma.presupuesto.count({
           where: {
             clienteId: cliente.id,
-            estado: 'ENVIADO'
+            estado: 'ENVIADO',
+            vistoPorCliente: false  // Solo contar los que no ha visto
           }
         });
 
@@ -886,6 +887,71 @@ const marcarMensajesLeidos = async (req, res) => {
   }
 };
 
+// Marcar presupuesto como visto por el cliente
+const marcarPresupuestoVisto = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+    const userRole = req.user.role;
+
+    // Solo clientes pueden marcar como visto
+    if (userRole !== 'client') {
+      return res.status(403).json({
+        success: false,
+        message: 'Solo clientes pueden marcar presupuestos como vistos'
+      });
+    }
+
+    // Verificar que el presupuesto pertenece al cliente
+    const cliente = await prisma.cliente.findFirst({
+      where: { userId }
+    });
+
+    if (!cliente) {
+      return res.status(404).json({
+        success: false,
+        message: 'Cliente no encontrado'
+      });
+    }
+
+    const presupuesto = await prisma.presupuesto.findFirst({
+      where: {
+        id,
+        clienteId: cliente.id
+      }
+    });
+
+    if (!presupuesto) {
+      return res.status(404).json({
+        success: false,
+        message: 'Presupuesto no encontrado'
+      });
+    }
+
+    // Marcar como visto si no lo estaba
+    if (!presupuesto.vistoPorCliente) {
+      await prisma.presupuesto.update({
+        where: { id },
+        data: {
+          vistoPorCliente: true,
+          fechaVistoPorCliente: new Date()
+        }
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Presupuesto marcado como visto'
+    });
+  } catch (error) {
+    console.error('Error marcando presupuesto como visto:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al marcar presupuesto como visto'
+    });
+  }
+};
+
 module.exports = {
   listarPresupuestos,
   obtenerPresupuesto,
@@ -898,5 +964,6 @@ module.exports = {
   obtenerMensajes,
   listarPresupuestosCliente,
   obtenerNotificaciones,
-  marcarMensajesLeidos
+  marcarMensajesLeidos,
+  marcarPresupuestoVisto
 };

@@ -30,4 +30,7 @@ router.get('/:id/mensajes', presupuestoController.obtenerMensajes);
 router.post('/:id/mensajes', presupuestoController.agregarMensaje);
 router.post('/:id/mensajes/leidos', presupuestoController.marcarMensajesLeidos);
 
+// Marcar presupuesto como visto (para clientes)
+router.post('/:id/visto', presupuestoController.marcarPresupuestoVisto);
+
 module.exports = router;

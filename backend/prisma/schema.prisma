@@ -1176,6 +1176,10 @@ model Presupuesto {
   fechaRespuesta      DateTime? @map("fecha_respuesta") @db.Timestamptz(6)
   fechaAprobacion     DateTime? @map("fecha_aprobacion") @db.Timestamptz(6)
   
+  // Tracking de visualización por cliente
+  vistoPorCliente     Boolean   @default(false) @map("visto_por_cliente")
+  fechaVistoPorCliente DateTime? @map("fecha_visto_por_cliente") @db.Timestamptz(6)
+  
   // Incoterm y condiciones
   incoterm        String?  @db.VarChar(10)
   condiciones     String?

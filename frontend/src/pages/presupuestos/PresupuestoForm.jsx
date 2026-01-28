@@ -11,7 +11,8 @@ import {
 import { 
   usePresupuesto, useCreatePresupuesto, useUpdatePresupuesto,
   useBuscarClientes, useCambiarEstadoPresupuesto, useConvertirPresupuesto,
-  useMensajesPresupuesto, useAgregarMensaje, useMarcarMensajesLeidos
+  useMensajesPresupuesto, useAgregarMensaje, useMarcarMensajesLeidos,
+  useMarcarPresupuestoVisto
 } from '../../hooks/useApi';
 import { useAuth } from '../../context/AuthContext';
 import toast from 'react-hot-toast';
@@ -82,10 +83,18 @@ function PresupuestoForm() {
   const convertir = useConvertirPresupuesto();
   const agregarMensaje = useAgregarMensaje();
   const marcarLeidos = useMarcarMensajesLeidos();
+  const marcarVisto = useMarcarPresupuestoVisto();
 
   const clientes = clientesData?.data?.clientes || [];
   const mensajes = mensajesData?.data?.mensajes || [];
   const presupuesto = presupuestoData?.data?.presupuesto;
+
+  // Marcar presupuesto como visto cuando el cliente lo abre
+  useEffect(() => {
+    if (presupuesto && user?.role === 'client' && presupuesto.estado === 'ENVIADO' && !presupuesto.vistoPorCliente) {
+      marcarVisto.mutate(id);
+    }
+  }, [presupuesto, user?.role, id]);
 
   // Cargar datos si estamos editando
   useEffect(() => {

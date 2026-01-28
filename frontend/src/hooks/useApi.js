@@ -978,6 +978,20 @@ export function useMarcarMensajesLeidos() {
   });
 }
 
+export function useMarcarPresupuestoVisto() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (presupuestoId) => {
+      const response = await api.post(`/presupuestos/${presupuestoId}/visto`);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notificaciones'] });
+      queryClient.invalidateQueries({ queryKey: ['presupuestosCliente'] });
+    }
+  });
+}
+
 // =====================================================
 // BILLING - Suscripciones y Pagos
 // =====================================================
