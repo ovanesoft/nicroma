@@ -1358,10 +1358,15 @@ export function useUnreadConversationsCount() {
 
 // Obtener una conversación con mensajes
 export function useConversation(id) {
+  const queryClient = useQueryClient();
   return useQuery({
     queryKey: ['conversation', id],
     queryFn: async () => {
       const response = await api.get(`/conversations/${id}`);
+      // Al cargar la conversación, el backend marca como leída
+      // Refrescar el conteo de no leídas
+      queryClient.refetchQueries({ queryKey: ['unreadConversationsCount'], type: 'active' });
+      queryClient.refetchQueries({ queryKey: ['myConversations'], type: 'active' });
       return response.data;
     },
     enabled: !!id,
@@ -1378,8 +1383,8 @@ export function useCreateConversation() {
       return response.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['myConversations'] });
-      queryClient.invalidateQueries({ queryKey: ['unreadConversationsCount'] });
+      queryClient.refetchQueries({ queryKey: ['myConversations'], type: 'active' });
+      queryClient.refetchQueries({ queryKey: ['unreadConversationsCount'], type: 'active' });
     }
   });
 }
@@ -1393,8 +1398,9 @@ export function useAddMessage() {
       return response.data;
     },
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['conversation', variables.conversationId] });
-      queryClient.invalidateQueries({ queryKey: ['myConversations'] });
+      queryClient.refetchQueries({ queryKey: ['conversation', variables.conversationId], type: 'active' });
+      queryClient.refetchQueries({ queryKey: ['myConversations'], type: 'active' });
+      queryClient.refetchQueries({ queryKey: ['unreadConversationsCount'], type: 'active' });
     }
   });
 }
