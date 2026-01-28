@@ -137,6 +137,21 @@ const PublicRoute = ({ children }) => {
   return children;
 };
 
+// Landing Route - shows pricing for guests, dashboard for authenticated
+const LandingRoute = () => {
+  const { isAuthenticated, loading } = useAuth();
+
+  if (loading) {
+    return <LoadingScreen />;
+  }
+
+  if (isAuthenticated) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return <PricingPage />;
+};
+
 function AppRoutes() {
   return (
     <Routes>
@@ -381,9 +396,9 @@ function AppRoutes() {
         </ProtectedRoute>
       } />
 
-      {/* ==================== REDIRECTS ==================== */}
-      <Route path="/" element={<Navigate to="/dashboard" replace />} />
-      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      {/* ==================== HOME / LANDING ==================== */}
+      <Route path="/" element={<LandingRoute />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }
