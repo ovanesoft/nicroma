@@ -56,6 +56,18 @@ const getMyConversations = async (req, res) => {
         participants: {
           where: { userId }
         },
+        createdByUser: {
+          select: { id: true, firstName: true, lastName: true, role: true, email: true }
+        },
+        targetUser: {
+          select: { id: true, firstName: true, lastName: true, role: true, email: true }
+        },
+        createdByTenant: {
+          select: { id: true, name: true }
+        },
+        targetTenant: {
+          select: { id: true, name: true }
+        },
         _count: {
           select: { messages: true }
         }
@@ -63,10 +75,40 @@ const getMyConversations = async (req, res) => {
       orderBy: { lastMessageAt: 'desc' }
     });
 
-    // Calcular mensajes no leídos
+    // Calcular mensajes no leídos y determinar el "otro" participante
     const formattedConversations = conversations.map(conv => {
       const participant = conv.participants[0];
       const lastRead = participant?.lastReadAt;
+      
+      // Determinar quién es el "otro" en la conversación
+      let otherParty = null;
+      if (conv.createdByUserId === userId) {
+        // Yo creé la conversación, el otro es el target
+        if (conv.targetUser) {
+          otherParty = {
+            name: `${conv.targetUser.firstName} ${conv.targetUser.lastName}`,
+            role: conv.targetUser.role
+          };
+        } else if (conv.targetTenant) {
+          otherParty = {
+            name: conv.targetTenant.name,
+            role: 'tenant'
+          };
+        } else if (conv.isRootConversation) {
+          otherParty = {
+            name: 'Soporte Nicroma',
+            role: 'root'
+          };
+        }
+      } else {
+        // El otro me escribió a mí
+        if (conv.createdByUser) {
+          otherParty = {
+            name: `${conv.createdByUser.firstName} ${conv.createdByUser.lastName}`,
+            role: conv.createdByUser.role
+          };
+        }
+      }
       
       return {
         id: conv.id,
@@ -78,6 +120,8 @@ const getMyConversations = async (req, res) => {
         lastMessageAt: conv.lastMessageAt,
         messageCount: conv._count.messages,
         createdAt: conv.createdAt,
+        createdByUserId: conv.createdByUserId,
+        otherParty, // Info del otro participante
         // Para saber si hay mensajes no leídos
         hasUnread: lastRead ? conv.lastMessageAt > lastRead : conv._count.messages > 0
       };

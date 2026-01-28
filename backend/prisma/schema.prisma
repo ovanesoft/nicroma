@@ -54,6 +54,8 @@ model Tenant {
   tenant_subscriptions tenant_subscriptions?
   user_invitations     UserInvitation[]
   users                User[]
+  conversationsCreated Conversation[]        @relation("ConversationsCreatedByTenant")
+  conversationsAsTarget Conversation[]       @relation("ConversationsTargetTenant")
 
   @@index([isActive], map: "idx_tenants_is_active")
   @@index([slug], map: "idx_tenants_slug")
@@ -97,6 +99,8 @@ model User {
   system_logs              system_logs[]
   user_invitations         UserInvitation[]
   tenants                  Tenant?          @relation(fields: [tenantId], references: [id], onUpdate: NoAction)
+  conversationsCreated     Conversation[]   @relation("ConversationsCreatedByUser")
+  conversationsAsTarget    Conversation[]   @relation("ConversationsTargetUser")
 
   @@index([isActive], map: "idx_users_is_active")
   @@index([role], map: "idx_users_role")
@@ -469,6 +473,10 @@ model Conversation {
   // Relaciones
   messages        ConversationMessage[]
   participants    ConversationParticipant[]
+  createdByUser   User?               @relation("ConversationsCreatedByUser", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  targetUser      User?               @relation("ConversationsTargetUser", fields: [targetUserId], references: [id], onDelete: SetNull)
+  createdByTenant Tenant?             @relation("ConversationsCreatedByTenant", fields: [createdByTenantId], references: [id], onDelete: SetNull)
+  targetTenant    Tenant?             @relation("ConversationsTargetTenant", fields: [targetTenantId], references: [id], onDelete: SetNull)
 
   @@index([createdByUserId], map: "idx_conversations_created_by")
   @@index([targetTenantId], map: "idx_conversations_target_tenant")

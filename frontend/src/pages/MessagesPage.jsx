@@ -231,7 +231,28 @@ function MessagesPage() {
               filteredConversations.map((conv) => {
                 const typeInfo = CONVERSATION_TYPES.find(t => t.value === conv.type) || CONVERSATION_TYPES[2];
                 const statusInfo = STATUS_STYLES[conv.status] || STATUS_STYLES.OPEN;
-                const TypeIcon = typeInfo.icon;
+                
+                // Formatear el rol del otro participante
+                const roleLabels = {
+                  root: 'Soporte',
+                  admin: 'Admin',
+                  manager: 'Gerente',
+                  user: 'Usuario',
+                  client: 'Cliente',
+                  tenant: 'Empresa'
+                };
+                const otherPartyName = conv.otherParty?.name || 'Sin asignar';
+                const otherPartyRole = roleLabels[conv.otherParty?.role] || '';
+                const otherPartyInitial = (otherPartyName?.[0] || '?').toUpperCase();
+                
+                // Color del avatar según rol
+                const avatarColorClass = conv.otherParty?.role === 'root' 
+                  ? 'bg-purple-500 text-white'
+                  : conv.otherParty?.role === 'client'
+                    ? 'bg-blue-500 text-white'
+                    : conv.otherParty?.role === 'tenant'
+                      ? 'bg-amber-500 text-white'
+                      : 'bg-slate-200 text-slate-700';
                 
                 return (
                   <div
@@ -244,20 +265,32 @@ function MessagesPage() {
                     style={{ borderColor: 'var(--color-border)' }}
                   >
                     <div className="flex items-start gap-3">
-                      <div className={cn('w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0', 
-                        conv.type === 'SUPPORT' ? 'bg-blue-100' : conv.type === 'BILLING' ? 'bg-green-100' : 'bg-purple-100'
+                      {/* Avatar con inicial del otro participante */}
+                      <div className={cn('w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 font-semibold text-sm', 
+                        avatarColorClass
                       )}>
-                        <TypeIcon className={cn('w-5 h-5', typeInfo.color)} />
+                        {otherPartyInitial}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between gap-2">
+                        {/* Nombre del otro participante */}
+                        <div className="flex items-center gap-2 mb-0.5">
                           <p className={cn('text-sm truncate', conv.hasUnread && 'font-semibold')} style={{ color: 'var(--color-text)' }}>
-                            {conv.subject}
+                            {otherPartyName}
                           </p>
+                          {otherPartyRole && (
+                            <span className="text-xs px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 flex-shrink-0">
+                              {otherPartyRole}
+                            </span>
+                          )}
                           {conv.hasUnread && (
                             <span className="w-2 h-2 rounded-full bg-[var(--color-primary)] flex-shrink-0" />
                           )}
                         </div>
+                        {/* Asunto */}
+                        <p className="text-xs font-medium truncate" style={{ color: 'var(--color-text)', opacity: 0.8 }}>
+                          {conv.subject}
+                        </p>
+                        {/* Último mensaje */}
                         <p className="text-xs truncate mt-0.5" style={{ color: 'var(--color-textSecondary)' }}>
                           {conv.lastMessage?.content || 'Sin mensajes'}
                         </p>
@@ -284,6 +317,29 @@ function MessagesPage() {
           !selectedConversation && 'hidden md:flex'
         )}>
           {selectedConversation && currentConversation ? (
+            (() => {
+              // Obtener info del otro participante de la lista de conversaciones
+              const convInfo = conversations.find(c => c.id === selectedConversation);
+              const roleLabels = {
+                root: 'Soporte Nicroma',
+                admin: 'Administrador',
+                manager: 'Gerente',
+                user: 'Usuario',
+                client: 'Cliente',
+                tenant: 'Empresa'
+              };
+              const otherName = convInfo?.otherParty?.name || 'Conversación';
+              const otherRole = roleLabels[convInfo?.otherParty?.role] || '';
+              const otherInitial = (otherName?.[0] || '?').toUpperCase();
+              const avatarColorClass = convInfo?.otherParty?.role === 'root' 
+                ? 'bg-purple-500 text-white'
+                : convInfo?.otherParty?.role === 'client'
+                  ? 'bg-blue-500 text-white'
+                  : convInfo?.otherParty?.role === 'tenant'
+                    ? 'bg-amber-500 text-white'
+                    : 'bg-slate-200 text-slate-700';
+
+              return (
             <>
               {/* Header del chat */}
               <div 
@@ -297,16 +353,27 @@ function MessagesPage() {
                   >
                     <ArrowLeft className="w-5 h-5" />
                   </button>
+                  {/* Avatar del otro participante */}
+                  <div className={cn('w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 font-semibold', avatarColorClass)}>
+                    {otherInitial}
+                  </div>
                   <div>
-                    <h3 className="font-medium" style={{ color: 'var(--color-text)' }}>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-medium" style={{ color: 'var(--color-text)' }}>
+                        {otherName}
+                      </h3>
+                      {otherRole && (
+                        <span className="text-xs px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">
+                          {otherRole}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-sm truncate max-w-xs" style={{ color: 'var(--color-textSecondary)' }}>
                       {currentConversation.subject}
-                    </h3>
+                    </p>
                     <div className="flex items-center gap-2 mt-0.5">
                       <span className={cn('text-xs px-1.5 py-0.5 rounded', STATUS_STYLES[currentConversation.status]?.color)}>
                         {STATUS_STYLES[currentConversation.status]?.label}
-                      </span>
-                      <span className="text-xs" style={{ color: 'var(--color-textSecondary)' }}>
-                        {CONVERSATION_TYPES.find(t => t.value === currentConversation.type)?.label}
                       </span>
                     </div>
                   </div>
@@ -352,51 +419,103 @@ function MessagesPage() {
                     </p>
                   </div>
                 ) : (
-                  messages.map((msg) => (
-                    <div
-                      key={msg.id}
-                      className={cn(
-                        'flex',
-                        msg.isOwn ? 'justify-end' : 'justify-start'
-                      )}
-                    >
-                      {msg.isSystemMessage ? (
-                        <div className="w-full text-center">
-                          <span 
-                            className="text-xs px-3 py-1 rounded-full inline-block"
-                            style={{ backgroundColor: 'var(--color-background)', color: 'var(--color-textSecondary)' }}
-                          >
-                            {msg.content}
-                          </span>
-                        </div>
-                      ) : (
-                        <div className={cn('max-w-[75%]', msg.isOwn ? 'items-end' : 'items-start')}>
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="text-xs font-medium" style={{ color: 'var(--color-text)' }}>
-                              {msg.isOwn ? 'Vos' : msg.authorName}
-                            </span>
-                            <span className="text-xs" style={{ color: 'var(--color-textSecondary)' }}>
-                              {formatDate(msg.createdAt)}
+                  messages.map((msg) => {
+                    // Formatear el rol para mostrar
+                    const roleLabels = {
+                      root: 'Soporte Nicroma',
+                      admin: 'Administrador',
+                      manager: 'Gerente',
+                      user: 'Usuario',
+                      client: 'Cliente'
+                    };
+                    const roleLabel = roleLabels[msg.authorRole] || msg.authorRole;
+                    
+                    return (
+                      <div
+                        key={msg.id}
+                        className={cn(
+                          'flex',
+                          msg.isOwn ? 'justify-end' : 'justify-start'
+                        )}
+                      >
+                        {msg.isSystemMessage ? (
+                          <div className="w-full text-center">
+                            <span 
+                              className="text-xs px-3 py-1 rounded-full inline-block"
+                              style={{ backgroundColor: 'var(--color-background)', color: 'var(--color-textSecondary)' }}
+                            >
+                              {msg.content}
                             </span>
                           </div>
-                          <div
-                            className={cn(
-                              'rounded-2xl px-4 py-2',
-                              msg.isOwn 
-                                ? 'bg-[var(--color-primary)] text-white rounded-br-sm'
-                                : 'rounded-bl-sm'
-                            )}
-                            style={!msg.isOwn ? { 
-                              backgroundColor: 'var(--color-background)', 
-                              color: 'var(--color-text)' 
-                            } : {}}
-                          >
-                            <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                        ) : (
+                          <div className={cn('max-w-[75%] flex gap-3', msg.isOwn ? 'flex-row-reverse' : 'flex-row')}>
+                            {/* Avatar */}
+                            <div 
+                              className={cn(
+                                'w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 text-sm font-bold',
+                                msg.isOwn 
+                                  ? 'bg-[var(--color-primary)] text-white' 
+                                  : msg.authorRole === 'root' 
+                                    ? 'bg-purple-500 text-white'
+                                    : msg.authorRole === 'client'
+                                      ? 'bg-blue-500 text-white'
+                                      : 'bg-slate-200 text-slate-700'
+                              )}
+                            >
+                              {msg.isOwn 
+                                ? (user?.firstName?.[0] || 'Y').toUpperCase()
+                                : (msg.authorName?.[0] || '?').toUpperCase()
+                              }
+                            </div>
+                            
+                            <div className={cn('flex flex-col', msg.isOwn ? 'items-end' : 'items-start')}>
+                              {/* Nombre y rol */}
+                              <div className={cn('flex items-center gap-2 mb-1', msg.isOwn ? 'flex-row-reverse' : 'flex-row')}>
+                                <span className="text-sm font-semibold" style={{ color: 'var(--color-text)' }}>
+                                  {msg.isOwn ? 'Vos' : msg.authorName}
+                                </span>
+                                <span 
+                                  className={cn(
+                                    'text-xs px-2 py-0.5 rounded-full',
+                                    msg.authorRole === 'root' 
+                                      ? 'bg-purple-100 text-purple-700'
+                                      : msg.authorRole === 'client'
+                                        ? 'bg-blue-100 text-blue-700'
+                                        : msg.authorRole === 'admin'
+                                          ? 'bg-amber-100 text-amber-700'
+                                          : 'bg-slate-100 text-slate-600'
+                                  )}
+                                >
+                                  {roleLabel}
+                                </span>
+                              </div>
+                              
+                              {/* Mensaje */}
+                              <div
+                                className={cn(
+                                  'rounded-2xl px-4 py-2',
+                                  msg.isOwn 
+                                    ? 'bg-[var(--color-primary)] text-white rounded-tr-sm'
+                                    : 'rounded-tl-sm'
+                                )}
+                                style={!msg.isOwn ? { 
+                                  backgroundColor: 'var(--color-background)', 
+                                  color: 'var(--color-text)' 
+                                } : {}}
+                              >
+                                <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                              </div>
+                              
+                              {/* Hora */}
+                              <span className="text-xs mt-1" style={{ color: 'var(--color-textSecondary)' }}>
+                                {formatDate(msg.createdAt)}
+                              </span>
+                            </div>
                           </div>
-                        </div>
-                      )}
-                    </div>
-                  ))
+                        )}
+                      </div>
+                    );
+                  })
                 )}
                 <div ref={messagesEndRef} />
               </div>
@@ -428,6 +547,8 @@ function MessagesPage() {
                 </form>
               )}
             </>
+              );
+            })()
           ) : (
             <div className="flex-1 flex items-center justify-center">
               <div className="text-center">
