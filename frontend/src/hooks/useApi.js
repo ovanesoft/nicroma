@@ -79,6 +79,14 @@ export function useTenantUsers(tenantId) {
   );
 }
 
+// Usuarios de mi organización (para admins/managers)
+export function useMyOrgUsers() {
+  return useApiQuery(
+    ['myOrgUsers'], 
+    `/tenants/my/users`
+  );
+}
+
 export function useCreateUser() {
   return useApiMutation('post', '/users', {
     invalidateKeys: ['users', 'tenantUsers']

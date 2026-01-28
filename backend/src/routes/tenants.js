@@ -103,6 +103,12 @@ router.delete('/invitations/:invitationId',
 // Rutas de configuración de empresa
 // ===========================================
 
+// Listar usuarios de mi organización (para admins/managers)
+router.get('/my/users',
+  requireRole('admin', 'manager'),
+  tenantController.listMyTenantUsers
+);
+
 // Obtener configuración de la empresa actual
 router.get('/my/company',
   tenantController.getCompanyConfig

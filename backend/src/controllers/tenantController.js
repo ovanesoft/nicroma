@@ -610,6 +610,41 @@ const listTenantUsers = async (req, res) => {
   }
 };
 
+// Listar usuarios de mi organización (para mensajería)
+const listMyTenantUsers = async (req, res) => {
+  try {
+    const tenantId = req.user.tenant_id;
+
+    if (!tenantId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Usuario sin organización asignada'
+      });
+    }
+
+    const result = await query(
+      `SELECT id, email, first_name as "firstName", last_name as "lastName", role, is_active as "isActive"
+       FROM users
+       WHERE tenant_id = $1
+         AND is_active = true
+       ORDER BY first_name, last_name`,
+      [tenantId]
+    );
+
+    res.json({
+      success: true,
+      data: { users: result.rows }
+    });
+
+  } catch (error) {
+    console.error('Error listando usuarios de mi org:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al listar usuarios'
+    });
+  }
+};
+
 // =====================================================
 // CONFIGURACIÓN DE EMPRESA
 // =====================================================
@@ -1239,6 +1274,7 @@ module.exports = {
   listInvitations,
   cancelInvitation,
   listTenantUsers,
+  listMyTenantUsers,
   // Configuración de empresa
   getCompanyConfig,
   updateCompanyConfig,

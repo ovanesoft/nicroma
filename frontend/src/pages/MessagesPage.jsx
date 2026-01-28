@@ -9,7 +9,7 @@ import {
 } from '../components/ui';
 import { 
   useMyConversations, useConversation, useCreateConversation, 
-  useAddMessage, useUpdateConversationStatus, useUsers
+  useAddMessage, useUpdateConversationStatus, useUsers, useMyOrgUsers
 } from '../hooks/useApi';
 import { useAuth } from '../context/AuthContext';
 import { cn, formatDate } from '../lib/utils';
@@ -44,8 +44,12 @@ function MessagesPage() {
   const messagesEndRef = useRef(null);
 
   const isRoot = user?.role === 'root';
+  const isAdmin = user?.role === 'admin' || user?.role === 'manager';
+  const canSelectRecipient = isRoot || isAdmin;
+  
   const { data: conversationsData, isLoading } = useMyConversations();
-  const { data: usersData } = useUsers({ limit: 100 });
+  const { data: usersData } = useUsers({ limit: 100 }); // Para root
+  const { data: orgUsersData } = useMyOrgUsers(); // Para admins/managers
   const { data: conversationData, isLoading: loadingMessages } = useConversation(selectedConversation);
   const createConversation = useCreateConversation();
   const addMessage = useAddMessage();
@@ -76,8 +80,8 @@ function MessagesPage() {
       return;
     }
 
-    // Si es root, debe seleccionar un destinatario
-    if (isRoot && !newConvForm.targetUserId) {
+    // Si puede seleccionar destinatario (root o admin), debe hacerlo
+    if (canSelectRecipient && !newConvForm.targetUserId) {
       toast.error('Seleccioná un destinatario');
       return;
     }
@@ -101,12 +105,17 @@ function MessagesPage() {
   };
 
   // Filtrar usuarios para búsqueda
-  const allUsers = usersData?.data?.users || [];
+  // Root ve todos los usuarios, admin/manager solo los de su org
+  const allUsers = isRoot 
+    ? (usersData?.data?.users || [])
+    : (orgUsersData?.data?.users || []);
+  
   const filteredUsers = userSearch.length >= 2
     ? allUsers.filter(u => 
-        u.email?.toLowerCase().includes(userSearch.toLowerCase()) ||
+        u.id !== user?.id && // Excluir al usuario actual
+        (u.email?.toLowerCase().includes(userSearch.toLowerCase()) ||
         u.firstName?.toLowerCase().includes(userSearch.toLowerCase()) ||
-        u.lastName?.toLowerCase().includes(userSearch.toLowerCase())
+        u.lastName?.toLowerCase().includes(userSearch.toLowerCase()))
       ).slice(0, 10)
     : [];
 
@@ -424,12 +433,12 @@ function MessagesPage() {
             </div>
             
             <form onSubmit={handleCreateConversation} className="p-4 space-y-4">
-              {/* Selector de destinatario para ROOT */}
-              {isRoot && (
+              {/* Selector de destinatario para ROOT y ADMIN/MANAGER */}
+              {canSelectRecipient && (
                 <div>
                   <label className="block text-sm font-medium mb-2" style={{ color: 'var(--color-text)' }}>
                     <User className="w-4 h-4 inline mr-1" />
-                    Destinatario
+                    {isRoot ? 'Destinatario' : 'Enviar a (usuario de tu organización)'}
                   </label>
                   
                   {/* Usuario seleccionado */}
