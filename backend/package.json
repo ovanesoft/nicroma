@@ -12,7 +12,7 @@
     "db:migrate-billing": "node src/database/migrateBilling.js",
     "prisma:generate": "npx prisma generate",
     "postinstall": "npx prisma generate",
-    "build": "rm -rf node_modules/.prisma && npm run prisma:generate && (npm run db:init || true)"
+    "build": "rm -rf node_modules/.prisma && npm run prisma:generate && npm run db:push && (npm run db:init || true)"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
