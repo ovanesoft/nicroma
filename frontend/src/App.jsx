@@ -70,6 +70,17 @@ import Pagos from './pages/portal/Pagos';
 import SolicitarPresupuesto from './pages/portal/SolicitarPresupuesto';
 import MisPresupuestos from './pages/portal/MisPresupuestos';
 
+// Pages - Billing
+import PricingPage from './pages/billing/PricingPage';
+import PlansPage from './pages/billing/PlansPage';
+import SubscriptionPage from './pages/billing/SubscriptionPage';
+import PaymentsPage from './pages/billing/PaymentsPage';
+
+// Pages - Admin Billing
+import BillingDashboard from './pages/admin/BillingDashboard';
+import BillingSubscriptions from './pages/admin/BillingSubscriptions';
+import BillingPromotions from './pages/admin/BillingPromotions';
+
 // Loading component
 const LoadingScreen = () => (
   <div className="min-h-screen flex items-center justify-center bg-slate-50">
@@ -144,6 +155,7 @@ function AppRoutes() {
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/portal/:portalSlug" element={<PortalLanding />} />
+      <Route path="/precios" element={<PricingPage />} />
       <Route path="/privacy" element={<Privacy />} />
       <Route path="/terms" element={<Terms />} />
       <Route path="/data-deletion" element={<DataDeletion />} />
@@ -171,6 +183,21 @@ function AppRoutes() {
       <Route path="/admin/logs" element={
         <ProtectedRoute allowedRoles={['root']}>
           <SystemLogsPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/billing" element={
+        <ProtectedRoute allowedRoles={['root']}>
+          <BillingDashboard />
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/billing/suscripciones" element={
+        <ProtectedRoute allowedRoles={['root']}>
+          <BillingSubscriptions />
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/billing/promociones" element={
+        <ProtectedRoute allowedRoles={['root']}>
+          <BillingPromotions />
         </ProtectedRoute>
       } />
       <Route path="/settings" element={
@@ -297,6 +324,23 @@ function AppRoutes() {
       <Route path="/profile" element={
         <ProtectedRoute>
           <Profile />
+        </ProtectedRoute>
+      } />
+
+      {/* ==================== BILLING ==================== */}
+      <Route path="/billing/planes" element={
+        <ProtectedRoute>
+          <PlansPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/billing/suscripcion" element={
+        <ProtectedRoute>
+          <SubscriptionPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/billing/pagos" element={
+        <ProtectedRoute>
+          <PaymentsPage />
         </ProtectedRoute>
       } />
 

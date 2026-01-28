@@ -18,7 +18,8 @@ import {
   User,
   Activity,
   Calculator,
-  MessageSquare
+  MessageSquare,
+  Sparkles
 } from 'lucide-react';
 
 // Navegación según rol
@@ -36,6 +37,15 @@ export const getNavigation = (role) => {
         { name: 'Organizaciones', href: '/admin/tenants', icon: Building2 },
         { name: 'Usuarios', href: '/admin/users', icon: Users },
         { name: 'Logs del Sistema', href: '/admin/logs', icon: Activity },
+      ]
+    },
+    {
+      name: 'Billing',
+      icon: CreditCard,
+      children: [
+        { name: 'Dashboard', href: '/admin/billing', icon: Wallet },
+        { name: 'Suscripciones', href: '/admin/billing/suscripciones', icon: Users },
+        { name: 'Promociones', href: '/admin/billing/promociones', icon: Sparkles },
       ]
     },
     { name: 'Configuración', href: '/settings', icon: Settings }
@@ -82,6 +92,15 @@ export const getNavigation = (role) => {
       ]
     },
     { name: 'Estadísticas', href: '/estadisticas', icon: BarChart3 },
+    {
+      name: 'Suscripción',
+      icon: Sparkles,
+      children: [
+        { name: 'Mi Plan', href: '/billing/suscripcion', icon: CreditCard },
+        { name: 'Cambiar Plan', href: '/billing/planes', icon: Sparkles },
+        { name: 'Pagos', href: '/billing/pagos', icon: Receipt },
+      ]
+    },
   ];
 
   const managerNav = [

@@ -977,3 +977,221 @@ export function useMarcarMensajesLeidos() {
     }
   });
 }
+
+// =====================================================
+// BILLING - Suscripciones y Pagos
+// =====================================================
+
+// Obtener planes disponibles (público)
+export function useBillingPlans() {
+  return useApiQuery(['billingPlans'], '/billing/plans', {
+    staleTime: 5 * 60 * 1000, // 5 minutos
+  });
+}
+
+// Obtener estado de suscripción del tenant actual
+export function useSubscription() {
+  return useApiQuery(['subscription'], '/billing/subscription', {
+    staleTime: 30 * 1000, // 30 segundos
+    refetchOnWindowFocus: true,
+  });
+}
+
+// Iniciar checkout
+export function useCreateCheckout() {
+  return useMutation({
+    mutationFn: async (data) => {
+      const response = await api.post('/billing/subscription/checkout', data);
+      return response.data;
+    }
+  });
+}
+
+// Upgrade de plan
+export function useUpgradePlan() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (data) => {
+      const response = await api.post('/billing/subscription/upgrade', data);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['subscription'] });
+    }
+  });
+}
+
+// Downgrade de plan
+export function useDowngradePlan() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (data) => {
+      const response = await api.post('/billing/subscription/downgrade', data);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['subscription'] });
+    }
+  });
+}
+
+// Cancelar suscripción
+export function useCancelSubscription() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (data) => {
+      const response = await api.post('/billing/subscription/cancel', data);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['subscription'] });
+    }
+  });
+}
+
+// Reactivar suscripción
+export function useReactivateSubscription() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const response = await api.post('/billing/subscription/reactivate');
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['subscription'] });
+    }
+  });
+}
+
+// Extender trial
+export function useExtendTrial() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const response = await api.post('/billing/trial/extend');
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['subscription'] });
+    }
+  });
+}
+
+// Activar oferta de acompañamiento
+export function useActivateAccompaniment() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const response = await api.post('/billing/accompaniment/activate');
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['subscription'] });
+    }
+  });
+}
+
+// Validar código promocional
+export function useValidatePromotion() {
+  return useMutation({
+    mutationFn: async (data) => {
+      const response = await api.post('/billing/promotions/validate', data);
+      return response.data;
+    }
+  });
+}
+
+// Obtener historial de pagos
+export function useBillingPayments(params = {}) {
+  const queryString = new URLSearchParams(params).toString();
+  return useApiQuery(
+    ['billingPayments', params],
+    `/billing/payments${queryString ? `?${queryString}` : ''}`
+  );
+}
+
+// =====================================================
+// BILLING ADMIN - Para root
+// =====================================================
+
+// Listar todas las suscripciones (admin)
+export function useAdminSubscriptions(params = {}) {
+  const queryString = new URLSearchParams(params).toString();
+  return useApiQuery(
+    ['adminSubscriptions', params],
+    `/billing/admin/subscriptions${queryString ? `?${queryString}` : ''}`
+  );
+}
+
+// Obtener alertas de billing (admin)
+export function useAdminBillingAlerts() {
+  return useApiQuery(['adminBillingAlerts'], '/billing/admin/alerts', {
+    refetchInterval: 60 * 1000, // 1 minuto
+  });
+}
+
+// Obtener estadísticas de billing (admin)
+export function useAdminBillingStats() {
+  return useApiQuery(['adminBillingStats'], '/billing/admin/stats');
+}
+
+// Listar promociones (admin)
+export function useAdminPromotions() {
+  return useApiQuery(['adminPromotions'], '/billing/admin/promotions');
+}
+
+// Crear promoción (admin)
+export function useCreatePromotion() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (data) => {
+      const response = await api.post('/billing/admin/promotions', data);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['adminPromotions'] });
+    }
+  });
+}
+
+// Actualizar promoción (admin)
+export function useUpdatePromotion(id) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (data) => {
+      const response = await api.put(`/billing/admin/promotions/${id}`, data);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['adminPromotions'] });
+    }
+  });
+}
+
+// Suspender suscripción (admin)
+export function useAdminSuspendSubscription() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ tenantId, reason }) => {
+      const response = await api.post(`/billing/admin/subscriptions/${tenantId}/suspend`, { reason });
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['adminSubscriptions'] });
+    }
+  });
+}
+
+// Reactivar suscripción (admin)
+export function useAdminReactivateSubscription() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (tenantId) => {
+      const response = await api.post(`/billing/admin/subscriptions/${tenantId}/reactivate`);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['adminSubscriptions'] });
+    }
+  });
+}
