@@ -15,10 +15,17 @@ import { useAuth } from '../context/AuthContext';
 import { cn, formatDate } from '../lib/utils';
 import toast from 'react-hot-toast';
 
+// Tipos de conversación para usuarios normales (van al root)
 const CONVERSATION_TYPES = [
   { value: 'SUPPORT', label: 'Soporte Técnico', icon: Headphones, color: 'text-blue-500', description: 'Ayuda con el uso del sistema' },
   { value: 'BILLING', label: 'Facturación', icon: CreditCard, color: 'text-green-500', description: 'Consultas sobre pagos y suscripción' },
   { value: 'GENERAL', label: 'Consulta General', icon: HelpCircle, color: 'text-purple-500', description: 'Otras consultas' }
+];
+
+// Opciones de destino para clientes
+const CLIENT_DESTINATIONS = [
+  { value: 'tenant', label: 'Mi Despachante', icon: Building2, color: 'text-blue-500', description: 'Consultas sobre mis envíos, facturas, etc.' },
+  { value: 'root', label: 'Soporte del Sistema', icon: Headphones, color: 'text-purple-500', description: 'Problemas técnicos con la plataforma' }
 ];
 
 const STATUS_STYLES = {
@@ -38,13 +45,15 @@ function MessagesPage() {
     type: 'SUPPORT',
     subject: '',
     message: '',
-    targetUserId: ''
+    targetUserId: '',
+    destination: 'tenant' // Para clientes: 'tenant' o 'root'
   });
   const [userSearch, setUserSearch] = useState('');
   const messagesEndRef = useRef(null);
 
   const isRoot = user?.role === 'root';
   const isAdmin = user?.role === 'admin' || user?.role === 'manager';
+  const isClient = user?.role === 'client';
   const canSelectRecipient = isRoot || isAdmin;
   
   const { data: conversationsData, isLoading } = useMyConversations();
@@ -87,16 +96,35 @@ function MessagesPage() {
     }
 
     try {
-      const result = await createConversation.mutateAsync({
-        type: newConvForm.type,
+      // Construir payload según el rol
+      const payload = {
         subject: newConvForm.subject,
-        message: newConvForm.message,
-        targetUserId: newConvForm.targetUserId || undefined
-      });
+        message: newConvForm.message
+      };
+
+      if (canSelectRecipient) {
+        // Root o Admin: envía a usuario específico
+        payload.type = 'GENERAL';
+        payload.targetUserId = newConvForm.targetUserId;
+      } else if (isClient) {
+        // Cliente: elige destino (tenant o root)
+        if (newConvForm.destination === 'root') {
+          payload.type = 'SUPPORT';
+          // isRootConversation se setea automáticamente en el backend
+        } else {
+          // destination === 'tenant' -> tipo CLIENT_TENANT
+          payload.type = 'CLIENT_TENANT';
+        }
+      } else {
+        // Usuario normal: va a soporte
+        payload.type = newConvForm.type;
+      }
+
+      const result = await createConversation.mutateAsync(payload);
       
       toast.success('Conversación creada');
       setNewConversationModal(false);
-      setNewConvForm({ type: 'SUPPORT', subject: '', message: '', targetUserId: '' });
+      setNewConvForm({ type: 'SUPPORT', subject: '', message: '', targetUserId: '', destination: 'tenant' });
       setUserSearch('');
       setSelectedConversation(result.data.conversation.id);
     } catch (error) {
@@ -538,8 +566,51 @@ function MessagesPage() {
                 </div>
               )}
 
-              {/* Tipo - solo para no-root */}
-              {!isRoot && (
+              {/* Destino - para clientes */}
+              {isClient && (
+                <div>
+                  <label className="block text-sm font-medium mb-2" style={{ color: 'var(--color-text)' }}>
+                    ¿A quién querés contactar?
+                  </label>
+                  <div className="space-y-2">
+                    {CLIENT_DESTINATIONS.map((dest) => {
+                      const Icon = dest.icon;
+                      return (
+                        <label
+                          key={dest.value}
+                          className={cn(
+                            'flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors',
+                            newConvForm.destination === dest.value 
+                              ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/5' 
+                              : 'border-[var(--color-border)] hover:bg-[var(--color-background)]'
+                          )}
+                        >
+                          <input
+                            type="radio"
+                            name="destination"
+                            value={dest.value}
+                            checked={newConvForm.destination === dest.value}
+                            onChange={() => setNewConvForm({ ...newConvForm, destination: dest.value })}
+                            className="sr-only"
+                          />
+                          <div className={cn('w-10 h-10 rounded-full flex items-center justify-center',
+                            dest.value === 'tenant' ? 'bg-blue-100' : 'bg-purple-100'
+                          )}>
+                            <Icon className={cn('w-5 h-5', dest.color)} />
+                          </div>
+                          <div>
+                            <p className="font-medium text-sm" style={{ color: 'var(--color-text)' }}>{dest.label}</p>
+                            <p className="text-xs" style={{ color: 'var(--color-textSecondary)' }}>{dest.description}</p>
+                          </div>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Tipo - solo para usuarios normales (no root, no admin, no client) */}
+              {!canSelectRecipient && !isClient && (
                 <div>
                   <label className="block text-sm font-medium mb-2" style={{ color: 'var(--color-text)' }}>
                     ¿Con qué te podemos ayudar?
