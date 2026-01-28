@@ -34,6 +34,19 @@ model Tenant {
   companyCountry       String?               @map("company_country") @db.VarChar(100)
   companyWebsite       String?               @map("company_website") @db.VarChar(255)
   
+  // Medios de pago para clientes
+  paymentBankName      String?               @map("payment_bank_name") @db.VarChar(255)
+  paymentBankAccount   String?               @map("payment_bank_account") @db.VarChar(100)
+  paymentBankCbu       String?               @map("payment_bank_cbu") @db.VarChar(30)
+  paymentBankAlias     String?               @map("payment_bank_alias") @db.VarChar(100)
+  paymentBankCuit      String?               @map("payment_bank_cuit") @db.VarChar(20)
+  paymentBankHolder    String?               @map("payment_bank_holder") @db.VarChar(255)
+  paymentMercadoPago   String?               @map("payment_mercado_pago") @db.VarChar(255)
+  paymentPaypal        String?               @map("payment_paypal") @db.VarChar(255)
+  paymentChequeOrder   String?               @map("payment_cheque_order") @db.VarChar(255)
+  paymentOtherMethods  String?               @map("payment_other_methods")
+  paymentNotes         String?               @map("payment_notes")
+  
   audit_logs           AuditLog[]
   payments             payments[]
   promotion_uses       promotion_uses[]

@@ -2,12 +2,14 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   Ship, FileText, MapPin, Package, CreditCard, Clock, 
-  CheckCircle, AlertCircle, ArrowRight, TrendingUp, RefreshCw
+  CheckCircle, AlertCircle, ArrowRight, TrendingUp, RefreshCw,
+  Landmark, Copy, Check, Wallet, Phone, Mail
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, Button } from '../../components/ui';
 import { useAuth } from '../../context/AuthContext';
-import { usePortalDashboard } from '../../hooks/useApi';
+import { usePortalDashboard, usePaymentInfo } from '../../hooks/useApi';
 import { cn, formatDate, formatCurrency } from '../../lib/utils';
+import toast from 'react-hot-toast';
 
 const estadoColors = {
   'BORRADOR': 'bg-gray-100 text-gray-700',
@@ -94,11 +96,25 @@ function ShipmentCard({ shipment }) {
 function ClientDashboard() {
   const { user } = useAuth();
   const { data, isLoading, refetch } = usePortalDashboard();
+  const { data: paymentData } = usePaymentInfo();
+  const [copiedField, setCopiedField] = useState(null);
   
   const dashboardData = data?.data || {};
   const stats = dashboardData.stats || {};
   const enviosRecientes = dashboardData.enviosRecientes || [];
   const facturasRecientes = dashboardData.facturasRecientes || [];
+  const paymentInfo = paymentData?.data || {};
+
+  const copyToClipboard = async (text, field) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedField(field);
+      toast.success('Copiado al portapapeles');
+      setTimeout(() => setCopiedField(null), 2000);
+    } catch {
+      toast.error('Error al copiar');
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -303,6 +319,188 @@ function ClientDashboard() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Información de Pago */}
+      {paymentInfo.hasPaymentMethods && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <CreditCard className="w-5 h-5" />
+              Medios de Pago
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-6">
+              {/* Transferencia Bancaria */}
+              {(paymentInfo.bank?.cbu || paymentInfo.bank?.alias) && (
+                <div className="bg-blue-50 rounded-xl p-4">
+                  <h4 className="font-medium text-blue-800 flex items-center gap-2 mb-3">
+                    <Landmark className="w-4 h-4" />
+                    Transferencia Bancaria
+                  </h4>
+                  <div className="space-y-2 text-sm">
+                    {paymentInfo.bank?.bankName && (
+                      <p className="text-blue-700">
+                        <span className="font-medium">Banco:</span> {paymentInfo.bank.bankName}
+                      </p>
+                    )}
+                    {paymentInfo.bank?.holder && (
+                      <p className="text-blue-700">
+                        <span className="font-medium">Titular:</span> {paymentInfo.bank.holder}
+                      </p>
+                    )}
+                    {paymentInfo.bank?.cuit && (
+                      <p className="text-blue-700">
+                        <span className="font-medium">CUIT:</span> {paymentInfo.bank.cuit}
+                      </p>
+                    )}
+                    {paymentInfo.bank?.cbu && (
+                      <div className="flex items-center justify-between bg-white rounded-lg px-3 py-2 mt-2">
+                        <div>
+                          <span className="text-xs text-blue-600 font-medium">CBU</span>
+                          <p className="font-mono text-blue-900">{paymentInfo.bank.cbu}</p>
+                        </div>
+                        <button
+                          onClick={() => copyToClipboard(paymentInfo.bank.cbu, 'cbu')}
+                          className="p-2 hover:bg-blue-100 rounded-lg transition-colors"
+                        >
+                          {copiedField === 'cbu' ? (
+                            <Check className="w-4 h-4 text-green-500" />
+                          ) : (
+                            <Copy className="w-4 h-4 text-blue-500" />
+                          )}
+                        </button>
+                      </div>
+                    )}
+                    {paymentInfo.bank?.alias && (
+                      <div className="flex items-center justify-between bg-white rounded-lg px-3 py-2">
+                        <div>
+                          <span className="text-xs text-blue-600 font-medium">Alias</span>
+                          <p className="font-medium text-blue-900">{paymentInfo.bank.alias}</p>
+                        </div>
+                        <button
+                          onClick={() => copyToClipboard(paymentInfo.bank.alias, 'alias')}
+                          className="p-2 hover:bg-blue-100 rounded-lg transition-colors"
+                        >
+                          {copiedField === 'alias' ? (
+                            <Check className="w-4 h-4 text-green-500" />
+                          ) : (
+                            <Copy className="w-4 h-4 text-blue-500" />
+                          )}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Pagos Digitales */}
+              {(paymentInfo.digital?.mercadoPago || paymentInfo.digital?.paypal) && (
+                <div className="bg-green-50 rounded-xl p-4">
+                  <h4 className="font-medium text-green-800 flex items-center gap-2 mb-3">
+                    <Wallet className="w-4 h-4" />
+                    Pagos Digitales
+                  </h4>
+                  <div className="space-y-2 text-sm">
+                    {paymentInfo.digital?.mercadoPago && (
+                      <div className="flex items-center justify-between bg-white rounded-lg px-3 py-2">
+                        <div>
+                          <span className="text-xs text-green-600 font-medium">MercadoPago</span>
+                          <p className="text-green-900">{paymentInfo.digital.mercadoPago}</p>
+                        </div>
+                        <button
+                          onClick={() => copyToClipboard(paymentInfo.digital.mercadoPago, 'mp')}
+                          className="p-2 hover:bg-green-100 rounded-lg transition-colors"
+                        >
+                          {copiedField === 'mp' ? (
+                            <Check className="w-4 h-4 text-green-500" />
+                          ) : (
+                            <Copy className="w-4 h-4 text-green-500" />
+                          )}
+                        </button>
+                      </div>
+                    )}
+                    {paymentInfo.digital?.paypal && (
+                      <div className="flex items-center justify-between bg-white rounded-lg px-3 py-2">
+                        <div>
+                          <span className="text-xs text-green-600 font-medium">PayPal</span>
+                          <p className="text-green-900">{paymentInfo.digital.paypal}</p>
+                        </div>
+                        <button
+                          onClick={() => copyToClipboard(paymentInfo.digital.paypal, 'paypal')}
+                          className="p-2 hover:bg-green-100 rounded-lg transition-colors"
+                        >
+                          {copiedField === 'paypal' ? (
+                            <Check className="w-4 h-4 text-green-500" />
+                          ) : (
+                            <Copy className="w-4 h-4 text-green-500" />
+                          )}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Otros medios */}
+              {(paymentInfo.other?.chequeOrder || paymentInfo.other?.otherMethods) && (
+                <div className="bg-purple-50 rounded-xl p-4">
+                  <h4 className="font-medium text-purple-800 flex items-center gap-2 mb-3">
+                    <FileText className="w-4 h-4" />
+                    Otros Medios
+                  </h4>
+                  <div className="space-y-2 text-sm text-purple-700">
+                    {paymentInfo.other?.chequeOrder && (
+                      <p>
+                        <span className="font-medium">Cheques a la orden de:</span> {paymentInfo.other.chequeOrder}
+                      </p>
+                    )}
+                    {paymentInfo.other?.otherMethods && (
+                      <p className="whitespace-pre-wrap">{paymentInfo.other.otherMethods}</p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Notas */}
+              {paymentInfo.notes && (
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+                  <p className="text-sm text-amber-800">
+                    <span className="font-medium">Nota:</span> {paymentInfo.notes}
+                  </p>
+                </div>
+              )}
+
+              {/* Contacto */}
+              {(paymentInfo.companyPhone || paymentInfo.companyEmail) && (
+                <div className="flex flex-wrap gap-4 pt-2 border-t border-slate-200">
+                  <p className="text-sm text-slate-600">
+                    ¿Dudas sobre pagos? Contactanos:
+                  </p>
+                  {paymentInfo.companyPhone && (
+                    <a 
+                      href={`tel:${paymentInfo.companyPhone}`}
+                      className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800"
+                    >
+                      <Phone className="w-4 h-4" />
+                      {paymentInfo.companyPhone}
+                    </a>
+                  )}
+                  {paymentInfo.companyEmail && (
+                    <a 
+                      href={`mailto:${paymentInfo.companyEmail}`}
+                      className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800"
+                    >
+                      <Mail className="w-4 h-4" />
+                      {paymentInfo.companyEmail}
+                    </a>
+                  )}
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { 
   Building2, Upload, Trash2, Save, Globe, Mail, Phone, MapPin, 
-  Link2, Copy, Check, ExternalLink, Palette, Image, Settings
+  Link2, Copy, Check, ExternalLink, Palette, Image, Settings,
+  CreditCard, Landmark, Wallet, FileText, DollarSign
 } from 'lucide-react';
 import Layout from '../../components/layout/Layout';
 import { 
@@ -51,7 +52,19 @@ function CompanySettingsPage() {
     portalEnabled: false,
     portalSlug: '',
     portalWelcomeMessage: '',
-    portalPrimaryColor: '#3b82f6'
+    portalPrimaryColor: '#3b82f6',
+    // Medios de pago
+    paymentBankName: '',
+    paymentBankAccount: '',
+    paymentBankCbu: '',
+    paymentBankAlias: '',
+    paymentBankCuit: '',
+    paymentBankHolder: '',
+    paymentMercadoPago: '',
+    paymentPaypal: '',
+    paymentChequeOrder: '',
+    paymentOtherMethods: '',
+    paymentNotes: ''
   });
 
   const config = configData?.data;
@@ -71,7 +84,19 @@ function CompanySettingsPage() {
         portalEnabled: config.portal?.enabled || false,
         portalSlug: config.portal?.slug || '',
         portalWelcomeMessage: config.portal?.welcomeMessage || '',
-        portalPrimaryColor: config.portal?.primaryColor || '#3b82f6'
+        portalPrimaryColor: config.portal?.primaryColor || '#3b82f6',
+        // Medios de pago
+        paymentBankName: config.paymentMethods?.bankName || '',
+        paymentBankAccount: config.paymentMethods?.bankAccount || '',
+        paymentBankCbu: config.paymentMethods?.bankCbu || '',
+        paymentBankAlias: config.paymentMethods?.bankAlias || '',
+        paymentBankCuit: config.paymentMethods?.bankCuit || '',
+        paymentBankHolder: config.paymentMethods?.bankHolder || '',
+        paymentMercadoPago: config.paymentMethods?.mercadoPago || '',
+        paymentPaypal: config.paymentMethods?.paypal || '',
+        paymentChequeOrder: config.paymentMethods?.chequeOrder || '',
+        paymentOtherMethods: config.paymentMethods?.otherMethods || '',
+        paymentNotes: config.paymentMethods?.notes || ''
       });
     }
   }, [config]);
@@ -449,6 +474,164 @@ function CompanySettingsPage() {
                 </div>
               </>
             )}
+          </CardContent>
+        </Card>
+
+        {/* Medios de Pago */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <CreditCard className="w-5 h-5" />
+              Medios de Pago para Clientes
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <p className="text-sm text-slate-600">
+              Configurá los medios de pago que tus clientes verán en su dashboard. 
+              Esta información les ayudará a saber cómo pueden abonarte.
+            </p>
+
+            {/* Transferencia Bancaria */}
+            <div className="border rounded-xl p-4 space-y-4" style={{ borderColor: 'var(--color-border)' }}>
+              <h4 className="font-medium flex items-center gap-2" style={{ color: 'var(--color-text)' }}>
+                <Landmark className="w-4 h-4 text-blue-500" />
+                Transferencia Bancaria
+              </h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label>Banco</Label>
+                  <Input
+                    value={form.paymentBankName}
+                    onChange={(e) => setForm(prev => ({ ...prev, paymentBankName: e.target.value }))}
+                    placeholder="Ej: Banco Santander"
+                  />
+                </div>
+                <div>
+                  <Label>Número de Cuenta</Label>
+                  <Input
+                    value={form.paymentBankAccount}
+                    onChange={(e) => setForm(prev => ({ ...prev, paymentBankAccount: e.target.value }))}
+                    placeholder="Ej: 123-456789/0"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label>CBU</Label>
+                  <Input
+                    value={form.paymentBankCbu}
+                    onChange={(e) => setForm(prev => ({ ...prev, paymentBankCbu: e.target.value }))}
+                    placeholder="22 dígitos"
+                    maxLength={22}
+                  />
+                </div>
+                <div>
+                  <Label>Alias</Label>
+                  <Input
+                    value={form.paymentBankAlias}
+                    onChange={(e) => setForm(prev => ({ ...prev, paymentBankAlias: e.target.value }))}
+                    placeholder="Ej: MI.EMPRESA.PAGOS"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label>CUIT</Label>
+                  <Input
+                    value={form.paymentBankCuit}
+                    onChange={(e) => setForm(prev => ({ ...prev, paymentBankCuit: e.target.value }))}
+                    placeholder="20-12345678-9"
+                  />
+                </div>
+                <div>
+                  <Label>Titular</Label>
+                  <Input
+                    value={form.paymentBankHolder}
+                    onChange={(e) => setForm(prev => ({ ...prev, paymentBankHolder: e.target.value }))}
+                    placeholder="Nombre del titular"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Pagos Digitales */}
+            <div className="border rounded-xl p-4 space-y-4" style={{ borderColor: 'var(--color-border)' }}>
+              <h4 className="font-medium flex items-center gap-2" style={{ color: 'var(--color-text)' }}>
+                <Wallet className="w-4 h-4 text-green-500" />
+                Pagos Digitales
+              </h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label>MercadoPago (CVU o Link)</Label>
+                  <Input
+                    value={form.paymentMercadoPago}
+                    onChange={(e) => setForm(prev => ({ ...prev, paymentMercadoPago: e.target.value }))}
+                    placeholder="CVU o link de pago"
+                  />
+                </div>
+                <div>
+                  <Label>PayPal (email)</Label>
+                  <Input
+                    value={form.paymentPaypal}
+                    onChange={(e) => setForm(prev => ({ ...prev, paymentPaypal: e.target.value }))}
+                    placeholder="email@paypal.com"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Otros medios */}
+            <div className="border rounded-xl p-4 space-y-4" style={{ borderColor: 'var(--color-border)' }}>
+              <h4 className="font-medium flex items-center gap-2" style={{ color: 'var(--color-text)' }}>
+                <FileText className="w-4 h-4 text-purple-500" />
+                Otros Medios
+              </h4>
+              <div>
+                <Label>Cheque a la orden de</Label>
+                <Input
+                  value={form.paymentChequeOrder}
+                  onChange={(e) => setForm(prev => ({ ...prev, paymentChequeOrder: e.target.value }))}
+                  placeholder="Nombre para cheques"
+                />
+              </div>
+              <div>
+                <Label>Otros medios de pago</Label>
+                <textarea
+                  value={form.paymentOtherMethods}
+                  onChange={(e) => setForm(prev => ({ ...prev, paymentOtherMethods: e.target.value }))}
+                  placeholder="Ej: Efectivo en oficina, Western Union, etc."
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm resize-none h-20 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  style={{
+                    backgroundColor: 'var(--color-card)',
+                    borderColor: 'var(--color-border)',
+                    color: 'var(--color-text)'
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Notas */}
+            <div>
+              <Label>Notas adicionales para clientes</Label>
+              <textarea
+                value={form.paymentNotes}
+                onChange={(e) => setForm(prev => ({ ...prev, paymentNotes: e.target.value }))}
+                placeholder="Ej: Los pagos se acreditan en 48hs hábiles. Para montos mayores a $100.000 consultar descuentos."
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm resize-none h-20 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                style={{
+                  backgroundColor: 'var(--color-card)',
+                  borderColor: 'var(--color-border)',
+                  color: 'var(--color-text)'
+                }}
+              />
+            </div>
+
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+              <p className="text-sm text-blue-700">
+                <strong>Tip:</strong> Esta información se mostrará a tus clientes en su dashboard 
+                cuando tengan facturas pendientes de pago.
+              </p>
+            </div>
           </CardContent>
         </Card>
 

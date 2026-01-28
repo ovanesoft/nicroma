@@ -706,6 +706,19 @@ export function usePortalDashboard() {
   });
 }
 
+// Obtener información de medios de pago del tenant
+export function usePaymentInfo() {
+  return useQuery({
+    queryKey: ['paymentInfo'],
+    queryFn: async () => {
+      const response = await api.get('/portal/payment-info');
+      return response.data;
+    },
+    staleTime: 300000, // 5 minutos
+    refetchOnMount: true
+  });
+}
+
 // Envíos del cliente
 export function usePortalEnvios(params = {}) {
   return useQuery({

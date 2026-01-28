@@ -30,4 +30,7 @@ router.get('/prefacturas', portalController.getPrefacturas);
 // Mi Cuenta
 router.get('/mi-cuenta', portalController.getMiCuenta);
 
+// Información de medios de pago
+router.get('/payment-info', portalController.getPaymentInfo);
+
 module.exports = router;

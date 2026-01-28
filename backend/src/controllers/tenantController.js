@@ -630,6 +630,9 @@ const getCompanyConfig = async (req, res) => {
       `SELECT id, name, slug, domain, logo_url, settings,
               company_email, company_phone, company_address, company_city, company_country, company_website,
               portal_enabled, portal_slug, portal_welcome_message, portal_primary_color,
+              payment_bank_name, payment_bank_account, payment_bank_cbu, payment_bank_alias,
+              payment_bank_cuit, payment_bank_holder, payment_mercado_pago, payment_paypal,
+              payment_cheque_order, payment_other_methods, payment_notes,
               plan, is_active, created_at
        FROM tenants WHERE id = $1`,
       [tenantId]
@@ -674,6 +677,19 @@ const getCompanyConfig = async (req, res) => {
           url: portalUrl,
           welcomeMessage: tenant.portal_welcome_message,
           primaryColor: tenant.portal_primary_color
+        },
+        paymentMethods: {
+          bankName: tenant.payment_bank_name,
+          bankAccount: tenant.payment_bank_account,
+          bankCbu: tenant.payment_bank_cbu,
+          bankAlias: tenant.payment_bank_alias,
+          bankCuit: tenant.payment_bank_cuit,
+          bankHolder: tenant.payment_bank_holder,
+          mercadoPago: tenant.payment_mercado_pago,
+          paypal: tenant.payment_paypal,
+          chequeOrder: tenant.payment_cheque_order,
+          otherMethods: tenant.payment_other_methods,
+          notes: tenant.payment_notes
         }
       }
     });
@@ -694,7 +710,11 @@ const updateCompanyConfig = async (req, res) => {
     const {
       name, domain, 
       companyEmail, companyPhone, companyAddress, companyCity, companyCountry, companyWebsite,
-      portalEnabled, portalSlug, portalWelcomeMessage, portalPrimaryColor
+      portalEnabled, portalSlug, portalWelcomeMessage, portalPrimaryColor,
+      // Medios de pago
+      paymentBankName, paymentBankAccount, paymentBankCbu, paymentBankAlias,
+      paymentBankCuit, paymentBankHolder, paymentMercadoPago, paymentPaypal,
+      paymentChequeOrder, paymentOtherMethods, paymentNotes
     } = req.body;
 
     if (!tenantId) {
@@ -768,6 +788,52 @@ const updateCompanyConfig = async (req, res) => {
     if (portalPrimaryColor !== undefined) {
       updates.push(`portal_primary_color = $${paramCount++}`);
       values.push(portalPrimaryColor || '#3b82f6');
+    }
+
+    // Campos de medios de pago
+    if (paymentBankName !== undefined) {
+      updates.push(`payment_bank_name = $${paramCount++}`);
+      values.push(paymentBankName?.trim() || null);
+    }
+    if (paymentBankAccount !== undefined) {
+      updates.push(`payment_bank_account = $${paramCount++}`);
+      values.push(paymentBankAccount?.trim() || null);
+    }
+    if (paymentBankCbu !== undefined) {
+      updates.push(`payment_bank_cbu = $${paramCount++}`);
+      values.push(paymentBankCbu?.trim() || null);
+    }
+    if (paymentBankAlias !== undefined) {
+      updates.push(`payment_bank_alias = $${paramCount++}`);
+      values.push(paymentBankAlias?.trim() || null);
+    }
+    if (paymentBankCuit !== undefined) {
+      updates.push(`payment_bank_cuit = $${paramCount++}`);
+      values.push(paymentBankCuit?.trim() || null);
+    }
+    if (paymentBankHolder !== undefined) {
+      updates.push(`payment_bank_holder = $${paramCount++}`);
+      values.push(paymentBankHolder?.trim() || null);
+    }
+    if (paymentMercadoPago !== undefined) {
+      updates.push(`payment_mercado_pago = $${paramCount++}`);
+      values.push(paymentMercadoPago?.trim() || null);
+    }
+    if (paymentPaypal !== undefined) {
+      updates.push(`payment_paypal = $${paramCount++}`);
+      values.push(paymentPaypal?.trim() || null);
+    }
+    if (paymentChequeOrder !== undefined) {
+      updates.push(`payment_cheque_order = $${paramCount++}`);
+      values.push(paymentChequeOrder?.trim() || null);
+    }
+    if (paymentOtherMethods !== undefined) {
+      updates.push(`payment_other_methods = $${paramCount++}`);
+      values.push(paymentOtherMethods?.trim() || null);
+    }
+    if (paymentNotes !== undefined) {
+      updates.push(`payment_notes = $${paramCount++}`);
+      values.push(paymentNotes?.trim() || null);
     }
 
     if (updates.length === 0) {

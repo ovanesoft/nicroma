@@ -652,6 +652,95 @@ exports.getPrefacturas = async (req, res) => {
 };
 
 // =====================================================
+// MEDIOS DE PAGO
+// =====================================================
+
+/**
+ * GET /api/portal/payment-info
+ * Obtiene la información de medios de pago del tenant
+ */
+exports.getPaymentInfo = async (req, res) => {
+  try {
+    const tenantId = req.user.tenant_id;
+
+    if (!tenantId) {
+      return res.status(400).json({
+        success: false,
+        message: 'No hay organización vinculada'
+      });
+    }
+
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: {
+        name: true,
+        companyPhone: true,
+        companyEmail: true,
+        paymentBankName: true,
+        paymentBankAccount: true,
+        paymentBankCbu: true,
+        paymentBankAlias: true,
+        paymentBankCuit: true,
+        paymentBankHolder: true,
+        paymentMercadoPago: true,
+        paymentPaypal: true,
+        paymentChequeOrder: true,
+        paymentOtherMethods: true,
+        paymentNotes: true
+      }
+    });
+
+    if (!tenant) {
+      return res.status(404).json({
+        success: false,
+        message: 'Organización no encontrada'
+      });
+    }
+
+    // Verificar si tiene algún medio de pago configurado
+    const hasPaymentMethods = !!(
+      tenant.paymentBankCbu || 
+      tenant.paymentBankAlias || 
+      tenant.paymentMercadoPago || 
+      tenant.paymentPaypal ||
+      tenant.paymentChequeOrder ||
+      tenant.paymentOtherMethods
+    );
+
+    res.json({
+      success: true,
+      data: {
+        companyName: tenant.name,
+        companyPhone: tenant.companyPhone,
+        companyEmail: tenant.companyEmail,
+        hasPaymentMethods,
+        bank: {
+          bankName: tenant.paymentBankName,
+          accountNumber: tenant.paymentBankAccount,
+          cbu: tenant.paymentBankCbu,
+          alias: tenant.paymentBankAlias,
+          cuit: tenant.paymentBankCuit,
+          holder: tenant.paymentBankHolder
+        },
+        digital: {
+          mercadoPago: tenant.paymentMercadoPago,
+          paypal: tenant.paymentPaypal
+        },
+        other: {
+          chequeOrder: tenant.paymentChequeOrder,
+          otherMethods: tenant.paymentOtherMethods
+        },
+        notes: tenant.paymentNotes
+      }
+    });
+
+  } catch (error) {
+    console.error('Error obteniendo info de pago:', error);
+    res.status(500).json({ success: false, error: 'Error al obtener información de pago' });
+  }
+};
+
+// =====================================================
 // PERFIL DE CLIENTE
 // =====================================================
 
