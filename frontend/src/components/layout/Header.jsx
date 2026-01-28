@@ -9,7 +9,7 @@ import { cn, formatDate } from '../../lib/utils';
 import { getRoleLabel, getRoleColor, getInitials } from '../../lib/utils';
 import { useAuth } from '../../context/AuthContext';
 import { useUIStore } from '../../stores/uiStore';
-import { useMyNotifications, useMarkNotificationRead, useMarkAllNotificationsRead } from '../../hooks/useApi';
+import { useMyNotifications, useMarkNotificationRead, useMarkAllNotificationsRead, useUnreadConversationsCount } from '../../hooks/useApi';
 
 // Iconos y colores por tipo de notificación
 const NOTIFICATION_STYLES = {
@@ -35,13 +35,18 @@ function Header({ title, subtitle }) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
 
-  // Notificaciones
+  // Notificaciones del sistema
   const { data: notifData, isLoading: notifLoading } = useMyNotifications({ limit: 10 });
   const markAsRead = useMarkNotificationRead();
   const markAllAsRead = useMarkAllNotificationsRead();
+  
+  // Mensajes no leídos
+  const { data: unreadConvData } = useUnreadConversationsCount();
 
   const notifications = notifData?.data?.notifications || [];
-  const unreadCount = notifData?.data?.unreadCount || 0;
+  const systemUnreadCount = notifData?.data?.unreadCount || 0;
+  const messagesUnreadCount = unreadConvData?.data?.unreadCount || 0;
+  const unreadCount = systemUnreadCount + messagesUnreadCount;
 
   const handleLogout = async () => {
     await logout();
@@ -207,8 +212,37 @@ function Header({ title, subtitle }) {
                     )}
                   </div>
 
+                  {/* Mensajes no leídos */}
+                  {messagesUnreadCount > 0 && (
+                    <div 
+                      className="px-4 py-3"
+                      style={{ borderTop: '1px solid var(--color-border)' }}
+                    >
+                      <button
+                        onClick={() => {
+                          navigate('/messages');
+                          setNotificationsOpen(false);
+                        }}
+                        className="w-full flex items-center gap-3 p-3 rounded-lg transition-colors hover:bg-[var(--color-background)] bg-blue-50"
+                      >
+                        <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                          <MessageSquare className="w-5 h-5 text-blue-500" />
+                        </div>
+                        <div className="flex-1 text-left">
+                          <p className="text-sm font-semibold" style={{ color: 'var(--color-text)' }}>
+                            {messagesUnreadCount} {messagesUnreadCount === 1 ? 'mensaje nuevo' : 'mensajes nuevos'}
+                          </p>
+                          <p className="text-xs" style={{ color: 'var(--color-textSecondary)' }}>
+                            Ir a Mensajes
+                          </p>
+                        </div>
+                        <span className="w-2 h-2 rounded-full bg-blue-500" />
+                      </button>
+                    </div>
+                  )}
+
                   {/* Footer */}
-                  {notifications.length > 0 && (
+                  {(notifications.length > 0 || messagesUnreadCount > 0) && (
                     <div 
                       className="px-4 py-3 text-center"
                       style={{ borderTop: '1px solid var(--color-border)' }}
