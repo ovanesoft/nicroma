@@ -68,13 +68,21 @@ function OrgUsersPage() {
       {/* Actions */}
       <div className="flex flex-col sm:flex-row gap-4 mb-6">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+          <Search 
+            className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5" 
+            style={{ color: 'var(--color-text)' }}
+          />
           <input
             type="text"
             placeholder="Buscar usuarios..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 rounded-lg border border-slate-300 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none transition-colors"
+            className="w-full pl-10 pr-4 py-2 rounded-lg border focus:ring-2 focus:ring-[var(--color-primary)]/20 outline-none transition-colors"
+            style={{
+              backgroundColor: 'var(--color-card)',
+              borderColor: 'var(--color-border)',
+              color: 'var(--color-text)'
+            }}
           />
         </div>
         <Button onClick={() => setModalOpen(true)}>
@@ -102,7 +110,10 @@ function OrgUsersPage() {
                 [...Array(3)].map((_, i) => (
                   <TableRow key={i}>
                     <TableCell colSpan={6}>
-                      <div className="h-12 bg-slate-100 rounded animate-pulse" />
+                      <div 
+                        className="h-12 rounded animate-pulse" 
+                        style={{ backgroundColor: 'var(--color-border)' }}
+                      />
                     </TableCell>
                   </TableRow>
                 ))
@@ -116,17 +127,20 @@ function OrgUsersPage() {
                   <TableRow key={user.id}>
                     <TableCell>
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-gradient-to-br from-primary-400 to-purple-500 rounded-lg flex items-center justify-center text-white text-sm font-semibold">
+                        <div 
+                          className="w-10 h-10 rounded-lg flex items-center justify-center text-white text-sm font-semibold"
+                          style={{ backgroundColor: 'var(--color-primary)' }}
+                        >
                           {getInitials(user.first_name, user.last_name)}
                         </div>
                         <div>
-                          <p className="font-medium text-slate-800">
+                          <p className="font-medium" style={{ color: 'var(--color-text)' }}>
                             {user.first_name} {user.last_name}
                             {user.id === currentUser?.id && (
-                              <span className="ml-2 text-xs text-primary-600">(Tú)</span>
+                              <span className="ml-2 text-xs" style={{ color: 'var(--color-primary)' }}>(Tú)</span>
                             )}
                           </p>
-                          <p className="text-sm text-slate-500">{user.email}</p>
+                          <p className="text-sm" style={{ color: 'var(--color-textSecondary)' }}>{user.email}</p>
                         </div>
                       </div>
                     </TableCell>
@@ -136,7 +150,13 @@ function OrgUsersPage() {
                       </span>
                     </TableCell>
                     <TableCell>
-                      <span className="text-xs px-2 py-1 bg-slate-100 text-slate-600 rounded capitalize">
+                      <span 
+                        className="text-xs px-2 py-1 rounded capitalize"
+                        style={{ 
+                          backgroundColor: 'var(--color-background)', 
+                          color: 'var(--color-text)' 
+                        }}
+                      >
                         {user.auth_provider}
                       </span>
                     </TableCell>
@@ -145,13 +165,18 @@ function OrgUsersPage() {
                         {user.is_active ? 'Activo' : 'Inactivo'}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-slate-500 text-sm">
-                      {user.last_login ? formatDate(user.last_login) : 'Nunca'}
+                    <TableCell>
+                      <span className="text-sm" style={{ color: 'var(--color-textSecondary)' }}>
+                        {user.last_login ? formatDate(user.last_login) : 'Nunca'}
+                      </span>
                     </TableCell>
                     <TableCell>
                       {user.id !== currentUser?.id && (
-                        <button className="p-2 hover:bg-slate-100 rounded-lg transition-colors">
-                          <MoreVertical className="w-4 h-4 text-slate-400" />
+                        <button 
+                          className="p-2 rounded-lg transition-colors"
+                          style={{ color: 'var(--color-text)' }}
+                        >
+                          <MoreVertical className="w-4 h-4" />
                         </button>
                       )}
                     </TableCell>
@@ -199,12 +224,20 @@ function OrgUsersPage() {
               {...register('password')}
             />
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">
+              <label 
+                className="block text-sm font-medium mb-1.5"
+                style={{ color: 'var(--color-text)' }}
+              >
                 Rol
               </label>
               <select
                 {...register('role')}
-                className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none transition-colors bg-white"
+                className="w-full px-3 py-2 rounded-lg border focus:ring-2 focus:ring-[var(--color-primary)]/20 outline-none transition-colors"
+                style={{
+                  backgroundColor: 'var(--color-card)',
+                  borderColor: 'var(--color-border)',
+                  color: 'var(--color-text)'
+                }}
               >
                 <option value="user">Usuario</option>
                 <option value="manager">Manager</option>

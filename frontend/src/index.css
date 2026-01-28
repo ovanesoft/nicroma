@@ -50,13 +50,61 @@ body.dark-theme .card {
 body.dark-theme input,
 body.dark-theme select,
 body.dark-theme textarea {
-  background-color: var(--color-card);
-  color: var(--color-text);
-  border-color: var(--color-border);
+  background-color: var(--color-card) !important;
+  color: var(--color-text) !important;
+  border-color: var(--color-border) !important;
 }
 
 body.dark-theme input::placeholder {
-  color: var(--color-textSecondary);
+  color: var(--color-textSecondary) !important;
+}
+
+/* Override Tailwind slate colors in dark theme */
+body.dark-theme .text-slate-400,
+body.dark-theme .text-slate-500,
+body.dark-theme .text-slate-600 {
+  color: var(--color-textSecondary) !important;
+}
+
+body.dark-theme .text-slate-700,
+body.dark-theme .text-slate-800,
+body.dark-theme .text-slate-900 {
+  color: var(--color-text) !important;
+}
+
+body.dark-theme .bg-slate-50,
+body.dark-theme .bg-slate-100 {
+  background-color: var(--color-background) !important;
+}
+
+body.dark-theme .bg-slate-200 {
+  background-color: var(--color-border) !important;
+}
+
+body.dark-theme .bg-white {
+  background-color: var(--color-card) !important;
+}
+
+body.dark-theme .border-slate-100,
+body.dark-theme .border-slate-200,
+body.dark-theme .border-slate-300 {
+  border-color: var(--color-border) !important;
+}
+
+body.dark-theme .hover\:bg-slate-50:hover,
+body.dark-theme .hover\:bg-slate-100:hover {
+  background-color: var(--color-primary)20 !important;
+}
+
+body.dark-theme .divide-slate-100 > :not([hidden]) ~ :not([hidden]),
+body.dark-theme .divide-slate-200 > :not([hidden]) ~ :not([hidden]) {
+  border-color: var(--color-border) !important;
+}
+
+/* Fix placeholder colors */
+body.dark-theme .placeholder-slate-400::placeholder,
+body.dark-theme .placeholder\:text-slate-400::placeholder {
+  color: var(--color-textSecondary) !important;
 }
 
 /* Custom scrollbar */
