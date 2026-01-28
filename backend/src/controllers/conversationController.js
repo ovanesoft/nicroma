@@ -11,22 +11,29 @@ const getMyConversations = async (req, res) => {
     let whereConditions = {};
 
     if (userRole === 'root') {
-      // Root ve todas las conversaciones dirigidas a soporte/root
+      // Root ve todas las conversaciones de soporte + las que él creó
       whereConditions = {
-        isRootConversation: true
+        OR: [
+          { isRootConversation: true },
+          { createdByUserId: userId }
+        ]
       };
     } else if (userRole === 'client') {
-      // Cliente ve sus conversaciones
+      // Cliente ve sus conversaciones y las que le enviaron
       whereConditions = {
-        createdByUserId: userId
+        OR: [
+          { createdByUserId: userId },
+          { targetUserId: userId }
+        ]
       };
     } else {
-      // Admin/Manager/User ve conversaciones de su tenant
+      // Admin/Manager/User ve conversaciones de su tenant + las dirigidas a ellos
       whereConditions = {
         OR: [
           { createdByTenantId: tenantId },
           { targetTenantId: tenantId },
-          { createdByUserId: userId }
+          { createdByUserId: userId },
+          { targetUserId: userId }
         ]
       };
     }
@@ -196,7 +203,7 @@ const createConversation = async (req, res) => {
     const userId = req.user.id;
     const userRole = req.user.role;
     const tenantId = req.user.tenant_id;
-    const { type, subject, message, targetTenantId, priority } = req.body;
+    const { type, subject, message, targetTenantId, targetUserId, priority } = req.body;
 
     if (!subject || !message) {
       return res.status(400).json({
@@ -212,8 +219,24 @@ const createConversation = async (req, res) => {
     });
     const authorName = `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || 'Usuario';
 
-    // Determinar si es conversación con root
-    const isRootConversation = type === 'SUPPORT' || type === 'BILLING' || !targetTenantId;
+    // Determinar si es conversación con root (si NO es root quien inicia)
+    // Si el root inicia una conversación hacia un usuario, no es "root conversation"
+    const isRootConversation = userRole !== 'root' && (type === 'SUPPORT' || type === 'BILLING' || !targetTenantId);
+
+    // Si el root está iniciando hacia un usuario específico, obtener su tenantId
+    let finalTargetTenantId = targetTenantId;
+    let finalTargetUserId = targetUserId;
+    
+    if (userRole === 'root' && targetUserId) {
+      const targetUser = await prisma.user.findUnique({
+        where: { id: targetUserId },
+        select: { tenantId: true }
+      });
+      if (targetUser?.tenantId) {
+        finalTargetTenantId = targetUser.tenantId;
+      }
+      finalTargetUserId = targetUserId;
+    }
 
     const conversation = await prisma.conversation.create({
       data: {
@@ -221,7 +244,8 @@ const createConversation = async (req, res) => {
         subject,
         createdByUserId: userId,
         createdByTenantId: tenantId,
-        targetTenantId: targetTenantId || null,
+        targetTenantId: finalTargetTenantId || null,
+        targetUserId: finalTargetUserId || null,
         isRootConversation,
         priority: priority || 'NORMAL',
         lastMessageAt: new Date(),
@@ -245,6 +269,17 @@ const createConversation = async (req, res) => {
         messages: true
       }
     });
+    
+    // Si hay un usuario destino, agregarlo como participante
+    if (finalTargetUserId) {
+      await prisma.conversationParticipant.create({
+        data: {
+          conversationId: conversation.id,
+          userId: finalTargetUserId,
+          role: 'participant'
+        }
+      });
+    }
 
     res.status(201).json({
       success: true,

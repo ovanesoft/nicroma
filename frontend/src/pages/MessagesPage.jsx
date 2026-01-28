@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { 
   MessageSquare, Plus, Send, Search, Headphones, CreditCard, 
-  HelpCircle, CheckCircle, Clock, X, Users, Building2, ArrowLeft
+  HelpCircle, CheckCircle, Clock, X, Users, Building2, ArrowLeft, User
 } from 'lucide-react';
 import Layout from '../components/layout/Layout';
 import { 
@@ -9,7 +9,7 @@ import {
 } from '../components/ui';
 import { 
   useMyConversations, useConversation, useCreateConversation, 
-  useAddMessage, useUpdateConversationStatus
+  useAddMessage, useUpdateConversationStatus, useUsers
 } from '../hooks/useApi';
 import { useAuth } from '../context/AuthContext';
 import { cn, formatDate } from '../lib/utils';
@@ -37,11 +37,15 @@ function MessagesPage() {
   const [newConvForm, setNewConvForm] = useState({
     type: 'SUPPORT',
     subject: '',
-    message: ''
+    message: '',
+    targetUserId: ''
   });
+  const [userSearch, setUserSearch] = useState('');
   const messagesEndRef = useRef(null);
 
+  const isRoot = user?.role === 'root';
   const { data: conversationsData, isLoading } = useMyConversations();
+  const { data: usersData } = useUsers({ limit: 100 });
   const { data: conversationData, isLoading: loadingMessages } = useConversation(selectedConversation);
   const createConversation = useCreateConversation();
   const addMessage = useAddMessage();
@@ -72,21 +76,39 @@ function MessagesPage() {
       return;
     }
 
+    // Si es root, debe seleccionar un destinatario
+    if (isRoot && !newConvForm.targetUserId) {
+      toast.error('Seleccioná un destinatario');
+      return;
+    }
+
     try {
       const result = await createConversation.mutateAsync({
         type: newConvForm.type,
         subject: newConvForm.subject,
-        message: newConvForm.message
+        message: newConvForm.message,
+        targetUserId: newConvForm.targetUserId || undefined
       });
       
       toast.success('Conversación creada');
       setNewConversationModal(false);
-      setNewConvForm({ type: 'SUPPORT', subject: '', message: '' });
+      setNewConvForm({ type: 'SUPPORT', subject: '', message: '', targetUserId: '' });
+      setUserSearch('');
       setSelectedConversation(result.data.conversation.id);
     } catch (error) {
       toast.error('Error al crear conversación');
     }
   };
+
+  // Filtrar usuarios para búsqueda
+  const allUsers = usersData?.data?.users || [];
+  const filteredUsers = userSearch.length >= 2
+    ? allUsers.filter(u => 
+        u.email?.toLowerCase().includes(userSearch.toLowerCase()) ||
+        u.firstName?.toLowerCase().includes(userSearch.toLowerCase()) ||
+        u.lastName?.toLowerCase().includes(userSearch.toLowerCase())
+      ).slice(0, 10)
+    : [];
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
@@ -389,66 +411,173 @@ function MessagesPage() {
       {newConversationModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
           <div 
-            className="w-full max-w-lg rounded-xl shadow-xl"
+            className="w-full max-w-lg rounded-xl shadow-xl max-h-[90vh] overflow-y-auto"
             style={{ backgroundColor: 'var(--color-card)' }}
           >
-            <div className="flex items-center justify-between p-4 border-b" style={{ borderColor: 'var(--color-border)' }}>
+            <div className="flex items-center justify-between p-4 border-b sticky top-0 z-10" style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-card)' }}>
               <h2 className="text-lg font-semibold" style={{ color: 'var(--color-text)' }}>
                 Nueva Conversación
               </h2>
-              <button onClick={() => setNewConversationModal(false)} className="p-1 rounded hover:bg-slate-100">
+              <button onClick={() => { setNewConversationModal(false); setUserSearch(''); }} className="p-1 rounded hover:bg-slate-100">
                 <X className="w-5 h-5" />
               </button>
             </div>
             
             <form onSubmit={handleCreateConversation} className="p-4 space-y-4">
-              {/* Tipo */}
-              <div>
-                <label className="block text-sm font-medium mb-2" style={{ color: 'var(--color-text)' }}>
-                  ¿Con qué te podemos ayudar?
-                </label>
-                <div className="space-y-2">
-                  {CONVERSATION_TYPES.map((type) => {
-                    const Icon = type.icon;
-                    return (
-                      <label
-                        key={type.value}
-                        className={cn(
-                          'flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors',
-                          newConvForm.type === type.value 
-                            ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/5' 
-                            : 'border-[var(--color-border)] hover:bg-[var(--color-background)]'
-                        )}
-                      >
-                        <input
-                          type="radio"
-                          name="type"
-                          value={type.value}
-                          checked={newConvForm.type === type.value}
-                          onChange={() => setNewConvForm({ ...newConvForm, type: type.value })}
-                          className="sr-only"
-                        />
-                        <div className={cn('w-10 h-10 rounded-full flex items-center justify-center',
-                          type.value === 'SUPPORT' ? 'bg-blue-100' : type.value === 'BILLING' ? 'bg-green-100' : 'bg-purple-100'
-                        )}>
-                          <Icon className={cn('w-5 h-5', type.color)} />
+              {/* Selector de destinatario para ROOT */}
+              {isRoot && (
+                <div>
+                  <label className="block text-sm font-medium mb-2" style={{ color: 'var(--color-text)' }}>
+                    <User className="w-4 h-4 inline mr-1" />
+                    Destinatario
+                  </label>
+                  
+                  {/* Usuario seleccionado */}
+                  {newConvForm.targetUserId ? (
+                    <div 
+                      className="flex items-center justify-between p-3 rounded-lg border"
+                      style={{ borderColor: 'var(--color-primary)', backgroundColor: 'var(--color-primary)' + '10' }}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center">
+                          <User className="w-5 h-5 text-primary-600" />
                         </div>
                         <div>
-                          <p className="font-medium text-sm" style={{ color: 'var(--color-text)' }}>{type.label}</p>
-                          <p className="text-xs" style={{ color: 'var(--color-textSecondary)' }}>{type.description}</p>
+                          {(() => {
+                            const selectedUser = allUsers.find(u => u.id === newConvForm.targetUserId);
+                            return (
+                              <>
+                                <p className="font-medium text-sm" style={{ color: 'var(--color-text)' }}>
+                                  {selectedUser?.firstName} {selectedUser?.lastName}
+                                </p>
+                                <p className="text-xs" style={{ color: 'var(--color-textSecondary)' }}>
+                                  {selectedUser?.email}
+                                </p>
+                              </>
+                            );
+                          })()}
                         </div>
-                      </label>
-                    );
-                  })}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setNewConvForm({ ...newConvForm, targetUserId: '' })}
+                        className="p-1 rounded hover:bg-red-100 text-red-500"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'var(--color-textSecondary)' }} />
+                      <input
+                        type="text"
+                        value={userSearch}
+                        onChange={(e) => setUserSearch(e.target.value)}
+                        placeholder="Buscar usuario por email o nombre..."
+                        className="w-full pl-9 pr-3 py-2 rounded-lg border text-sm"
+                        style={{
+                          backgroundColor: 'var(--color-card)',
+                          borderColor: 'var(--color-border)',
+                          color: 'var(--color-text)'
+                        }}
+                      />
+                      
+                      {/* Lista de usuarios */}
+                      {filteredUsers.length > 0 && (
+                        <div 
+                          className="absolute top-full left-0 right-0 mt-1 rounded-lg border shadow-lg max-h-48 overflow-y-auto z-20"
+                          style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}
+                        >
+                          {filteredUsers.map((u) => (
+                            <button
+                              key={u.id}
+                              type="button"
+                              onClick={() => {
+                                setNewConvForm({ ...newConvForm, targetUserId: u.id });
+                                setUserSearch('');
+                              }}
+                              className="w-full flex items-center gap-3 p-3 hover:bg-slate-50 text-left transition-colors"
+                            >
+                              <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center flex-shrink-0">
+                                <User className="w-4 h-4 text-slate-500" />
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <p className="text-sm font-medium truncate" style={{ color: 'var(--color-text)' }}>
+                                  {u.firstName} {u.lastName}
+                                </p>
+                                <p className="text-xs truncate" style={{ color: 'var(--color-textSecondary)' }}>
+                                  {u.email} • {u.role}
+                                </p>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                      
+                      {userSearch.length >= 2 && filteredUsers.length === 0 && (
+                        <div 
+                          className="absolute top-full left-0 right-0 mt-1 p-4 rounded-lg border text-center"
+                          style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}
+                        >
+                          <p className="text-sm" style={{ color: 'var(--color-textSecondary)' }}>
+                            No se encontraron usuarios
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
-              </div>
+              )}
+
+              {/* Tipo - solo para no-root */}
+              {!isRoot && (
+                <div>
+                  <label className="block text-sm font-medium mb-2" style={{ color: 'var(--color-text)' }}>
+                    ¿Con qué te podemos ayudar?
+                  </label>
+                  <div className="space-y-2">
+                    {CONVERSATION_TYPES.map((type) => {
+                      const Icon = type.icon;
+                      return (
+                        <label
+                          key={type.value}
+                          className={cn(
+                            'flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors',
+                            newConvForm.type === type.value 
+                              ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/5' 
+                              : 'border-[var(--color-border)] hover:bg-[var(--color-background)]'
+                          )}
+                        >
+                          <input
+                            type="radio"
+                            name="type"
+                            value={type.value}
+                            checked={newConvForm.type === type.value}
+                            onChange={() => setNewConvForm({ ...newConvForm, type: type.value })}
+                            className="sr-only"
+                          />
+                          <div className={cn('w-10 h-10 rounded-full flex items-center justify-center',
+                            type.value === 'SUPPORT' ? 'bg-blue-100' : type.value === 'BILLING' ? 'bg-green-100' : 'bg-purple-100'
+                          )}>
+                            <Icon className={cn('w-5 h-5', type.color)} />
+                          </div>
+                          <div>
+                            <p className="font-medium text-sm" style={{ color: 'var(--color-text)' }}>{type.label}</p>
+                            <p className="text-xs" style={{ color: 'var(--color-textSecondary)' }}>{type.description}</p>
+                          </div>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
               {/* Asunto */}
               <Input
                 label="Asunto"
                 value={newConvForm.subject}
                 onChange={(e) => setNewConvForm({ ...newConvForm, subject: e.target.value })}
-                placeholder="Ej: Problema con la facturación"
+                placeholder={isRoot ? "Ej: Información importante sobre tu cuenta" : "Ej: Problema con la facturación"}
                 required
               />
 
@@ -460,7 +589,7 @@ function MessagesPage() {
                 <textarea
                   value={newConvForm.message}
                   onChange={(e) => setNewConvForm({ ...newConvForm, message: e.target.value })}
-                  placeholder="Describí tu consulta..."
+                  placeholder={isRoot ? "Escribí tu mensaje..." : "Describí tu consulta..."}
                   rows={4}
                   required
                   className="w-full px-3 py-2 rounded-lg border"
@@ -473,7 +602,7 @@ function MessagesPage() {
               </div>
 
               <div className="flex gap-2 justify-end pt-2">
-                <Button type="button" variant="secondary" onClick={() => setNewConversationModal(false)}>
+                <Button type="button" variant="secondary" onClick={() => { setNewConversationModal(false); setUserSearch(''); }}>
                   Cancelar
                 </Button>
                 <Button type="submit" loading={createConversation.isPending}>
