@@ -15,7 +15,11 @@ function Table({ className, children, ...props }) {
 
 function TableHeader({ className, children, ...props }) {
   return (
-    <thead className={cn('bg-slate-50', className)} {...props}>
+    <thead 
+      className={cn(className)} 
+      style={{ backgroundColor: 'var(--color-background)' }}
+      {...props}
+    >
       {children}
     </thead>
   );
@@ -32,10 +36,8 @@ function TableBody({ className, children, ...props }) {
 function TableRow({ className, children, ...props }) {
   return (
     <tr
-      className={cn(
-        'border-b border-slate-100 transition-colors hover:bg-slate-50/50',
-        className
-      )}
+      className={cn('transition-colors', className)}
+      style={{ borderBottom: '1px solid var(--color-border)' }}
       {...props}
     >
       {children}
@@ -47,10 +49,11 @@ function TableHead({ className, children, ...props }) {
   return (
     <th
       className={cn(
-        'h-12 px-4 text-left align-middle font-medium text-slate-500',
+        'h-12 px-4 text-left align-middle font-medium',
         'first:rounded-tl-lg last:rounded-tr-lg',
         className
       )}
+      style={{ color: 'var(--color-text)' }}
       {...props}
     >
       {children}
@@ -61,7 +64,8 @@ function TableHead({ className, children, ...props }) {
 function TableCell({ className, children, ...props }) {
   return (
     <td
-      className={cn('px-4 py-3 align-middle text-slate-700', className)}
+      className={cn('px-4 py-3 align-middle', className)}
+      style={{ color: 'var(--color-text)' }}
       {...props}
     >
       {children}
@@ -72,7 +76,11 @@ function TableCell({ className, children, ...props }) {
 function TableEmpty({ message = 'No hay datos para mostrar', colSpan = 1 }) {
   return (
     <TableRow>
-      <TableCell colSpan={colSpan} className="h-32 text-center text-slate-500">
+      <TableCell 
+        colSpan={colSpan} 
+        className="h-32 text-center"
+        style={{ color: 'var(--color-textSecondary)' }}
+      >
         {message}
       </TableCell>
     </TableRow>

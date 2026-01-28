@@ -40,17 +40,18 @@ function Modal({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Overlay */}
       <div 
-        className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm animate-fade-in"
+        className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-fade-in"
         onClick={onClose}
       />
       
       {/* Content */}
       <div
         className={cn(
-          'relative w-full bg-white rounded-2xl shadow-2xl animate-scale-in',
+          'relative w-full rounded-2xl shadow-2xl animate-scale-in',
           sizes[size],
           className
         )}
+        style={{ backgroundColor: 'var(--color-card)' }}
       >
         {children}
       </div>
@@ -60,12 +61,16 @@ function Modal({
 
 function ModalHeader({ children, onClose, className }) {
   return (
-    <div className={cn('flex items-center justify-between p-6 border-b border-slate-100', className)}>
+    <div 
+      className={cn('flex items-center justify-between p-6', className)}
+      style={{ borderBottom: '1px solid var(--color-border)' }}
+    >
       <div>{children}</div>
       {onClose && (
         <button
           onClick={onClose}
-          className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+          className="p-2 rounded-lg transition-colors"
+          style={{ color: 'var(--color-text)' }}
         >
           <X className="w-5 h-5" />
         </button>
@@ -76,7 +81,10 @@ function ModalHeader({ children, onClose, className }) {
 
 function ModalTitle({ children, className }) {
   return (
-    <h2 className={cn('text-lg font-semibold text-slate-800', className)}>
+    <h2 
+      className={cn('text-lg font-semibold', className)}
+      style={{ color: 'var(--color-text)' }}
+    >
       {children}
     </h2>
   );

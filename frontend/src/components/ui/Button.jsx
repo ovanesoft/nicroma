@@ -1,21 +1,6 @@
 import { forwardRef } from 'react';
 import { cn } from '../../lib/utils';
 
-const variants = {
-  primary: 'bg-primary-600 text-white hover:bg-primary-700 focus:ring-primary-500',
-  secondary: 'bg-slate-100 text-slate-700 hover:bg-slate-200 focus:ring-slate-500',
-  danger: 'bg-red-600 text-white hover:bg-red-700 focus:ring-red-500',
-  ghost: 'bg-transparent text-slate-600 hover:bg-slate-100 focus:ring-slate-500',
-  outline: 'border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 focus:ring-primary-500'
-};
-
-const sizes = {
-  sm: 'px-3 py-1.5 text-sm',
-  md: 'px-4 py-2 text-sm',
-  lg: 'px-6 py-3 text-base',
-  icon: 'p-2'
-};
-
 const Button = forwardRef(({ 
   className, 
   variant = 'primary', 
@@ -25,19 +10,56 @@ const Button = forwardRef(({
   children,
   ...props 
 }, ref) => {
+  const baseStyles = 'inline-flex items-center justify-center gap-2 font-medium rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed';
+  
+  const sizes = {
+    sm: 'px-3 py-1.5 text-sm',
+    md: 'px-4 py-2 text-sm',
+    lg: 'px-6 py-3 text-base',
+    icon: 'p-2'
+  };
+
+  // Definir estilos basados en variante usando variables CSS
+  const getVariantStyles = () => {
+    switch (variant) {
+      case 'primary':
+        return {
+          backgroundColor: 'var(--color-primary)',
+          color: '#ffffff'
+        };
+      case 'secondary':
+        return {
+          backgroundColor: 'var(--color-background)',
+          color: 'var(--color-text)',
+          border: '1px solid var(--color-border)'
+        };
+      case 'danger':
+        return {
+          backgroundColor: '#dc2626',
+          color: '#ffffff'
+        };
+      case 'ghost':
+        return {
+          backgroundColor: 'transparent',
+          color: 'var(--color-text)'
+        };
+      case 'outline':
+        return {
+          backgroundColor: 'transparent',
+          color: 'var(--color-text)',
+          border: '1px solid var(--color-border)'
+        };
+      default:
+        return {};
+    }
+  };
+
   return (
     <button
       ref={ref}
       disabled={disabled || loading}
-      className={cn(
-        'inline-flex items-center justify-center gap-2 font-medium rounded-lg',
-        'transition-colors duration-200',
-        'focus:outline-none focus:ring-2 focus:ring-offset-2',
-        'disabled:opacity-50 disabled:cursor-not-allowed',
-        variants[variant],
-        sizes[size],
-        className
-      )}
+      className={cn(baseStyles, sizes[size], className)}
+      style={getVariantStyles()}
       {...props}
     >
       {loading && (
