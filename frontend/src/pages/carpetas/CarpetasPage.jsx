@@ -24,6 +24,7 @@ function CarpetasPage() {
     limit: 20
   });
   const [showFilters, setShowFilters] = useState(false);
+  const [activeMenu, setActiveMenu] = useState(null);
 
   const { data, isLoading, refetch } = useCarpetas(filters);
   const deleteCarpeta = useDeleteCarpeta();
@@ -248,41 +249,65 @@ function CarpetasPage() {
                       {getEstadoBadge(carpeta.estado)}
                     </TableCell>
                     <TableCell className="overflow-visible" onClick={(e) => e.stopPropagation()}>
-                      <div className="relative group">
-                        <button className="p-2 hover:bg-slate-100 rounded-lg transition-colors">
+                      <div className="relative">
+                        <button 
+                          className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                          onClick={() => setActiveMenu(activeMenu === carpeta.id ? null : carpeta.id)}
+                        >
                           <MoreVertical className="w-4 h-4 text-slate-400" />
                         </button>
-                        <div className="absolute right-0 top-full mt-1 w-40 bg-white rounded-lg shadow-xl border border-slate-200 py-1 z-50 hidden group-hover:block">
-                          <button
-                            onClick={() => navigate(`/carpetas/${carpeta.id}`)}
-                            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
-                          >
-                            <Eye className="w-4 h-4" />
-                            Ver detalle
-                          </button>
-                          <button
-                            onClick={() => navigate(`/carpetas/${carpeta.id}/editar`)}
-                            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
-                          >
-                            <Edit className="w-4 h-4" />
-                            Editar
-                          </button>
-                          <button
-                            onClick={() => handleDuplicate(carpeta.id)}
-                            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
-                          >
-                            <Copy className="w-4 h-4" />
-                            Duplicar
-                          </button>
-                          <hr className="my-1" />
-                          <button
-                            onClick={() => handleDelete(carpeta.id)}
-                            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                            Cancelar
-                          </button>
-                        </div>
+                        {activeMenu === carpeta.id && (
+                          <>
+                            {/* Overlay para cerrar el menú al hacer clic fuera */}
+                            <div 
+                              className="fixed inset-0 z-40" 
+                              onClick={() => setActiveMenu(null)}
+                            />
+                            <div className="absolute right-0 top-full mt-1 w-40 bg-white rounded-lg shadow-xl border border-slate-200 py-1 z-50">
+                              <button
+                                onClick={() => {
+                                  setActiveMenu(null);
+                                  navigate(`/carpetas/${carpeta.id}`);
+                                }}
+                                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                              >
+                                <Eye className="w-4 h-4" />
+                                Ver detalle
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setActiveMenu(null);
+                                  navigate(`/carpetas/${carpeta.id}/editar`);
+                                }}
+                                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                              >
+                                <Edit className="w-4 h-4" />
+                                Editar
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setActiveMenu(null);
+                                  handleDuplicate(carpeta.id);
+                                }}
+                                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                              >
+                                <Copy className="w-4 h-4" />
+                                Duplicar
+                              </button>
+                              <hr className="my-1" />
+                              <button
+                                onClick={() => {
+                                  setActiveMenu(null);
+                                  handleDelete(carpeta.id);
+                                }}
+                                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                                Cancelar
+                              </button>
+                            </div>
+                          </>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>
