@@ -30,17 +30,23 @@ function MisPresupuestos() {
 
   const presupuestos = data?.data?.presupuestos || [];
   const marcadosRef = useRef(new Set());
+  const hasMarcado = useRef(false);
 
-  // Marcar como vistos los presupuestos enviados al cargar la página
+  // Marcar como vistos los presupuestos enviados al cargar la página (solo una vez)
   useEffect(() => {
-    if (!presupuestos.length) return;
+    if (!presupuestos.length || hasMarcado.current) return;
     
-    // Encontrar presupuestos enviados que no hayan sido vistos y que no hayamos marcado ya
+    // Encontrar presupuestos enviados que no hayan sido vistos
     const noVistos = presupuestos.filter(p => 
       p.estado === 'ENVIADO' && 
       !p.vistoPorCliente && 
       !marcadosRef.current.has(p.id)
     );
+    
+    if (noVistos.length === 0) return;
+    
+    // Marcar que ya procesamos
+    hasMarcado.current = true;
     
     // Marcar cada uno como visto
     noVistos.forEach(p => {

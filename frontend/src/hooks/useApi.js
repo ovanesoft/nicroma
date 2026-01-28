@@ -1007,7 +1007,8 @@ export function useMarcarPresupuestoVisto() {
       return response.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['notificaciones'] });
+      // Forzar refetch inmediato ignorando staleTime
+      queryClient.refetchQueries({ queryKey: ['notificaciones'], type: 'active' });
       queryClient.invalidateQueries({ queryKey: ['presupuestosCliente'] });
     }
   });
