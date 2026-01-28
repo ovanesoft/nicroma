@@ -1209,3 +1209,95 @@ export function useAdminReactivateSubscription() {
     }
   });
 }
+
+// =====================================================
+// NOTIFICACIONES DEL SISTEMA
+// =====================================================
+
+// Obtener mis notificaciones
+export function useMyNotifications(options = {}) {
+  const { unreadOnly = false, limit = 20 } = options;
+  return useQuery({
+    queryKey: ['myNotifications', { unreadOnly, limit }],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (unreadOnly) params.append('unreadOnly', 'true');
+      params.append('limit', limit.toString());
+      const response = await api.get(`/notifications/my?${params}`);
+      return response.data;
+    },
+    refetchInterval: 60000, // Refrescar cada minuto
+    staleTime: 30000
+  });
+}
+
+// Marcar notificación como leída
+export function useMarkNotificationRead() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (notificationId) => {
+      const response = await api.post(`/notifications/${notificationId}/read`);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['myNotifications'] });
+    }
+  });
+}
+
+// Marcar todas como leídas
+export function useMarkAllNotificationsRead() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const response = await api.post('/notifications/read-all');
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['myNotifications'] });
+    }
+  });
+}
+
+// =====================================================
+// NOTIFICACIONES - ADMIN ROOT
+// =====================================================
+
+// Listar todas las notificaciones (root)
+export function useAllNotifications(page = 1, limit = 20) {
+  return useQuery({
+    queryKey: ['allNotifications', page, limit],
+    queryFn: async () => {
+      const response = await api.get(`/notifications?page=${page}&limit=${limit}`);
+      return response.data;
+    }
+  });
+}
+
+// Crear notificación (root)
+export function useCreateNotification() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (data) => {
+      const response = await api.post('/notifications', data);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['allNotifications'] });
+    }
+  });
+}
+
+// Desactivar notificación (root)
+export function useDeactivateNotification() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id) => {
+      const response = await api.delete(`/notifications/${id}`);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['allNotifications'] });
+    }
+  });
+}

@@ -1,18 +1,47 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
-  Menu, Bell, ChevronDown, User, Settings, LogOut, Building2
+  Menu, Bell, ChevronDown, User, Settings, LogOut, Building2,
+  Megaphone, CreditCard, AlertTriangle, Clock, Gift, CheckCircle,
+  MessageSquare, X, Check
 } from 'lucide-react';
-import { cn } from '../../lib/utils';
+import { cn, formatDate } from '../../lib/utils';
 import { getRoleLabel, getRoleColor, getInitials } from '../../lib/utils';
 import { useAuth } from '../../context/AuthContext';
 import { useUIStore } from '../../stores/uiStore';
+import { useMyNotifications, useMarkNotificationRead, useMarkAllNotificationsRead } from '../../hooks/useApi';
+
+// Iconos y colores por tipo de notificación
+const NOTIFICATION_STYLES = {
+  ANNOUNCEMENT: { icon: Megaphone, color: 'text-blue-500', bg: 'bg-blue-100' },
+  MAINTENANCE: { icon: AlertTriangle, color: 'text-orange-500', bg: 'bg-orange-100' },
+  NEW_FEATURE: { icon: Gift, color: 'text-purple-500', bg: 'bg-purple-100' },
+  PAYMENT_FAILED: { icon: CreditCard, color: 'text-red-500', bg: 'bg-red-100' },
+  PAYMENT_SUCCESS: { icon: CheckCircle, color: 'text-green-500', bg: 'bg-green-100' },
+  SUBSCRIPTION_EXPIRING: { icon: Clock, color: 'text-amber-500', bg: 'bg-amber-100' },
+  TRIAL_EXPIRING: { icon: Clock, color: 'text-amber-500', bg: 'bg-amber-100' },
+  PLAN_LIMIT_WARNING: { icon: AlertTriangle, color: 'text-amber-500', bg: 'bg-amber-100' },
+  QUOTE_RECEIVED: { icon: MessageSquare, color: 'text-indigo-500', bg: 'bg-indigo-100' },
+  QUOTE_RESPONSE: { icon: MessageSquare, color: 'text-indigo-500', bg: 'bg-indigo-100' },
+  MESSAGE_RECEIVED: { icon: MessageSquare, color: 'text-blue-500', bg: 'bg-blue-100' },
+  WELCOME: { icon: Gift, color: 'text-green-500', bg: 'bg-green-100' },
+  SYSTEM_ALERT: { icon: AlertTriangle, color: 'text-red-500', bg: 'bg-red-100' }
+};
 
 function Header({ title, subtitle }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const { toggleMobileSidebar, sidebarCollapsed } = useUIStore();
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+
+  // Notificaciones
+  const { data: notifData, isLoading: notifLoading } = useMyNotifications({ limit: 10 });
+  const markAsRead = useMarkNotificationRead();
+  const markAllAsRead = useMarkAllNotificationsRead();
+
+  const notifications = notifData?.data?.notifications || [];
+  const unreadCount = notifData?.data?.unreadCount || 0;
 
   const handleLogout = async () => {
     await logout();
@@ -59,18 +88,155 @@ function Header({ title, subtitle }) {
 
         <div className="flex items-center gap-3">
           {/* Notifications */}
-          <button 
-            className="relative p-2 rounded-lg transition-colors"
-            style={{ color: 'var(--color-text)' }}
-          >
-            <Bell className="w-5 h-5" />
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full"></span>
-          </button>
+          <div className="relative">
+            <button 
+              onClick={() => {
+                setNotificationsOpen(!notificationsOpen);
+                setDropdownOpen(false);
+              }}
+              className="relative p-2 rounded-lg transition-colors hover:bg-[var(--color-background)]"
+              style={{ color: 'var(--color-text)' }}
+            >
+              <Bell className="w-5 h-5" />
+              {unreadCount > 0 && (
+                <span className="absolute top-1 right-1 min-w-[18px] h-[18px] bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center px-1">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
+            </button>
+
+            {/* Notifications Dropdown */}
+            {notificationsOpen && (
+              <>
+                <div
+                  className="fixed inset-0 z-40"
+                  onClick={() => setNotificationsOpen(false)}
+                />
+                <div 
+                  className="absolute right-0 mt-2 w-80 sm:w-96 rounded-xl shadow-xl z-50 overflow-hidden"
+                  style={{ 
+                    backgroundColor: 'var(--color-card)',
+                    border: '1px solid var(--color-border)'
+                  }}
+                >
+                  {/* Header */}
+                  <div 
+                    className="flex items-center justify-between px-4 py-3"
+                    style={{ borderBottom: '1px solid var(--color-border)' }}
+                  >
+                    <h3 className="font-semibold" style={{ color: 'var(--color-text)' }}>
+                      Notificaciones
+                    </h3>
+                    {unreadCount > 0 && (
+                      <button
+                        onClick={() => markAllAsRead.mutate()}
+                        className="text-xs font-medium hover:underline"
+                        style={{ color: 'var(--color-primary)' }}
+                      >
+                        Marcar todas como leídas
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Lista de notificaciones */}
+                  <div className="max-h-[400px] overflow-y-auto">
+                    {notifLoading ? (
+                      <div className="p-8 text-center">
+                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-600 mx-auto" />
+                      </div>
+                    ) : notifications.length === 0 ? (
+                      <div className="p-8 text-center">
+                        <Bell className="w-10 h-10 mx-auto mb-2 opacity-20" style={{ color: 'var(--color-text)' }} />
+                        <p className="text-sm" style={{ color: 'var(--color-textSecondary)' }}>
+                          No tenés notificaciones
+                        </p>
+                      </div>
+                    ) : (
+                      notifications.map((notif) => {
+                        const style = NOTIFICATION_STYLES[notif.type] || NOTIFICATION_STYLES.SYSTEM_ALERT;
+                        const Icon = style.icon;
+                        
+                        return (
+                          <div
+                            key={notif.id}
+                            className={cn(
+                              'flex gap-3 px-4 py-3 cursor-pointer transition-colors hover:bg-[var(--color-background)]',
+                              !notif.isRead && 'bg-[var(--color-primary)]/5'
+                            )}
+                            onClick={() => {
+                              if (!notif.isRead) {
+                                markAsRead.mutate(notif.id);
+                              }
+                              if (notif.actionUrl) {
+                                navigate(notif.actionUrl);
+                                setNotificationsOpen(false);
+                              }
+                            }}
+                          >
+                            <div className={cn('w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0', style.bg)}>
+                              <Icon className={cn('w-5 h-5', style.color)} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-start justify-between gap-2">
+                                <p 
+                                  className={cn('text-sm', !notif.isRead && 'font-semibold')}
+                                  style={{ color: 'var(--color-text)' }}
+                                >
+                                  {notif.title}
+                                </p>
+                                {!notif.isRead && (
+                                  <span className="w-2 h-2 rounded-full bg-[var(--color-primary)] flex-shrink-0 mt-1.5" />
+                                )}
+                              </div>
+                              <p 
+                                className="text-xs mt-0.5 line-clamp-2"
+                                style={{ color: 'var(--color-textSecondary)' }}
+                              >
+                                {notif.message}
+                              </p>
+                              <p 
+                                className="text-xs mt-1"
+                                style={{ color: 'var(--color-textSecondary)' }}
+                              >
+                                {formatDate(notif.createdAt)}
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+
+                  {/* Footer */}
+                  {notifications.length > 0 && (
+                    <div 
+                      className="px-4 py-3 text-center"
+                      style={{ borderTop: '1px solid var(--color-border)' }}
+                    >
+                      <button
+                        onClick={() => {
+                          navigate('/notifications');
+                          setNotificationsOpen(false);
+                        }}
+                        className="text-sm font-medium hover:underline"
+                        style={{ color: 'var(--color-primary)' }}
+                      >
+                        Ver todas las notificaciones
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
 
           {/* User dropdown */}
           <div className="relative">
             <button
-              onClick={() => setDropdownOpen(!dropdownOpen)}
+              onClick={() => {
+                setDropdownOpen(!dropdownOpen);
+                setNotificationsOpen(false);
+              }}
               className="flex items-center gap-3 p-1.5 pr-3 rounded-xl transition-colors"
               style={{ color: 'var(--color-text)' }}
             >

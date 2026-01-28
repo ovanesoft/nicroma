@@ -302,6 +302,100 @@ model system_logs {
   @@index([user_id], map: "idx_system_logs_user_id")
 }
 
+// ===========================================
+// NOTIFICACIONES DEL SISTEMA
+// ===========================================
+
+// Tipos de notificación
+enum NotificationType {
+  // Comunicaciones del root
+  ANNOUNCEMENT      // Anuncio general
+  MAINTENANCE       // Mantenimiento programado
+  NEW_FEATURE       // Nueva funcionalidad
+  
+  // Alertas de billing
+  PAYMENT_FAILED    // Pago fallido
+  PAYMENT_SUCCESS   // Pago exitoso
+  SUBSCRIPTION_EXPIRING  // Suscripción por vencer
+  TRIAL_EXPIRING    // Trial por vencer
+  PLAN_LIMIT_WARNING // Límite del plan cerca
+  
+  // Alertas operativas
+  QUOTE_RECEIVED    // Presupuesto recibido (para tenant)
+  QUOTE_RESPONSE    // Respuesta de presupuesto (para cliente)
+  MESSAGE_RECEIVED  // Mensaje recibido
+  
+  // Sistema
+  WELCOME           // Bienvenida
+  SYSTEM_ALERT      // Alerta del sistema
+}
+
+// Prioridad de notificación
+enum NotificationPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+// Notificaciones del sistema
+model SystemNotification {
+  id              String               @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  
+  // Tipo y prioridad
+  type            NotificationType
+  priority        NotificationPriority @default(NORMAL)
+  
+  // Contenido
+  title           String               @db.VarChar(255)
+  message         String
+  actionUrl       String?              @map("action_url") @db.VarChar(500)
+  actionLabel     String?              @map("action_label") @db.VarChar(100)
+  
+  // Metadata adicional
+  metadata        Json?                @default("{}")
+  
+  // Destinatario (null = broadcast a todos)
+  tenantId        String?              @map("tenant_id") @db.Uuid
+  userId          String?              @map("user_id") @db.Uuid
+  
+  // Solo para roles específicos (null = todos)
+  targetRoles     Json?                @default("[]") @map("target_roles") // ["admin", "manager"]
+  
+  // Creador (root para comunicaciones)
+  createdBy       String?              @map("created_by") @db.Uuid
+  
+  // Fechas
+  createdAt       DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  expiresAt       DateTime?            @map("expires_at") @db.Timestamptz(6)
+  
+  // Estado
+  isActive        Boolean              @default(true) @map("is_active")
+  
+  // Lecturas de esta notificación
+  reads           NotificationRead[]
+
+  @@index([tenantId], map: "idx_system_notifications_tenant_id")
+  @@index([userId], map: "idx_system_notifications_user_id")
+  @@index([type], map: "idx_system_notifications_type")
+  @@index([createdAt(sort: Desc)], map: "idx_system_notifications_created_at")
+  @@index([isActive], map: "idx_system_notifications_is_active")
+  @@map("system_notifications")
+}
+
+// Registro de lecturas de notificaciones
+model NotificationRead {
+  id              String             @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  notificationId  String             @map("notification_id") @db.Uuid
+  notification    SystemNotification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  userId          String             @map("user_id") @db.Uuid
+  readAt          DateTime           @default(now()) @map("read_at") @db.Timestamptz(6)
+  
+  @@unique([notificationId, userId])
+  @@index([userId], map: "idx_notification_reads_user_id")
+  @@map("notification_reads")
+}
+
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model tenant_subscriptions {
   id                   String            @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid

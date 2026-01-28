@@ -36,6 +36,7 @@ const portalRoutes = require('./routes/portal');
 const logRoutes = require('./routes/logs');
 const presupuestoRoutes = require('./routes/presupuestos');
 const billingRoutes = require('./routes/billing');
+const notificationRoutes = require('./routes/notifications');
 
 const app = express();
 
@@ -153,6 +154,7 @@ app.use('/api/portal', portalRoutes);
 app.use('/api/logs', logRoutes);
 app.use('/api/presupuestos', presupuestoRoutes);
 app.use('/api/billing', billingRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // ===========================================
 // Ruta raíz
