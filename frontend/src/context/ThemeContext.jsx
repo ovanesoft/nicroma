@@ -39,7 +39,7 @@ export const themes = {
       sidebarActive: '#c4b5fd',
       card: '#1e293b',
       text: '#ffffff',
-      textSecondary: '#fbbf24', // Ámbar brillante para contraste
+      textSecondary: '#ffffff',
       border: '#475569',
     },
     isDark: true,
@@ -59,7 +59,7 @@ export const themes = {
       sidebarActive: '#ff4757',
       card: '#171717',
       text: '#ffffff',
-      textSecondary: '#ffbe76', // Naranja/ámbar brillante
+      textSecondary: '#ffffff',
       border: '#3f3f46',
     },
     isDark: true,
@@ -75,11 +75,11 @@ export const themes = {
       accent: '#00ffcc',
       background: '#030712',
       sidebar: '#0a0a0a',
-      sidebarText: '#00ff88', // Verde neón
+      sidebarText: '#00ff88',
       sidebarActive: '#00ffcc',
       card: '#0a0a0a',
-      text: '#ffffff',
-      textSecondary: '#7dffb3', // Verde fluorescente claro
+      text: '#00ff88',
+      textSecondary: '#00ff88',
       border: '#00ff88',
     },
     isDark: true,
@@ -99,7 +99,7 @@ export const themes = {
       sidebarActive: '#00ffff',
       card: '#0c4a6e',
       text: '#ffffff',
-      textSecondary: '#7df9ff', // Cyan fluorescente
+      textSecondary: '#ffffff',
       border: '#00d4ff',
     },
     isDark: true,
