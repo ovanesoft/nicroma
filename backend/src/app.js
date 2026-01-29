@@ -159,6 +159,7 @@ app.use('/api/presupuestos', presupuestoRoutes);
 app.use('/api/billing', billingRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/conversations', conversationRoutes);
+app.use('/api/terminales', require('./routes/terminales'));
 
 // ===========================================
 // Ruta raíz

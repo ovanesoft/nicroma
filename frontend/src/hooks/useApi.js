@@ -699,6 +699,15 @@ export function useCuentasBancarias() {
   };
 }
 
+// Hook para buscar terminales (puertos/aeropuertos)
+export function useBuscarTerminales(query, tipo) {
+  return useApiQuery(
+    ['terminales', query, tipo],
+    `/terminales/buscar?q=${encodeURIComponent(query || '')}&tipo=${encodeURIComponent(tipo || '')}`,
+    { enabled: query && query.length >= 2, staleTime: 60000 }
+  );
+}
+
 export function useUpdateCompanyConfig() {
   const queryClient = useQueryClient();
   return useMutation({

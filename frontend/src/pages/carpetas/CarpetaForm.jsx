@@ -12,6 +12,7 @@ import Layout from '../../components/layout/Layout';
 import { 
   Card, CardContent, CardHeader, CardTitle, Button, Input, Badge
 } from '../../components/ui';
+import TerminalSelector from '../../components/ui/TerminalSelector';
 import { 
   useCarpeta, useCreateCarpeta, useUpdateCarpeta, useBuscarClientes,
   useCreatePrefacturaDesdeCarpeta, useTrack, useIntegrations, useCuentasBancarias
@@ -554,21 +555,57 @@ function CarpetaForm() {
                 <CardTitle>Ruta y Fechas</CardTitle>
               </CardHeader>
               <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Input
-                  label="Puerto Origen"
-                  placeholder="CNSHA - Shanghai"
-                  {...register('puertoOrigen')}
-                />
-                <Input
-                  label="Puerto Destino"
-                  placeholder="ARBUE - Buenos Aires"
-                  {...register('puertoDestino')}
-                />
-                <Input
-                  label="Puerto Transbordo"
-                  placeholder="SGSIN - Singapur"
-                  {...register('puertoTransbordo')}
-                />
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                    {watch('area') === 'Aéreo' ? 'Aeropuerto Origen' : watch('area') === 'Terrestre' ? 'Origen' : 'Puerto Origen'}
+                  </label>
+                  <Controller
+                    name="puertoOrigen"
+                    control={control}
+                    render={({ field }) => (
+                      <TerminalSelector
+                        area={watch('area')}
+                        value={field.value}
+                        onChange={field.onChange}
+                        placeholder={watch('area') === 'Aéreo' ? 'EZE - Buenos Aires...' : 'ARBUE - Buenos Aires...'}
+                      />
+                    )}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                    {watch('area') === 'Aéreo' ? 'Aeropuerto Destino' : watch('area') === 'Terrestre' ? 'Destino' : 'Puerto Destino'}
+                  </label>
+                  <Controller
+                    name="puertoDestino"
+                    control={control}
+                    render={({ field }) => (
+                      <TerminalSelector
+                        area={watch('area')}
+                        value={field.value}
+                        onChange={field.onChange}
+                        placeholder={watch('area') === 'Aéreo' ? 'JFK - New York...' : 'CNSHA - Shanghai...'}
+                      />
+                    )}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                    {watch('area') === 'Aéreo' ? 'Aeropuerto Transbordo' : watch('area') === 'Terrestre' ? 'Transbordo' : 'Puerto Transbordo'}
+                  </label>
+                  <Controller
+                    name="puertoTransbordo"
+                    control={control}
+                    render={({ field }) => (
+                      <TerminalSelector
+                        area={watch('area')}
+                        value={field.value}
+                        onChange={field.onChange}
+                        placeholder={watch('area') === 'Aéreo' ? 'MIA - Miami...' : 'SGSIN - Singapur...'}
+                      />
+                    )}
+                  />
+                </div>
                 <Input
                   label="ETD (Salida Estimada)"
                   type="date"

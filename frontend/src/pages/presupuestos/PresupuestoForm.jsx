@@ -10,6 +10,7 @@ import Layout from '../../components/layout/Layout';
 import { 
   Card, CardContent, CardHeader, CardTitle, Button, Input, Badge
 } from '../../components/ui';
+import TerminalSelector from '../../components/ui/TerminalSelector';
 import { 
   usePresupuesto, useCreatePresupuesto, useUpdatePresupuesto,
   useBuscarClientes, useCambiarEstadoPresupuesto, useConvertirPresupuesto,
@@ -769,18 +770,28 @@ function PresupuestoForm() {
                   </div>
                 )
                 </div>
-                <Input
-                  label="Puerto Origen"
-                  value={formData.puertoOrigen}
-                  onChange={(e) => handleChange('puertoOrigen', e.target.value)}
-                  placeholder="CNSHA - Shanghai"
-                />
-                <Input
-                  label="Puerto Destino"
-                  value={formData.puertoDestino}
-                  onChange={(e) => handleChange('puertoDestino', e.target.value)}
-                  placeholder="ARBUE - Buenos Aires"
-                />
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                    {formData.area === 'Aéreo' ? 'Aeropuerto Origen' : formData.area === 'Terrestre' ? 'Origen' : 'Puerto Origen'}
+                  </label>
+                  <TerminalSelector
+                    area={formData.area}
+                    value={formData.puertoOrigen}
+                    onChange={(val) => handleChange('puertoOrigen', val)}
+                    placeholder={formData.area === 'Aéreo' ? 'EZE - Buenos Aires...' : 'ARBUE - Buenos Aires...'}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                    {formData.area === 'Aéreo' ? 'Aeropuerto Destino' : formData.area === 'Terrestre' ? 'Destino' : 'Puerto Destino'}
+                  </label>
+                  <TerminalSelector
+                    area={formData.area}
+                    value={formData.puertoDestino}
+                    onChange={(val) => handleChange('puertoDestino', val)}
+                    placeholder={formData.area === 'Aéreo' ? 'JFK - New York...' : 'CNSHA - Shanghai...'}
+                  />
+                </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1.5">Incoterm</label>
                   <select
@@ -881,24 +892,39 @@ function PresupuestoForm() {
               <CardTitle>Puertos y Fechas</CardTitle>
             </CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Input
-                label="Puerto Origen"
-                placeholder="CNSHA - Shanghai"
-                value={formData.puertoOrigen}
-                onChange={(e) => handleChange('puertoOrigen', e.target.value)}
-              />
-              <Input
-                label="Puerto Destino"
-                placeholder="ARBUE - Buenos Aires"
-                value={formData.puertoDestino}
-                onChange={(e) => handleChange('puertoDestino', e.target.value)}
-              />
-              <Input
-                label="Puerto Transbordo"
-                placeholder="SGSIN - Singapur"
-                value={formData.puertoTransbordo}
-                onChange={(e) => handleChange('puertoTransbordo', e.target.value)}
-              />
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                  {formData.area === 'Aéreo' ? 'Aeropuerto Origen' : formData.area === 'Terrestre' ? 'Origen' : 'Puerto Origen'}
+                </label>
+                <TerminalSelector
+                  area={formData.area}
+                  value={formData.puertoOrigen}
+                  onChange={(val) => handleChange('puertoOrigen', val)}
+                  placeholder={formData.area === 'Aéreo' ? 'EZE - Buenos Aires...' : 'ARBUE - Buenos Aires...'}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                  {formData.area === 'Aéreo' ? 'Aeropuerto Destino' : formData.area === 'Terrestre' ? 'Destino' : 'Puerto Destino'}
+                </label>
+                <TerminalSelector
+                  area={formData.area}
+                  value={formData.puertoDestino}
+                  onChange={(val) => handleChange('puertoDestino', val)}
+                  placeholder={formData.area === 'Aéreo' ? 'JFK - New York...' : 'CNSHA - Shanghai...'}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                  {formData.area === 'Aéreo' ? 'Aeropuerto Transbordo' : formData.area === 'Terrestre' ? 'Transbordo' : 'Puerto Transbordo'}
+                </label>
+                <TerminalSelector
+                  area={formData.area}
+                  value={formData.puertoTransbordo}
+                  onChange={(val) => handleChange('puertoTransbordo', val)}
+                  placeholder={formData.area === 'Aéreo' ? 'MIA - Miami...' : 'SGSIN - Singapur...'}
+                />
+              </div>
               <Input
                 label="ETD (Salida Estimada)"
                 type="date"
