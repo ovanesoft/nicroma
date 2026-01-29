@@ -768,8 +768,7 @@ function PresupuestoForm() {
                       {TIPOS_OPERACION_AEREA.map(t => <option key={t} value={t}>{t}</option>)}
                     </select>
                   </div>
-                )
-                </div>
+                )}
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1.5">
                     {formData.area === 'Aéreo' ? 'Aeropuerto Origen' : formData.area === 'Terrestre' ? 'Origen' : 'Puerto Origen'}
