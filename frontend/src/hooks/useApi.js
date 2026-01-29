@@ -701,10 +701,12 @@ export function useCuentasBancarias() {
 
 // Hook para buscar terminales (puertos/aeropuertos)
 export function useBuscarTerminales(query, tipo) {
+  const isEnabled = Boolean(query && query.length >= 2);
+  
   const result = useApiQuery(
     ['terminales', query, tipo],
     `/terminales/buscar?q=${encodeURIComponent(query || '')}&tipo=${encodeURIComponent(tipo || '')}`,
-    { enabled: query && query.length >= 2, staleTime: 60000 }
+    { enabled: isEnabled, staleTime: 60000 }
   );
   
   return {
