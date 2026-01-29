@@ -1090,11 +1090,10 @@ const generarPDFPresupuestoFormal = async (req, res) => {
       select: {
         id: true,
         name: true,
-        cuit: true,
         cuentasBancarias: true,
-        address: true,
-        phone: true,
-        email: true
+        companyAddress: true,
+        companyPhone: true,
+        companyEmail: true
       }
     });
 
