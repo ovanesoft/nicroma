@@ -5,8 +5,9 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { 
   ArrowLeft, Save, Ship, Package, DollarSign, FileText,
-  Plus, Trash2, Search, Receipt, MapPin, RefreshCw, MessageSquare
+  Plus, Trash2, Search, Receipt, MapPin, RefreshCw, MessageSquare, FileDown
 } from 'lucide-react';
+import api from '../../api/axios';
 import Layout from '../../components/layout/Layout';
 import { 
   Card, CardContent, CardHeader, CardTitle, Button, Input, Badge
@@ -26,6 +27,7 @@ const carpetaSchema = z.object({
   clienteId: z.string().uuid('Seleccione un cliente'),
   puertoOrigen: z.string().optional(),
   puertoDestino: z.string().optional(),
+  puertoTransbordo: z.string().optional(),
   etd: z.string().optional(),
   eta: z.string().optional(),
   booking: z.string().optional(),
@@ -109,6 +111,36 @@ function CarpetaForm() {
     }
   };
 
+  const [downloadingPDF, setDownloadingPDF] = useState(false);
+  
+  const handleDescargarAvisoArribo = async () => {
+    if (!id) return;
+    setDownloadingPDF(true);
+    try {
+      const response = await api.get(`/carpetas/${id}/pdf/aviso-arribo`, {
+        responseType: 'blob'
+      });
+      
+      // Crear URL y descargar
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      const houseBL = carpetaData?.data?.carpeta?.houseBL || carpetaData?.data?.carpeta?.numero;
+      link.setAttribute('download', `Aviso_Arribo_${houseBL}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      
+      toast.success('PDF descargado');
+    } catch (error) {
+      console.error('Error descargando PDF:', error);
+      toast.error('Error al descargar el PDF');
+    } finally {
+      setDownloadingPDF(false);
+    }
+  };
+
   const { 
     register, 
     handleSubmit, 
@@ -135,6 +167,7 @@ function CarpetaForm() {
       setValue('clienteId', c.clienteId);
       setValue('puertoOrigen', c.puertoOrigen || '');
       setValue('puertoDestino', c.puertoDestino || '');
+      setValue('puertoTransbordo', c.puertoTransbordo || '');
       setValue('etd', c.fechaSalidaEstimada ? c.fechaSalidaEstimada.split('T')[0] : '');
       setValue('eta', c.fechaLlegadaEstimada ? c.fechaLlegadaEstimada.split('T')[0] : '');
       setValue('booking', c.booking || '');
@@ -204,7 +237,7 @@ function CarpetaForm() {
   // Contenedores handlers
   const addContenedor = () => {
     setContenedores([...contenedores, { 
-      tipo: '40DC', numero: '', cantidad: 1, precinto: '', tempId: Date.now()
+      tipo: '40DC', numero: '', blContenedor: '', cantidad: 1, precinto: '', tempId: Date.now()
     }]);
   };
 
@@ -326,6 +359,17 @@ function CarpetaForm() {
           Volver
         </Button>
         <div className="flex gap-2">
+          {isEditing && (
+            <Button 
+              type="button"
+              variant="outline" 
+              onClick={handleDescargarAvisoArribo}
+              loading={downloadingPDF}
+            >
+              <FileDown className="w-4 h-4" />
+              Aviso de Arribo
+            </Button>
+          )}
           {isEditing && gastos.length > 0 && (
             <Button 
               type="button"
@@ -491,6 +535,11 @@ function CarpetaForm() {
                   {...register('puertoDestino')}
                 />
                 <Input
+                  label="Puerto Transbordo"
+                  placeholder="SGSIN - Singapur"
+                  {...register('puertoTransbordo')}
+                />
+                <Input
                   label="ETD (Salida Estimada)"
                   type="date"
                   {...register('etd')}
@@ -650,6 +699,16 @@ function CarpetaForm() {
                                     type="text"
                                     value={cont.precinto || ''}
                                     onChange={(e) => updateContenedor(contIndex, 'precinto', e.target.value)}
+                                    className="w-full px-2 py-1.5 text-sm rounded border border-slate-300"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-xs text-slate-500 mb-1">BL Contenedor</label>
+                                  <input
+                                    type="text"
+                                    placeholder="ML-CN..."
+                                    value={cont.blContenedor || ''}
+                                    onChange={(e) => updateContenedor(contIndex, 'blContenedor', e.target.value)}
                                     className="w-full px-2 py-1.5 text-sm rounded border border-slate-300"
                                   />
                                 </div>

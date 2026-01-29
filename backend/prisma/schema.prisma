@@ -748,6 +748,7 @@ model Carpeta {
   lugarCarga      String?  @map("lugar_carga") @db.VarChar(255)
   puertoDestino   String?  @map("puerto_destino") @db.VarChar(100)
   lugarDescarga   String?  @map("lugar_descarga") @db.VarChar(255)
+  puertoTransbordo String? @map("puerto_transbordo") @db.VarChar(100)
   
   clienteId       String   @map("cliente_id") @db.Uuid
   cliente         Cliente  @relation("CarpetaCliente", fields: [clienteId], references: [id])
@@ -855,6 +856,7 @@ model Contenedor {
   
   tipo            String   @db.VarChar(20)
   numero          String?  @db.VarChar(20)
+  blContenedor    String?  @map("bl_contenedor") @db.VarChar(50)
   condicion       String?  @db.VarChar(50)
   precinto        String?  @db.VarChar(50)
   cantidad        Int      @default(1)

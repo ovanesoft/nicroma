@@ -16,4 +16,7 @@ router.put('/:id', carpetaController.actualizarCarpeta);
 router.delete('/:id', carpetaController.eliminarCarpeta);
 router.post('/:id/duplicar', carpetaController.duplicarCarpeta);
 
+// Generación de PDFs
+router.get('/:id/pdf/aviso-arribo', carpetaController.generarPDFAvisoArribo);
+
 module.exports = router;

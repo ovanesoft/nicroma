@@ -1,4 +1,5 @@
 const prisma = require('../services/prisma');
+const { generarAvisoArribo } = require('../services/pdf/avisoArribo');
 
 // Generar número de carpeta
 const generarNumeroCarpeta = async (tenantId, area, sector) => {
@@ -223,6 +224,7 @@ const crearCarpeta = async (req, res) => {
         lugarCarga: data.lugarCarga,
         puertoDestino: data.puertoDestino,
         lugarDescarga: data.lugarDescarga,
+        puertoTransbordo: data.puertoTransbordo,
         
         // Partes
         clienteId: data.clienteId,
@@ -639,6 +641,67 @@ const duplicarCarpeta = async (req, res) => {
   }
 };
 
+// Generar PDF de Aviso de Arribo
+const generarPDFAvisoArribo = async (req, res) => {
+  try {
+    const tenantId = req.user.tenant_id;
+    const { id } = req.params;
+
+    // Obtener carpeta con todas las relaciones necesarias
+    const carpeta = await prisma.carpeta.findFirst({
+      where: { id, tenantId },
+      include: {
+        cliente: true,
+        shipper: true,
+        consignee: true,
+        mercancias: true,
+        contenedores: true,
+        gastos: true
+      }
+    });
+
+    if (!carpeta) {
+      return res.status(404).json({
+        success: false,
+        message: 'Carpeta no encontrada'
+      });
+    }
+
+    // Obtener datos del tenant para incluir datos bancarios
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: {
+        id: true,
+        name: true,
+        cuit: true,
+        paymentMethods: true,
+        address: true,
+        phone: true,
+        email: true
+      }
+    });
+
+    // Generar el PDF
+    const doc = generarAvisoArribo(carpeta, tenant);
+
+    // Configurar headers para descarga
+    const filename = `Aviso_Arribo_${carpeta.houseBL || carpeta.numero}.pdf`;
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+
+    // Enviar el PDF como stream
+    doc.pipe(res);
+    doc.end();
+
+  } catch (error) {
+    console.error('Error generando PDF de aviso de arribo:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al generar el PDF'
+    });
+  }
+};
+
 module.exports = {
   listarCarpetas,
   obtenerCarpeta,
@@ -646,5 +709,6 @@ module.exports = {
   actualizarCarpeta,
   eliminarCarpeta,
   siguienteNumero,
-  duplicarCarpeta
+  duplicarCarpeta,
+  generarPDFAvisoArribo
 };
