@@ -37,6 +37,7 @@ import CompanySettingsPage from './pages/org/CompanySettingsPage';
 import CarpetasPage from './pages/carpetas/CarpetasPage';
 import CarpetaForm from './pages/carpetas/CarpetaForm';
 import ClientesPage from './pages/clientes/ClientesPage';
+import ProveedoresPage from './pages/proveedores/ProveedoresPage';
 
 // Pages - Presupuestos
 import PresupuestosPage from './pages/presupuestos/PresupuestosPage';
@@ -296,6 +297,11 @@ function AppRoutes() {
       <Route path="/clientes" element={
         <ProtectedRoute allowedRoles={['admin', 'manager']}>
           <ClientesPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/proveedores" element={
+        <ProtectedRoute allowedRoles={['admin', 'manager', 'user']}>
+          <ProveedoresPage />
         </ProtectedRoute>
       } />
 

@@ -668,6 +668,63 @@ model Cliente {
   @@map("clientes")
 }
 
+// PROVEEDORES
+model Proveedor {
+  id              String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenantId        String   @map("tenant_id") @db.Uuid
+  
+  // Datos básicos
+  razonSocial     String   @map("razon_social") @db.VarChar(255)
+  nombreFantasia  String?  @map("nombre_fantasia") @db.VarChar(255)
+  tipoDocumento   String   @map("tipo_documento") @db.VarChar(50)
+  numeroDocumento String   @map("numero_documento") @db.VarChar(50)
+  condicionFiscal String?  @map("condicion_fiscal") @db.VarChar(100)
+  
+  // Tipo de proveedor
+  tipoProveedor   String   @map("tipo_proveedor") @db.VarChar(100)
+  // Naviera, Aerolínea, Transportista, Agente, Despachante, Terminal, Depósito, Aseguradora, Otros
+  
+  // Contacto
+  email           String?  @db.VarChar(255)
+  telefono        String?  @db.VarChar(50)
+  whatsapp        String?  @db.VarChar(50)
+  website         String?  @db.VarChar(255)
+  
+  // Dirección
+  direccion       String?
+  ciudad          String?  @db.VarChar(100)
+  provincia       String?  @db.VarChar(100)
+  pais            String   @default("Argentina") @db.VarChar(100)
+  codigoPostal    String?  @map("codigo_postal") @db.VarChar(20)
+  
+  // Contacto principal
+  contactoNombre  String?  @map("contacto_nombre") @db.VarChar(255)
+  contactoEmail   String?  @map("contacto_email") @db.VarChar(255)
+  contactoTelefono String? @map("contacto_telefono") @db.VarChar(50)
+  contactoCargo   String?  @map("contacto_cargo") @db.VarChar(100)
+  
+  // Datos bancarios (para pagos)
+  bancoNombre     String?  @map("banco_nombre") @db.VarChar(255)
+  bancoCuenta     String?  @map("banco_cuenta") @db.VarChar(100)
+  bancoCbu        String?  @map("banco_cbu") @db.VarChar(30)
+  bancoAlias      String?  @map("banco_alias") @db.VarChar(100)
+  
+  // Servicios y notas
+  servicios       String?  // Descripción de servicios que ofrece
+  notas           String?  // Notas internas
+  
+  activo          Boolean  @default(true)
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy       String?  @map("created_by") @db.Uuid
+
+  @@unique([tenantId, numeroDocumento])
+  @@index([tenantId])
+  @@index([razonSocial])
+  @@index([tipoProveedor])
+  @@map("proveedores")
+}
+
 // CARPETAS DE EMBARQUE (CORE)
 model Carpeta {
   id              String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid

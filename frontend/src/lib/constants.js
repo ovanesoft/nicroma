@@ -117,6 +117,7 @@ export const getNavigation = (role) => {
         { name: 'Presupuestos', href: '/presupuestos', icon: Calculator },
         { name: 'Carpetas', href: '/carpetas', icon: FileText },
         { name: 'Clientes', href: '/clientes', icon: Users },
+        { name: 'Proveedores', href: '/proveedores', icon: Package },
       ]
     },
     { 

@@ -235,6 +235,63 @@ export function useBuscarClientes(query, tipo) {
 }
 
 // ============================================
+// HOOKS PARA PROVEEDORES
+// ============================================
+
+export function useProveedores(params = {}) {
+  const queryString = new URLSearchParams(
+    Object.entries(params).filter(([_, v]) => v !== undefined && v !== '')
+  ).toString();
+  return useApiQuery(
+    ['proveedores', params], 
+    `/proveedores${queryString ? `?${queryString}` : ''}`
+  );
+}
+
+export function useProveedor(id) {
+  return useApiQuery(['proveedor', id], `/proveedores/${id}`, {
+    enabled: !!id
+  });
+}
+
+export function useCreateProveedor() {
+  return useApiMutation('post', '/proveedores', {
+    invalidateKeys: ['proveedores']
+  });
+}
+
+export function useUpdateProveedor(id) {
+  return useApiMutation('put', `/proveedores/${id}`, {
+    invalidateKeys: ['proveedores', 'proveedor']
+  });
+}
+
+export function useDeleteProveedor() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id) => {
+      const response = await api.delete(`/proveedores/${id}`);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['proveedores'] });
+    }
+  });
+}
+
+export function useBuscarProveedores(query, tipo) {
+  return useApiQuery(
+    ['buscarProveedores', query, tipo],
+    `/proveedores/buscar?q=${encodeURIComponent(query)}${tipo ? `&tipo=${tipo}` : ''}`,
+    { enabled: query?.length >= 2 }
+  );
+}
+
+export function useTiposProveedor() {
+  return useApiQuery(['tiposProveedor'], '/proveedores/tipos');
+}
+
+// ============================================
 // HOOKS PARA PREFACTURAS
 // ============================================
 
