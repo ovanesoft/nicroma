@@ -690,6 +690,15 @@ export function useCompanyConfig() {
   return useApiQuery(['companyConfig'], '/tenants/my/company');
 }
 
+// Hook para obtener cuentas bancarias del tenant (para selectores en presupuesto/carpeta)
+export function useCuentasBancarias() {
+  const { data, ...rest } = useApiQuery(['companyConfig'], '/tenants/my/company');
+  return {
+    data: data?.data?.cuentasBancarias || [],
+    ...rest
+  };
+}
+
 export function useUpdateCompanyConfig() {
   const queryClient = useQueryClient();
   return useMutation({

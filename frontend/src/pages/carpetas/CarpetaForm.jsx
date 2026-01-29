@@ -14,7 +14,7 @@ import {
 } from '../../components/ui';
 import { 
   useCarpeta, useCreateCarpeta, useUpdateCarpeta, useBuscarClientes,
-  useCreatePrefacturaDesdeCarpeta, useTrack, useIntegrations
+  useCreatePrefacturaDesdeCarpeta, useTrack, useIntegrations, useCuentasBancarias
 } from '../../hooks/useApi';
 import toast from 'react-hot-toast';
 import { AREAS, SECTORES, TIPOS_OPERACION, CARPETA_ESTADOS, INCOTERMS, TIPOS_CONTENEDOR } from '../../lib/constants';
@@ -63,6 +63,7 @@ function CarpetaForm() {
   const { data: carpetaData, isLoading: loadingCarpeta } = useCarpeta(id);
   const { data: clientesData } = useBuscarClientes(clienteSearch, 'cliente');
   const { data: integrationsData } = useIntegrations();
+  const { data: cuentasBancarias = [] } = useCuentasBancarias();
   const createCarpeta = useCreateCarpeta();
   const updateCarpeta = useUpdateCarpeta(id);
   const crearPrefactura = useCreatePrefacturaDesdeCarpeta();
@@ -70,6 +71,10 @@ function CarpetaForm() {
 
   const clientes = clientesData?.data?.clientes || [];
   const hasActiveIntegrations = (integrationsData?.data || []).some(i => i.status === 'ACTIVE');
+  
+  // Cuenta bancaria para PDF
+  const cuentaPrincipal = cuentasBancarias.find(c => c.esPrincipal) || cuentasBancarias[0];
+  const [bancoPdfId, setBancoPdfId] = useState('');
   
   // Función para tracking de contenedor
   const handleTrackContainer = async (containerNumber, index) => {
@@ -184,8 +189,16 @@ function CarpetaForm() {
       setMercancias(c.mercancias || []);
       setContenedores(c.contenedores || []);
       setGastos(c.gastos || []);
+      setBancoPdfId(c.bancoPdfId || '');
     }
   }, [carpetaData, setValue]);
+  
+  // Setear cuenta principal por defecto
+  useEffect(() => {
+    if (!bancoPdfId && cuentaPrincipal?.id) {
+      setBancoPdfId(cuentaPrincipal.id);
+    }
+  }, [cuentaPrincipal, bancoPdfId]);
 
   const onSubmit = async (formData) => {
     try {
@@ -193,7 +206,8 @@ function CarpetaForm() {
         ...formData,
         mercancias: mercancias.filter(m => m.descripcion),
         contenedores: contenedores.filter(c => c.tipo),
-        gastos: gastos.filter(g => g.concepto)
+        gastos: gastos.filter(g => g.concepto),
+        bancoPdfId: bancoPdfId || null
       };
 
       if (isEditing) {
@@ -1198,6 +1212,30 @@ function CarpetaForm() {
                         </p>
                       </div>
                     </div>
+                    
+                    {/* Selector de Banco para PDF */}
+                    {cuentasBancarias.length > 0 && (
+                      <div className="mt-6 pt-4 border-t">
+                        <label className="block text-sm font-medium text-slate-700 mb-2">
+                          Banco para el PDF de Aviso de Arribo
+                        </label>
+                        <select
+                          value={bancoPdfId}
+                          onChange={(e) => setBancoPdfId(e.target.value)}
+                          className="w-full max-w-md px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white"
+                        >
+                          {cuentasBancarias.map(cuenta => (
+                            <option key={cuenta.id} value={cuenta.id}>
+                              {cuenta.banco} ({cuenta.moneda}) - {cuenta.alias || cuenta.cbu}
+                              {cuenta.esPrincipal ? ' ★ Principal' : ''}
+                            </option>
+                          ))}
+                        </select>
+                        <p className="text-xs text-slate-500 mt-1">
+                          Estos datos bancarios aparecerán en el PDF del Aviso de Arribo
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

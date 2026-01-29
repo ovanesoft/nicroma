@@ -277,6 +277,9 @@ const crearCarpeta = async (req, res) => {
         observaciones: data.observaciones,
         notasInternas: data.notasInternas,
         
+        // Banco para PDF
+        bancoPdfId: data.bancoPdfId || null,
+        
         // Crear mercancías si se enviaron
         mercancias: data.mercancias ? {
           create: data.mercancias.map(m => ({
@@ -674,15 +677,28 @@ const generarPDFAvisoArribo = async (req, res) => {
         id: true,
         name: true,
         cuit: true,
-        paymentMethods: true,
+        cuentasBancarias: true,
         address: true,
         phone: true,
         email: true
       }
     });
 
+    // Obtener banco seleccionado o el principal
+    let bancoSeleccionado = null;
+    const cuentasBancarias = tenant?.cuentasBancarias || [];
+    if (cuentasBancarias.length > 0) {
+      if (carpeta.bancoPdfId) {
+        bancoSeleccionado = cuentasBancarias.find(c => c.id === carpeta.bancoPdfId);
+      }
+      // Si no hay seleccionado o no se encontró, usar el principal
+      if (!bancoSeleccionado) {
+        bancoSeleccionado = cuentasBancarias.find(c => c.esPrincipal) || cuentasBancarias[0];
+      }
+    }
+
     // Generar el PDF
-    const doc = generarAvisoArribo(carpeta, tenant);
+    const doc = generarAvisoArribo(carpeta, tenant, bancoSeleccionado);
 
     // Configurar headers para descarga
     const filename = `Aviso_Arribo_${carpeta.houseBL || carpeta.numero}.pdf`;

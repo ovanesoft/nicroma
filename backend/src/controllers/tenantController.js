@@ -668,6 +668,7 @@ const getCompanyConfig = async (req, res) => {
               payment_bank_name, payment_bank_account, payment_bank_cbu, payment_bank_alias,
               payment_bank_cuit, payment_bank_holder, payment_mercado_pago, payment_paypal,
               payment_cheque_order, payment_other_methods, payment_notes,
+              cuentas_bancarias,
               plan, is_active, created_at
        FROM tenants WHERE id = $1`,
       [tenantId]
@@ -725,7 +726,8 @@ const getCompanyConfig = async (req, res) => {
           chequeOrder: tenant.payment_cheque_order,
           otherMethods: tenant.payment_other_methods,
           notes: tenant.payment_notes
-        }
+        },
+        cuentasBancarias: tenant.cuentas_bancarias || []
       }
     });
 
@@ -749,7 +751,9 @@ const updateCompanyConfig = async (req, res) => {
       // Medios de pago
       paymentBankName, paymentBankAccount, paymentBankCbu, paymentBankAlias,
       paymentBankCuit, paymentBankHolder, paymentMercadoPago, paymentPaypal,
-      paymentChequeOrder, paymentOtherMethods, paymentNotes
+      paymentChequeOrder, paymentOtherMethods, paymentNotes,
+      // Cuentas bancarias múltiples
+      cuentasBancarias
     } = req.body;
 
     if (!tenantId) {
@@ -869,6 +873,12 @@ const updateCompanyConfig = async (req, res) => {
     if (paymentNotes !== undefined) {
       updates.push(`payment_notes = $${paramCount++}`);
       values.push(paymentNotes?.trim() || null);
+    }
+    
+    // Cuentas bancarias múltiples (JSON)
+    if (cuentasBancarias !== undefined) {
+      updates.push(`cuentas_bancarias = $${paramCount++}`);
+      values.push(JSON.stringify(cuentasBancarias || []));
     }
 
     if (updates.length === 0) {

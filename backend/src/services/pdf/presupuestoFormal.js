@@ -4,9 +4,10 @@ const PDFDocument = require('pdfkit');
  * Genera un PDF de Presupuesto Formal basado en los datos de un presupuesto
  * @param {Object} presupuesto - Datos completos del presupuesto con relaciones
  * @param {Object} tenant - Datos del tenant (despachante)
+ * @param {Object} bancoSeleccionado - Cuenta bancaria seleccionada para el PDF
  * @returns {PDFDocument} - Documento PDF
  */
-function generarPresupuestoFormal(presupuesto, tenant) {
+function generarPresupuestoFormal(presupuesto, tenant, bancoSeleccionado = null) {
   const doc = new PDFDocument({ 
     size: 'A4', 
     margin: 40,
@@ -307,40 +308,41 @@ function generarPresupuestoFormal(presupuesto, tenant) {
   );
 
   // ============ DATOS BANCARIOS DEL TENANT ============
-  if (tenant?.paymentMethods) {
+  if (bancoSeleccionado) {
     y += 25;
     doc.font('Helvetica-Bold').fontSize(10).fillColor(textColor);
     doc.text('Datos Bancarios:', 50, y);
     y += 15;
     
-    const paymentMethods = typeof tenant.paymentMethods === 'string' 
-      ? JSON.parse(tenant.paymentMethods) 
-      : tenant.paymentMethods;
-    
     doc.font('Helvetica').fontSize(9);
     
-    const transferencia = paymentMethods?.find(p => p.type === 'bank_transfer' && p.enabled);
-    if (transferencia) {
-      if (transferencia.bankName) {
-        doc.text(transferencia.bankName, 50, y);
-        y += 12;
-      }
-      if (transferencia.alias) {
-        doc.text(`ALIAS: ${transferencia.alias}`, 50, y);
-        y += 12;
-      }
-      if (transferencia.accountNumber) {
-        doc.text(`Cuenta: ${transferencia.accountNumber}`, 50, y);
-        y += 12;
-      }
-      if (transferencia.cbu) {
-        doc.text(`CBU: ${transferencia.cbu}`, 50, y);
-        y += 12;
-      }
-      if (tenant.cuit) {
-        doc.text(`CUIT: ${tenant.cuit}`, 50, y);
-        y += 12;
-      }
+    if (bancoSeleccionado.banco) {
+      doc.text(bancoSeleccionado.banco, 50, y);
+      y += 12;
+    }
+    if (bancoSeleccionado.alias) {
+      doc.text(`ALIAS: ${bancoSeleccionado.alias}`, 50, y);
+      y += 12;
+    }
+    if (bancoSeleccionado.cuenta) {
+      doc.text(`Cuenta: ${bancoSeleccionado.cuenta}`, 50, y);
+      y += 12;
+    }
+    if (bancoSeleccionado.cbu) {
+      doc.text(`CBU: ${bancoSeleccionado.cbu}`, 50, y);
+      y += 12;
+    }
+    if (bancoSeleccionado.cuit) {
+      doc.text(`CUIT: ${bancoSeleccionado.cuit}`, 50, y);
+      y += 12;
+    }
+    if (bancoSeleccionado.titular) {
+      doc.text(`Titular: ${bancoSeleccionado.titular}`, 50, y);
+      y += 12;
+    }
+    if (bancoSeleccionado.moneda && bancoSeleccionado.moneda !== 'ARS') {
+      doc.text(`Moneda: ${bancoSeleccionado.moneda}`, 50, y);
+      y += 12;
     }
   }
 

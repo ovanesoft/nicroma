@@ -14,7 +14,7 @@ import {
   usePresupuesto, useCreatePresupuesto, useUpdatePresupuesto,
   useBuscarClientes, useCambiarEstadoPresupuesto, useConvertirPresupuesto,
   useMensajesPresupuesto, useAgregarMensaje, useMarcarMensajesLeidos,
-  useMarcarPresupuestoVisto
+  useMarcarPresupuestoVisto, useCuentasBancarias
 } from '../../hooks/useApi';
 import { useAuth } from '../../context/AuthContext';
 import toast from 'react-hot-toast';
@@ -111,6 +111,7 @@ function PresupuestoForm() {
   const { data: presupuestoData, isLoading } = usePresupuesto(id);
   const { data: clientesData } = useBuscarClientes(clienteSearch, 'cliente');
   const { data: mensajesData, refetch: refetchMensajes } = useMensajesPresupuesto(id);
+  const { data: cuentasBancarias = [] } = useCuentasBancarias();
   
   const createPresupuesto = useCreatePresupuesto();
   const updatePresupuesto = useUpdatePresupuesto(id);
@@ -119,6 +120,10 @@ function PresupuestoForm() {
   const agregarMensaje = useAgregarMensaje();
   const marcarLeidos = useMarcarMensajesLeidos();
   const marcarVisto = useMarcarPresupuestoVisto();
+  
+  // Obtener cuenta principal por defecto
+  const cuentaPrincipal = cuentasBancarias.find(c => c.esPrincipal) || cuentasBancarias[0];
+  const [bancoPdfId, setBancoPdfId] = useState('');
 
   const clientes = clientesData?.data?.clientes || [];
   const mensajes = mensajesData?.data?.mensajes || [];
@@ -180,8 +185,16 @@ function PresupuestoForm() {
       setItems(presupuesto.items || []);
       setMercancias(presupuesto.mercancias || []);
       setContenedores(presupuesto.contenedores || []);
+      setBancoPdfId(presupuesto.bancoPdfId || '');
     }
   }, [presupuesto]);
+  
+  // Setear cuenta principal por defecto cuando se carga la lista de cuentas
+  useEffect(() => {
+    if (!bancoPdfId && cuentaPrincipal?.id) {
+      setBancoPdfId(cuentaPrincipal.id);
+    }
+  }, [cuentaPrincipal, bancoPdfId]);
 
   // Scroll al final del chat cuando hay nuevos mensajes
   useEffect(() => {
@@ -218,7 +231,8 @@ function PresupuestoForm() {
         clienteId: selectedCliente?.id || null,
         items: items.filter(i => i.concepto),
         mercancias: mercancias.filter(m => m.descripcion),
-        contenedores: contenedores.filter(c => c.tipo)
+        contenedores: contenedores.filter(c => c.tipo),
+        bancoPdfId: bancoPdfId || null
       };
       
       await updatePresupuesto.mutateAsync(payload);
@@ -322,7 +336,8 @@ function PresupuestoForm() {
         clienteId: selectedCliente?.id || null,
         items: items.filter(i => i.concepto),
         mercancias: mercancias.filter(m => m.descripcion),
-        contenedores: contenedores.filter(c => c.tipo)
+        contenedores: contenedores.filter(c => c.tipo),
+        bancoPdfId: bancoPdfId || null
       };
 
       if (isEditing) {
@@ -1256,6 +1271,36 @@ function PresupuestoForm() {
                     </p>
                   </div>
                 </div>
+                
+                {/* Selector de Banco para PDF */}
+                {cuentasBancarias.length > 0 && (
+                  <div className="mt-6 pt-4 border-t">
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                      Banco para el PDF
+                    </label>
+                    <select
+                      value={bancoPdfId}
+                      onChange={(e) => {
+                        setBancoPdfId(e.target.value);
+                        if (isEditing) {
+                          setHasChanges(true);
+                          debouncedAutoSave();
+                        }
+                      }}
+                      className="w-full max-w-md px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white"
+                    >
+                      {cuentasBancarias.map(cuenta => (
+                        <option key={cuenta.id} value={cuenta.id}>
+                          {cuenta.banco} ({cuenta.moneda}) - {cuenta.alias || cuenta.cbu}
+                          {cuenta.esPrincipal ? ' ★ Principal' : ''}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-xs text-slate-500 mt-1">
+                      Estos datos bancarios aparecerán en el PDF del presupuesto formal
+                    </p>
+                  </div>
+                )}
               </div>
             )}
           </CardContent>

@@ -47,6 +47,10 @@ model Tenant {
   paymentOtherMethods  String?               @map("payment_other_methods")
   paymentNotes         String?               @map("payment_notes")
   
+  // Múltiples cuentas bancarias (JSON)
+  // Formato: [{ id, banco, cuenta, cbu, alias, titular, moneda, cuit, esPrincipal }]
+  cuentasBancarias     Json?                 @default("[]") @map("cuentas_bancarias")
+  
   audit_logs           AuditLog[]
   payments             payments[]
   promotion_uses       promotion_uses[]
@@ -799,6 +803,9 @@ model Carpeta {
   observaciones   String?
   notasInternas   String?  @map("notas_internas")
   
+  // Banco seleccionado para PDF (ID de la cuenta bancaria del tenant)
+  bancoPdfId      String?  @map("banco_pdf_id") @db.VarChar(50)
+  
   usuarioId       String   @map("usuario_id") @db.Uuid
   createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -1538,6 +1545,9 @@ model Presupuesto {
   observaciones       String?
   notasInternas       String?  @map("notas_internas")
   motivoRechazo       String?  @map("motivo_rechazo")
+  
+  // Banco seleccionado para PDF (ID de la cuenta bancaria del tenant)
+  bancoPdfId          String?  @map("banco_pdf_id") @db.VarChar(50)
   
   // Relación con carpeta cuando se convierte
   carpetaId       String?  @unique @map("carpeta_id") @db.Uuid

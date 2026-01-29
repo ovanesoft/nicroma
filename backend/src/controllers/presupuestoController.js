@@ -410,7 +410,8 @@ const actualizarPresupuesto = async (req, res) => {
           moneda: restData.moneda,
           
           observaciones: restData.observaciones,
-          notasInternas: restData.notasInternas
+          notasInternas: restData.notasInternas,
+          bancoPdfId: restData.bancoPdfId || null
         }
       });
 
@@ -1090,15 +1091,28 @@ const generarPDFPresupuestoFormal = async (req, res) => {
         id: true,
         name: true,
         cuit: true,
-        paymentMethods: true,
+        cuentasBancarias: true,
         address: true,
         phone: true,
         email: true
       }
     });
 
+    // Obtener banco seleccionado o el principal
+    let bancoSeleccionado = null;
+    const cuentasBancarias = tenant?.cuentasBancarias || [];
+    if (cuentasBancarias.length > 0) {
+      if (presupuesto.bancoPdfId) {
+        bancoSeleccionado = cuentasBancarias.find(c => c.id === presupuesto.bancoPdfId);
+      }
+      // Si no hay seleccionado o no se encontró, usar el principal
+      if (!bancoSeleccionado) {
+        bancoSeleccionado = cuentasBancarias.find(c => c.esPrincipal) || cuentasBancarias[0];
+      }
+    }
+
     // Generar el PDF
-    const doc = generarPresupuestoFormal(presupuesto, tenant);
+    const doc = generarPresupuestoFormal(presupuesto, tenant, bancoSeleccionado);
 
     // Configurar headers para descarga
     const filename = `Presupuesto_Formal_${presupuesto.numero}.pdf`;
