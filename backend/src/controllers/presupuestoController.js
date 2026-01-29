@@ -1,4 +1,5 @@
 const prisma = require('../services/prisma');
+const { generarPresupuestoFormal } = require('../services/pdf/presupuestoFormal');
 
 // Generar número de presupuesto
 const generarNumeroPresupuesto = async (tenantId) => {
@@ -127,7 +128,15 @@ const obtenerPresupuesto = async (req, res) => {
       where: whereClause,
       include: {
         cliente: true,
+        shipper: true,
+        consignee: true,
         items: {
+          orderBy: { createdAt: 'asc' }
+        },
+        mercancias: {
+          orderBy: { createdAt: 'asc' }
+        },
+        contenedores: {
           orderBy: { createdAt: 'asc' }
         },
         mensajes: {
@@ -353,8 +362,8 @@ const actualizarPresupuesto = async (req, res) => {
       });
     }
 
-    // Extraer items del update
-    const { items, ...restData } = data;
+    // Extraer items, mercancias y contenedores del update
+    const { items, mercancias, contenedores, ...restData } = data;
 
     // Actualizar usando transacción
     const presupuesto = await prisma.$transaction(async (tx) => {
@@ -376,8 +385,25 @@ const actualizarPresupuesto = async (req, res) => {
           
           puertoOrigen: restData.puertoOrigen,
           puertoDestino: restData.puertoDestino,
+          puertoTransbordo: restData.puertoTransbordo,
           
           fechaValidez: restData.fechaValidez ? new Date(restData.fechaValidez) : null,
+          fechaSalidaEstimada: restData.fechaSalidaEstimada ? new Date(restData.fechaSalidaEstimada) : null,
+          fechaLlegadaEstimada: restData.fechaLlegadaEstimada ? new Date(restData.fechaLlegadaEstimada) : null,
+          
+          // Transporte
+          buque: restData.buque,
+          viaje: restData.viaje,
+          transportista: restData.transportista,
+          booking: restData.booking,
+          depositoFiscal: restData.depositoFiscal,
+          
+          // BLs
+          masterBL: restData.masterBL,
+          houseBL: restData.houseBL,
+          
+          // Referencias
+          referenciaCliente: restData.referenciaCliente,
           
           incoterm: restData.incoterm,
           condiciones: restData.condiciones,
@@ -405,7 +431,52 @@ const actualizarPresupuesto = async (req, res) => {
               base: i.base || null,
               cantidad: parseFloat(i.cantidad) || 1,
               totalVenta: (parseFloat(i.montoVenta) || 0) * (parseFloat(i.cantidad) || 1),
-              totalCosto: (parseFloat(i.montoCosto) || 0) * (parseFloat(i.cantidad) || 1)
+              totalCosto: (parseFloat(i.montoCosto) || 0) * (parseFloat(i.cantidad) || 1),
+              gravado: i.gravado !== false,
+              porcentajeIVA: parseFloat(i.porcentajeIVA) || 21
+            }))
+          });
+        }
+      }
+      
+      // Actualizar mercancías
+      if (mercancias !== undefined) {
+        await tx.mercanciaPresupuesto.deleteMany({ where: { presupuestoId: id } });
+        
+        if (mercancias && mercancias.length > 0) {
+          await tx.mercanciaPresupuesto.createMany({
+            data: mercancias.filter(m => m.descripcion).map(m => ({
+              presupuestoId: id,
+              descripcion: m.descripcion,
+              embalaje: m.embalaje || null,
+              marcas: m.marcas || null,
+              bultos: parseInt(m.bultos) || null,
+              volumen: parseFloat(m.volumen) || null,
+              peso: parseFloat(m.peso) || null,
+              valorMercaderia: parseFloat(m.valorMercaderia) || null,
+              valorCIF: parseFloat(m.valorCIF) || null,
+              hsCode: m.hsCode || null
+            }))
+          });
+        }
+      }
+      
+      // Actualizar contenedores
+      if (contenedores !== undefined) {
+        await tx.contenedorPresupuesto.deleteMany({ where: { presupuestoId: id } });
+        
+        if (contenedores && contenedores.length > 0) {
+          await tx.contenedorPresupuesto.createMany({
+            data: contenedores.filter(c => c.tipo).map(c => ({
+              presupuestoId: id,
+              tipo: c.tipo,
+              numero: c.numero || null,
+              blContenedor: c.blContenedor || null,
+              condicion: c.condicion || null,
+              precinto: c.precinto || null,
+              cantidad: parseInt(c.cantidad) || 1,
+              tara: parseFloat(c.tara) || null,
+              pesoMaximo: parseFloat(c.pesoMaximo) || null
             }))
           });
         }
@@ -425,6 +496,8 @@ const actualizarPresupuesto = async (req, res) => {
         include: {
           cliente: true,
           items: { orderBy: { createdAt: 'asc' } },
+          mercancias: { orderBy: { createdAt: 'asc' } },
+          contenedores: { orderBy: { createdAt: 'asc' } },
           mensajes: { orderBy: { createdAt: 'asc' } }
         }
       });
@@ -984,6 +1057,67 @@ const marcarPresupuestoVisto = async (req, res) => {
   }
 };
 
+// Generar PDF de Presupuesto Formal
+const generarPDFPresupuestoFormal = async (req, res) => {
+  try {
+    const tenantId = req.user.tenant_id;
+    const { id } = req.params;
+
+    // Obtener presupuesto con todas las relaciones necesarias
+    const presupuesto = await prisma.presupuesto.findFirst({
+      where: { id, tenantId },
+      include: {
+        cliente: true,
+        shipper: true,
+        consignee: true,
+        items: true,
+        mercancias: true,
+        contenedores: true
+      }
+    });
+
+    if (!presupuesto) {
+      return res.status(404).json({
+        success: false,
+        message: 'Presupuesto no encontrado'
+      });
+    }
+
+    // Obtener datos del tenant para incluir datos bancarios
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: {
+        id: true,
+        name: true,
+        cuit: true,
+        paymentMethods: true,
+        address: true,
+        phone: true,
+        email: true
+      }
+    });
+
+    // Generar el PDF
+    const doc = generarPresupuestoFormal(presupuesto, tenant);
+
+    // Configurar headers para descarga
+    const filename = `Presupuesto_Formal_${presupuesto.numero}.pdf`;
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+
+    // Enviar el PDF como stream
+    doc.pipe(res);
+    doc.end();
+
+  } catch (error) {
+    console.error('Error generando PDF de presupuesto formal:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al generar el PDF'
+    });
+  }
+};
+
 module.exports = {
   listarPresupuestos,
   obtenerPresupuesto,
@@ -997,5 +1131,6 @@ module.exports = {
   listarPresupuestosCliente,
   obtenerNotificaciones,
   marcarMensajesLeidos,
-  marcarPresupuestoVisto
+  marcarPresupuestoVisto,
+  generarPDFPresupuestoFormal
 };

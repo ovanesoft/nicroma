@@ -2,8 +2,10 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { 
   ArrowLeft, Save, Send, CheckCircle, XCircle, FolderOpen,
-  Plus, Trash2, Search, MessageSquare, User, Building2, Clock, Loader2
+  Plus, Trash2, Search, MessageSquare, User, Building2, Clock, Loader2, FileDown,
+  Ship, Package
 } from 'lucide-react';
+import api from '../../api/axios';
 import Layout from '../../components/layout/Layout';
 import { 
   Card, CardContent, CardHeader, CardTitle, Button, Input, Badge
@@ -81,13 +83,28 @@ function PresupuestoForm() {
     tipoOperacion: '',
     puertoOrigen: '',
     puertoDestino: '',
+    puertoTransbordo: '',
     fechaValidez: '',
+    etd: '',
+    eta: '',
+    buque: '',
+    viaje: '',
+    transportista: '',
+    booking: '',
+    masterBL: '',
+    houseBL: '',
+    referenciaCliente: '',
+    depositoFiscal: '',
     incoterm: '',
     condiciones: '',
     moneda: 'USD',
     observaciones: '',
     notasInternas: ''
   });
+  
+  const [mercancias, setMercancias] = useState([]);
+  const [contenedores, setContenedores] = useState([]);
+  const [downloadingPDF, setDownloadingPDF] = useState(false);
 
   const [items, setItems] = useState([]);
 
@@ -141,7 +158,18 @@ function PresupuestoForm() {
         tipoOperacion: presupuesto.tipoOperacion || '',
         puertoOrigen: presupuesto.puertoOrigen || '',
         puertoDestino: presupuesto.puertoDestino || '',
+        puertoTransbordo: presupuesto.puertoTransbordo || '',
         fechaValidez: presupuesto.fechaValidez ? presupuesto.fechaValidez.split('T')[0] : '',
+        etd: presupuesto.fechaSalidaEstimada ? presupuesto.fechaSalidaEstimada.split('T')[0] : '',
+        eta: presupuesto.fechaLlegadaEstimada ? presupuesto.fechaLlegadaEstimada.split('T')[0] : '',
+        buque: presupuesto.buque || '',
+        viaje: presupuesto.viaje || '',
+        transportista: presupuesto.transportista || '',
+        booking: presupuesto.booking || '',
+        masterBL: presupuesto.masterBL || '',
+        houseBL: presupuesto.houseBL || '',
+        referenciaCliente: presupuesto.referenciaCliente || '',
+        depositoFiscal: presupuesto.depositoFiscal || '',
         incoterm: presupuesto.incoterm || '',
         condiciones: presupuesto.condiciones || '',
         moneda: presupuesto.moneda || 'USD',
@@ -150,6 +178,8 @@ function PresupuestoForm() {
       });
       setSelectedCliente(presupuesto.cliente);
       setItems(presupuesto.items || []);
+      setMercancias(presupuesto.mercancias || []);
+      setContenedores(presupuesto.contenedores || []);
     }
   }, [presupuesto]);
 
@@ -283,8 +313,12 @@ function PresupuestoForm() {
     try {
       const payload = {
         ...formData,
+        fechaSalidaEstimada: formData.etd || null,
+        fechaLlegadaEstimada: formData.eta || null,
         clienteId: selectedCliente?.id || null,
-        items: items.filter(i => i.concepto)
+        items: items.filter(i => i.concepto),
+        mercancias: mercancias.filter(m => m.descripcion),
+        contenedores: contenedores.filter(c => c.tipo)
       };
 
       if (isEditing) {
@@ -299,6 +333,32 @@ function PresupuestoForm() {
       }
     } catch (error) {
       toast.error(error.response?.data?.message || 'Error al guardar');
+    }
+  };
+  
+  const handleDescargarPDF = async () => {
+    if (!id) return;
+    setDownloadingPDF(true);
+    try {
+      const response = await api.get(`/presupuestos/${id}/pdf/presupuesto-formal`, {
+        responseType: 'blob'
+      });
+      
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `Presupuesto_Formal_${presupuesto?.numero || id}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      
+      toast.success('PDF descargado');
+    } catch (error) {
+      console.error('Error descargando PDF:', error);
+      toast.error('Error al descargar el PDF');
+    } finally {
+      setDownloadingPDF(false);
     }
   };
 
@@ -355,6 +415,8 @@ function PresupuestoForm() {
 
   const tabs = [
     { id: 'datos', label: 'Datos', icon: Building2 },
+    { id: 'embarque', label: 'Embarque', icon: Ship },
+    { id: 'mercancias', label: 'Mercancías', icon: Package },
     { id: 'items', label: 'Cotización', icon: Plus },
     ...(isEditing ? [{ id: 'chat', label: 'Conversación', icon: MessageSquare, badge: mensajes.length }] : [])
   ];
@@ -378,6 +440,12 @@ function PresupuestoForm() {
           )}
         </div>
         <div className="flex gap-2">
+          {isEditing && (
+            <Button variant="outline" onClick={handleDescargarPDF} loading={downloadingPDF}>
+              <FileDown className="w-4 h-4" />
+              Presupuesto Formal
+            </Button>
+          )}
           {isEditing && presupuesto?.estado === 'EN_PROCESO' && (
             <Button variant="secondary" onClick={() => handleCambiarEstado('ENVIADO')}>
               <Send className="w-4 h-4" />
@@ -677,6 +745,371 @@ function PresupuestoForm() {
               </Card>
             )}
           </div>
+        </div>
+      )}
+
+      {/* Tab: Embarque */}
+      {activeTab === 'embarque' && (
+        <div className="space-y-6">
+          {/* Puertos y Fechas */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Puertos y Fechas</CardTitle>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Input
+                label="Puerto Origen"
+                placeholder="CNSHA - Shanghai"
+                value={formData.puertoOrigen}
+                onChange={(e) => handleChange('puertoOrigen', e.target.value)}
+              />
+              <Input
+                label="Puerto Destino"
+                placeholder="ARBUE - Buenos Aires"
+                value={formData.puertoDestino}
+                onChange={(e) => handleChange('puertoDestino', e.target.value)}
+              />
+              <Input
+                label="Puerto Transbordo"
+                placeholder="SGSIN - Singapur"
+                value={formData.puertoTransbordo}
+                onChange={(e) => handleChange('puertoTransbordo', e.target.value)}
+              />
+              <Input
+                label="ETD (Salida Estimada)"
+                type="date"
+                value={formData.etd}
+                onChange={(e) => handleChange('etd', e.target.value)}
+              />
+              <Input
+                label="ETA (Llegada Estimada)"
+                type="date"
+                value={formData.eta}
+                onChange={(e) => handleChange('eta', e.target.value)}
+              />
+              <Input
+                label="Depósito Fiscal"
+                placeholder="Terminal, depósito..."
+                value={formData.depositoFiscal}
+                onChange={(e) => handleChange('depositoFiscal', e.target.value)}
+              />
+            </CardContent>
+          </Card>
+
+          {/* Transporte */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Transporte</CardTitle>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Input
+                label="Buque / Aeronave"
+                placeholder="Cap San Maleas"
+                value={formData.buque}
+                onChange={(e) => handleChange('buque', e.target.value)}
+              />
+              <Input
+                label="Viaje"
+                placeholder="544W"
+                value={formData.viaje}
+                onChange={(e) => handleChange('viaje', e.target.value)}
+              />
+              <Input
+                label="Transportista"
+                placeholder="Nombre del carrier"
+                value={formData.transportista}
+                onChange={(e) => handleChange('transportista', e.target.value)}
+              />
+              <Input
+                label="Booking"
+                placeholder="Número de booking"
+                value={formData.booking}
+                onChange={(e) => handleChange('booking', e.target.value)}
+              />
+              <Input
+                label="Master BL"
+                placeholder="Número de MBL"
+                value={formData.masterBL}
+                onChange={(e) => handleChange('masterBL', e.target.value)}
+              />
+              <Input
+                label="House BL"
+                placeholder="Número de HBL"
+                value={formData.houseBL}
+                onChange={(e) => handleChange('houseBL', e.target.value)}
+              />
+            </CardContent>
+          </Card>
+
+          {/* Referencias */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Referencias</CardTitle>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Input
+                label="Referencia Cliente"
+                placeholder="Referencia del cliente"
+                value={formData.referenciaCliente}
+                onChange={(e) => handleChange('referenciaCliente', e.target.value)}
+              />
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Incoterm</label>
+                <select
+                  value={formData.incoterm}
+                  onChange={(e) => handleChange('incoterm', e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none bg-white"
+                >
+                  <option value="">Seleccionar...</option>
+                  {INCOTERMS.map((inc) => (
+                    <option key={inc} value={inc}>{inc}</option>
+                  ))}
+                </select>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Tab: Mercancías */}
+      {activeTab === 'mercancias' && (
+        <div className="space-y-6">
+          {/* Contenedores */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle>Contenedores</CardTitle>
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => setContenedores([...contenedores, { tipo: '40DC', numero: '', cantidad: 1, blContenedor: '' }])}
+              >
+                <Plus className="w-4 h-4" />
+                Agregar
+              </Button>
+            </CardHeader>
+            <CardContent>
+              {contenedores.length === 0 ? (
+                <p className="text-center text-slate-500 py-4">No hay contenedores</p>
+              ) : (
+                <div className="space-y-3">
+                  {contenedores.map((cont, idx) => (
+                    <div key={idx} className="flex gap-3 items-start p-3 bg-slate-50 rounded-lg">
+                      <div className="flex-1 grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <div>
+                          <label className="block text-xs text-slate-500 mb-1">Tipo</label>
+                          <select
+                            value={cont.tipo}
+                            onChange={(e) => {
+                              const updated = [...contenedores];
+                              updated[idx].tipo = e.target.value;
+                              setContenedores(updated);
+                              setHasChanges(true);
+                              debouncedAutoSave();
+                            }}
+                            className="w-full px-2 py-1.5 text-sm rounded border border-slate-300"
+                          >
+                            <option value="20DC">20DC</option>
+                            <option value="40DC">40DC</option>
+                            <option value="40HC">40HC</option>
+                            <option value="20RF">20RF</option>
+                            <option value="40RF">40RF</option>
+                            <option value="20OT">20OT</option>
+                            <option value="40OT">40OT</option>
+                            <option value="20FR">20FR</option>
+                            <option value="40FR">40FR</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-xs text-slate-500 mb-1">Número</label>
+                          <input
+                            type="text"
+                            value={cont.numero || ''}
+                            onChange={(e) => {
+                              const updated = [...contenedores];
+                              updated[idx].numero = e.target.value;
+                              setContenedores(updated);
+                              setHasChanges(true);
+                              debouncedAutoSave();
+                            }}
+                            placeholder="MRKU1234567"
+                            className="w-full px-2 py-1.5 text-sm rounded border border-slate-300"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-slate-500 mb-1">Cantidad</label>
+                          <input
+                            type="number"
+                            min="1"
+                            value={cont.cantidad || 1}
+                            onChange={(e) => {
+                              const updated = [...contenedores];
+                              updated[idx].cantidad = parseInt(e.target.value) || 1;
+                              setContenedores(updated);
+                              setHasChanges(true);
+                              debouncedAutoSave();
+                            }}
+                            className="w-full px-2 py-1.5 text-sm rounded border border-slate-300"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-slate-500 mb-1">BL Contenedor</label>
+                          <input
+                            type="text"
+                            value={cont.blContenedor || ''}
+                            onChange={(e) => {
+                              const updated = [...contenedores];
+                              updated[idx].blContenedor = e.target.value;
+                              setContenedores(updated);
+                              setHasChanges(true);
+                              debouncedAutoSave();
+                            }}
+                            placeholder="ML-CN..."
+                            className="w-full px-2 py-1.5 text-sm rounded border border-slate-300"
+                          />
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setContenedores(contenedores.filter((_, i) => i !== idx));
+                          setHasChanges(true);
+                          debouncedAutoSave();
+                        }}
+                        className="p-2 text-red-500 hover:bg-red-50 rounded"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Mercancías */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle>Mercancías</CardTitle>
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => setMercancias([...mercancias, { descripcion: '', bultos: null, volumen: null, peso: null }])}
+              >
+                <Plus className="w-4 h-4" />
+                Agregar
+              </Button>
+            </CardHeader>
+            <CardContent>
+              {mercancias.length === 0 ? (
+                <p className="text-center text-slate-500 py-4">No hay mercancías</p>
+              ) : (
+                <div className="space-y-3">
+                  {mercancias.map((merc, idx) => (
+                    <div key={idx} className="flex gap-3 items-start p-3 bg-slate-50 rounded-lg">
+                      <div className="flex-1 grid grid-cols-1 md:grid-cols-4 gap-3">
+                        <div className="md:col-span-2">
+                          <label className="block text-xs text-slate-500 mb-1">Descripción</label>
+                          <input
+                            type="text"
+                            value={merc.descripcion || ''}
+                            onChange={(e) => {
+                              const updated = [...mercancias];
+                              updated[idx].descripcion = e.target.value;
+                              setMercancias(updated);
+                              setHasChanges(true);
+                              debouncedAutoSave();
+                            }}
+                            placeholder="Descripción de la mercadería"
+                            className="w-full px-2 py-1.5 text-sm rounded border border-slate-300"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-slate-500 mb-1">Bultos</label>
+                          <input
+                            type="number"
+                            min="0"
+                            value={merc.bultos || ''}
+                            onChange={(e) => {
+                              const updated = [...mercancias];
+                              updated[idx].bultos = parseInt(e.target.value) || null;
+                              setMercancias(updated);
+                              setHasChanges(true);
+                              debouncedAutoSave();
+                            }}
+                            placeholder="0"
+                            className="w-full px-2 py-1.5 text-sm rounded border border-slate-300"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-slate-500 mb-1">Volumen (CBM)</label>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={merc.volumen || ''}
+                            onChange={(e) => {
+                              const updated = [...mercancias];
+                              updated[idx].volumen = parseFloat(e.target.value) || null;
+                              setMercancias(updated);
+                              setHasChanges(true);
+                              debouncedAutoSave();
+                            }}
+                            placeholder="0.00"
+                            className="w-full px-2 py-1.5 text-sm rounded border border-slate-300"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-slate-500 mb-1">Peso (KG)</label>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={merc.peso || ''}
+                            onChange={(e) => {
+                              const updated = [...mercancias];
+                              updated[idx].peso = parseFloat(e.target.value) || null;
+                              setMercancias(updated);
+                              setHasChanges(true);
+                              debouncedAutoSave();
+                            }}
+                            placeholder="0.00"
+                            className="w-full px-2 py-1.5 text-sm rounded border border-slate-300"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-slate-500 mb-1">HS Code</label>
+                          <input
+                            type="text"
+                            value={merc.hsCode || ''}
+                            onChange={(e) => {
+                              const updated = [...mercancias];
+                              updated[idx].hsCode = e.target.value;
+                              setMercancias(updated);
+                              setHasChanges(true);
+                              debouncedAutoSave();
+                            }}
+                            placeholder="8471.30"
+                            className="w-full px-2 py-1.5 text-sm rounded border border-slate-300"
+                          />
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMercancias(mercancias.filter((_, i) => i !== idx));
+                          setHasChanges(true);
+                          debouncedAutoSave();
+                        }}
+                        className="p-2 text-red-500 hover:bg-red-50 rounded"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
       )}
 

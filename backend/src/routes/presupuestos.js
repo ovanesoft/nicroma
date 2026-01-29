@@ -33,4 +33,7 @@ router.post('/:id/mensajes/leidos', presupuestoController.marcarMensajesLeidos);
 // Marcar presupuesto como visto (para clientes)
 router.post('/:id/visto', presupuestoController.marcarPresupuestoVisto);
 
+// Generación de PDFs
+router.get('/:id/pdf/presupuesto-formal', requireRole('admin', 'manager', 'user'), presupuestoController.generarPDFPresupuestoFormal);
+
 module.exports = router;

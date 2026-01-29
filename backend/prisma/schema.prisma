@@ -660,6 +660,8 @@ model Cliente {
   facturas           Factura[]
   prefacturas        Prefactura[]
   presupuestos       Presupuesto[]
+  presupuestosShipper    Presupuesto[] @relation("PresupuestoShipper")
+  presupuestosConsignee  Presupuesto[] @relation("PresupuestoConsignee")
 
   @@unique([tenantId, numeroDocumento])
   @@index([tenantId])
@@ -1476,16 +1478,46 @@ model Presupuesto {
   area            String   @default("Marítimo") @db.VarChar(20)
   sector          String   @default("Importación") @db.VarChar(20)
   tipoOperacion   String?  @map("tipo_operacion") @db.VarChar(50)
+  categoriaEmbarque String? @map("categoria_embarque") @db.VarChar(100)
+  consolidado     Boolean  @default(false)
   
   // Origen y Destino
   puertoOrigen    String?  @map("puerto_origen") @db.VarChar(100)
+  lugarCarga      String?  @map("lugar_carga") @db.VarChar(255)
   puertoDestino   String?  @map("puerto_destino") @db.VarChar(100)
+  lugarDescarga   String?  @map("lugar_descarga") @db.VarChar(255)
+  puertoTransbordo String? @map("puerto_transbordo") @db.VarChar(100)
   
-  // Fechas
+  // Shipper y Consignee
+  shipperId       String?  @map("shipper_id") @db.Uuid
+  shipper         Cliente? @relation("PresupuestoShipper", fields: [shipperId], references: [id])
+  consigneeId     String?  @map("consignee_id") @db.Uuid
+  consignee       Cliente? @relation("PresupuestoConsignee", fields: [consigneeId], references: [id])
+  
+  // Fechas de solicitud
   fechaSolicitud      DateTime @default(now()) @map("fecha_solicitud") @db.Timestamptz(6)
   fechaValidez        DateTime? @map("fecha_validez") @db.Timestamptz(6)
   fechaRespuesta      DateTime? @map("fecha_respuesta") @db.Timestamptz(6)
   fechaAprobacion     DateTime? @map("fecha_aprobacion") @db.Timestamptz(6)
+  
+  // Fechas de viaje (ETD/ETA)
+  fechaSalidaEstimada  DateTime? @map("etd") @db.Timestamptz(6)
+  fechaLlegadaEstimada DateTime? @map("eta") @db.Timestamptz(6)
+  
+  // Transporte
+  buque           String?  @db.VarChar(100)
+  viaje           String?  @db.VarChar(50)
+  transportista   String?  @db.VarChar(255)
+  booking         String?  @db.VarChar(100)
+  terminalPortuaria String? @map("terminal_portuaria") @db.VarChar(100)
+  depositoFiscal  String?  @map("deposito_fiscal") @db.VarChar(100)
+  
+  // BLs
+  masterBL        String?  @map("master_bl") @db.VarChar(100)
+  houseBL         String?  @map("house_bl") @db.VarChar(100)
+  
+  // Referencias
+  referenciaCliente String?  @map("referencia_cliente") @db.VarChar(100)
   
   // Tracking de visualización
   vistoPorCliente     Boolean   @default(false) @map("visto_por_cliente")
@@ -1520,6 +1552,8 @@ model Presupuesto {
   // Relaciones
   items           ItemPresupuesto[]
   mensajes        MensajePresupuesto[]
+  mercancias      MercanciaPresupuesto[]
+  contenedores    ContenedorPresupuesto[]
 
   @@unique([tenantId, numero])
   @@index([tenantId])
@@ -1545,12 +1579,66 @@ model ItemPresupuesto {
   cantidad        Float    @default(1)
   totalVenta      Float    @map("total_venta")
   totalCosto      Float    @map("total_costo")
+  gravado         Boolean  @default(true)
+  porcentajeIVA   Float    @default(21) @map("porcentaje_iva")
   
   createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@index([presupuestoId])
   @@map("items_presupuesto")
+}
+
+// MERCANCÍAS DE PRESUPUESTO
+model MercanciaPresupuesto {
+  id              String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  presupuestoId   String   @map("presupuesto_id") @db.Uuid
+  presupuesto     Presupuesto @relation(fields: [presupuestoId], references: [id], onDelete: Cascade)
+  
+  contenedorId    String?  @map("contenedor_id") @db.Uuid
+  contenedor      ContenedorPresupuesto? @relation(fields: [contenedorId], references: [id], onDelete: SetNull)
+  
+  descripcion     String
+  embalaje        String?  @db.VarChar(100)
+  marcas          String?  @db.VarChar(255)
+  bultos          Int?
+  volumen         Float?
+  peso            Float?
+  valorMercaderia Float?   @map("valor_mercaderia")
+  valorCIF        Float?   @map("valor_cif")
+  hsCode          String?  @map("hs_code") @db.VarChar(20)
+  
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([presupuestoId])
+  @@index([contenedorId])
+  @@map("mercancias_presupuesto")
+}
+
+// CONTENEDORES DE PRESUPUESTO
+model ContenedorPresupuesto {
+  id              String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  presupuestoId   String   @map("presupuesto_id") @db.Uuid
+  presupuesto     Presupuesto @relation(fields: [presupuestoId], references: [id], onDelete: Cascade)
+  
+  mercancias      MercanciaPresupuesto[]
+  
+  tipo            String   @db.VarChar(20)
+  numero          String?  @db.VarChar(20)
+  blContenedor    String?  @map("bl_contenedor") @db.VarChar(50)
+  condicion       String?  @db.VarChar(50)
+  precinto        String?  @db.VarChar(50)
+  cantidad        Int      @default(1)
+  tara            Float?
+  pesoMaximo      Float?   @map("peso_maximo")
+  
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([presupuestoId])
+  @@index([numero])
+  @@map("contenedores_presupuesto")
 }
 
 // Mensajes/Chat del presupuesto
