@@ -33,6 +33,7 @@ services:
     buildCommand: |
       npm install
       npx prisma generate
+      npx prisma db push --accept-data-loss
       npm run db:migrate-billing || echo "Billing migration completed or skipped"
       npm run db:init || echo "DB init completed or skipped"
       npm run db:seed-plans || echo "Plans seed completed or skipped"
