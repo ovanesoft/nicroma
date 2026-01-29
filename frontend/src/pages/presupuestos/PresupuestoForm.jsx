@@ -18,7 +18,7 @@ import {
 } from '../../hooks/useApi';
 import { useAuth } from '../../context/AuthContext';
 import toast from 'react-hot-toast';
-import { AREAS, SECTORES, TIPOS_OPERACION, INCOTERMS } from '../../lib/constants';
+import { AREAS, SECTORES, TIPOS_OPERACION, TIPOS_OPERACION_AEREA, INCOTERMS } from '../../lib/constants';
 import { cn, formatDate } from '../../lib/utils';
 
 // Hook para debounce
@@ -81,6 +81,7 @@ function PresupuestoForm() {
     area: 'Marítimo',
     sector: 'Importación',
     tipoOperacion: '',
+    tipoOperacionAerea: '',
     puertoOrigen: '',
     puertoDestino: '',
     puertoTransbordo: '',
@@ -161,6 +162,7 @@ function PresupuestoForm() {
         area: presupuesto.area || 'Marítimo',
         sector: presupuesto.sector || 'Importación',
         tipoOperacion: presupuesto.tipoOperacion || '',
+        tipoOperacionAerea: presupuesto.tipoOperacionAerea || '',
         puertoOrigen: presupuesto.puertoOrigen || '',
         puertoDestino: presupuesto.puertoDestino || '',
         puertoTransbordo: presupuesto.puertoTransbordo || '',
@@ -751,6 +753,21 @@ function PresupuestoForm() {
                     <option value="">Seleccionar</option>
                     {TIPOS_OPERACION.map(t => <option key={t} value={t}>{t}</option>)}
                   </select>
+                </div>
+                {/* Tipo de Operación Aérea - solo visible para cargas aéreas */}
+                {formData.area === 'Aéreo' && (
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1.5">Tipo de Operación Aérea</label>
+                    <select
+                      value={formData.tipoOperacionAerea}
+                      onChange={(e) => handleChange('tipoOperacionAerea', e.target.value)}
+                      className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white"
+                    >
+                      <option value="">Seleccionar</option>
+                      {TIPOS_OPERACION_AEREA.map(t => <option key={t} value={t}>{t}</option>)}
+                    </select>
+                  </div>
+                )
                 </div>
                 <Input
                   label="Puerto Origen"

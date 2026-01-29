@@ -102,7 +102,10 @@ function generarAvisoArribo(carpeta, tenant, bancoSeleccionado = null) {
   
   // Fila 1
   doc.font('Helvetica-Bold').text('Tráfico:', 50, y);
-  doc.font('Helvetica').text(`${carpeta.area || ''} ${carpeta.tipoOperacion || ''}`, 110, y);
+  const traficoText = carpeta.area === 'Aéreo' && carpeta.tipoOperacionAerea
+    ? `${carpeta.area} - ${carpeta.tipoOperacionAerea}`
+    : `${carpeta.area || ''} ${carpeta.tipoOperacion || ''}`;
+  doc.font('Helvetica').text(traficoText, 110, y);
   doc.font('Helvetica-Bold').text('Customer:', 300, y);
   doc.font('Helvetica').text(carpeta.cliente?.razonSocial || '-', 360, y, { width: 180 });
   

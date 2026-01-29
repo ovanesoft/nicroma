@@ -118,7 +118,10 @@ function generarPresupuestoFormal(presupuesto, tenant, bancoSeleccionado = null)
   
   y += 15;
   doc.font('Helvetica-Bold').text('Operación:', 50, y);
-  doc.font('Helvetica').text(presupuesto.tipoOperacion || '-', 110, y);
+  const operacionText = presupuesto.area === 'Aéreo' && presupuesto.tipoOperacionAerea
+    ? `${presupuesto.tipoOperacion || ''} - ${presupuesto.tipoOperacionAerea}`
+    : presupuesto.tipoOperacion || '-';
+  doc.font('Helvetica').text(operacionText, 110, y);
   doc.font('Helvetica-Bold').text('Ref. Cliente:', 300, y);
   doc.font('Helvetica').text(presupuesto.referenciaCliente || '-', 360, y);
   

@@ -739,6 +739,7 @@ model Carpeta {
   area            String   @db.VarChar(50)
   sector          String   @db.VarChar(50)
   tipoOperacion   String   @map("tipo_operacion") @db.VarChar(50)
+  tipoOperacionAerea String? @map("tipo_operacion_aerea") @db.VarChar(50)
   categoriaEmbarque String? @map("categoria_embarque") @db.VarChar(100)
   consolidado     Boolean  @default(false)
   
@@ -1485,6 +1486,7 @@ model Presupuesto {
   area            String   @default("Marítimo") @db.VarChar(20)
   sector          String   @default("Importación") @db.VarChar(20)
   tipoOperacion   String?  @map("tipo_operacion") @db.VarChar(50)
+  tipoOperacionAerea String? @map("tipo_operacion_aerea") @db.VarChar(50)
   categoriaEmbarque String? @map("categoria_embarque") @db.VarChar(100)
   consolidado     Boolean  @default(false)
   

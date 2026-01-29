@@ -207,6 +207,7 @@ const crearCarpeta = async (req, res) => {
         area: data.area,
         sector: data.sector,
         tipoOperacion: data.tipoOperacion,
+        tipoOperacionAerea: data.tipoOperacionAerea || null,
         categoriaEmbarque: data.categoriaEmbarque,
         consolidado: data.consolidado || false,
         

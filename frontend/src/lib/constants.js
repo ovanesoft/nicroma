@@ -180,6 +180,13 @@ export const TIPOS_OPERACION = [
   'Terrestre'
 ];
 
+// Tipos de operación aérea (solo para área Aéreo)
+export const TIPOS_OPERACION_AEREA = [
+  'CAO',
+  'NO PALETIZADO',
+  'PALETIZADO'
+];
+
 // Áreas
 export const AREAS = [
   'Marítimo',

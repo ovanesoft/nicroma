@@ -199,6 +199,7 @@ const crearPresupuesto = async (req, res) => {
         area: data.area || 'Marítimo',
         sector: data.sector || 'Importación',
         tipoOperacion: data.tipoOperacion,
+        tipoOperacionAerea: data.tipoOperacionAerea || null,
         
         puertoOrigen: data.puertoOrigen,
         puertoDestino: data.puertoDestino,
@@ -311,6 +312,7 @@ const solicitarPresupuesto = async (req, res) => {
         area: data.area || 'Marítimo',
         sector: data.sector || 'Importación',
         tipoOperacion: data.tipoOperacion,
+        tipoOperacionAerea: data.tipoOperacionAerea || null,
         
         puertoOrigen: data.puertoOrigen,
         puertoDestino: data.puertoDestino,
@@ -382,6 +384,7 @@ const actualizarPresupuesto = async (req, res) => {
           area: restData.area,
           sector: restData.sector,
           tipoOperacion: restData.tipoOperacion,
+          tipoOperacionAerea: restData.tipoOperacionAerea || null,
           
           puertoOrigen: restData.puertoOrigen,
           puertoDestino: restData.puertoDestino,

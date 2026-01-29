@@ -17,13 +17,14 @@ import {
   useCreatePrefacturaDesdeCarpeta, useTrack, useIntegrations, useCuentasBancarias
 } from '../../hooks/useApi';
 import toast from 'react-hot-toast';
-import { AREAS, SECTORES, TIPOS_OPERACION, CARPETA_ESTADOS, INCOTERMS, TIPOS_CONTENEDOR } from '../../lib/constants';
+import { AREAS, SECTORES, TIPOS_OPERACION, TIPOS_OPERACION_AEREA, CARPETA_ESTADOS, INCOTERMS, TIPOS_CONTENEDOR } from '../../lib/constants';
 import { cn, formatDate } from '../../lib/utils';
 
 const carpetaSchema = z.object({
   area: z.enum(['Marítimo', 'Aéreo', 'Terrestre']),
   sector: z.enum(['Importación', 'Exportación']),
   tipoOperacion: z.string().min(1, 'Requerido'),
+  tipoOperacionAerea: z.string().optional(),
   clienteId: z.string().uuid('Seleccione un cliente'),
   puertoOrigen: z.string().optional(),
   puertoDestino: z.string().optional(),
@@ -158,7 +159,8 @@ function CarpetaForm() {
     defaultValues: {
       area: 'Marítimo',
       sector: 'Importación',
-      tipoOperacion: 'FCL-FCL'
+      tipoOperacion: 'FCL-FCL',
+      tipoOperacionAerea: ''
     }
   });
 
@@ -169,6 +171,7 @@ function CarpetaForm() {
       setValue('area', c.area);
       setValue('sector', c.sector);
       setValue('tipoOperacion', c.tipoOperacion);
+      setValue('tipoOperacionAerea', c.tipoOperacionAerea || '');
       setValue('clienteId', c.clienteId);
       setValue('puertoOrigen', c.puertoOrigen || '');
       setValue('puertoDestino', c.puertoDestino || '');
@@ -463,6 +466,19 @@ function CarpetaForm() {
                     {TIPOS_OPERACION.map(t => <option key={t} value={t}>{t}</option>)}
                   </select>
                 </div>
+                {/* Tipo de Operación Aérea - solo visible para cargas aéreas */}
+                {watch('area') === 'Aéreo' && (
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1.5">Tipo de Operación Aérea</label>
+                    <select
+                      {...register('tipoOperacionAerea')}
+                      className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none bg-white"
+                    >
+                      <option value="">Seleccionar</option>
+                      {TIPOS_OPERACION_AEREA.map(t => <option key={t} value={t}>{t}</option>)}
+                    </select>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
