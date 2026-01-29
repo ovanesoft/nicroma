@@ -213,8 +213,12 @@ function PresupuestoForm() {
       setIsSaving(true);
       const payload = {
         ...formData,
+        fechaSalidaEstimada: formData.etd || null,
+        fechaLlegadaEstimada: formData.eta || null,
         clienteId: selectedCliente?.id || null,
-        items: items.filter(i => i.concepto)
+        items: items.filter(i => i.concepto),
+        mercancias: mercancias.filter(m => m.descripcion),
+        contenedores: contenedores.filter(c => c.tipo)
       };
       
       await updatePresupuesto.mutateAsync(payload);
@@ -225,7 +229,7 @@ function PresupuestoForm() {
     } finally {
       setIsSaving(false);
     }
-  }, [isEditing, hasChanges, isSaving, formData, selectedCliente, items, updatePresupuesto]);
+  }, [isEditing, hasChanges, isSaving, formData, selectedCliente, items, mercancias, contenedores, updatePresupuesto]);
   
   // Debounce del auto-guardado (2 segundos después de dejar de escribir)
   const debouncedAutoSave = useDebounce(autoSave, 2000);
