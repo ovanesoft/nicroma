@@ -701,11 +701,16 @@ export function useCuentasBancarias() {
 
 // Hook para buscar terminales (puertos/aeropuertos)
 export function useBuscarTerminales(query, tipo) {
-  return useApiQuery(
+  const result = useApiQuery(
     ['terminales', query, tipo],
     `/terminales/buscar?q=${encodeURIComponent(query || '')}&tipo=${encodeURIComponent(tipo || '')}`,
     { enabled: query && query.length >= 2, staleTime: 60000 }
   );
+  
+  return {
+    ...result,
+    data: result.data?.data || []
+  };
 }
 
 export function useUpdateCompanyConfig() {
