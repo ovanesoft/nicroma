@@ -1,8 +1,8 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { 
   ArrowLeft, Save, Send, CheckCircle, XCircle, FolderOpen,
-  Plus, Trash2, Search, MessageSquare, User, Building2, Clock
+  Plus, Trash2, Search, MessageSquare, User, Building2, Clock, Loader2
 } from 'lucide-react';
 import Layout from '../../components/layout/Layout';
 import { 
@@ -18,6 +18,24 @@ import { useAuth } from '../../context/AuthContext';
 import toast from 'react-hot-toast';
 import { AREAS, SECTORES, TIPOS_OPERACION, INCOTERMS } from '../../lib/constants';
 import { cn, formatDate } from '../../lib/utils';
+
+// Hook para debounce
+function useDebounce(callback, delay) {
+  const timeoutRef = useRef(null);
+  
+  const debouncedCallback = useCallback((...args) => {
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    timeoutRef.current = setTimeout(() => callback(...args), delay);
+  }, [callback, delay]);
+  
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
+  }, []);
+  
+  return debouncedCallback;
+}
 
 // Opciones de base para items
 const BASES_ITEM = [
@@ -88,6 +106,11 @@ function PresupuestoForm() {
   const clientes = clientesData?.data?.clientes || [];
   const mensajes = mensajesData?.data?.mensajes || [];
   const presupuesto = presupuestoData?.data?.presupuesto;
+  
+  // Estado para tracking de cambios y auto-guardado
+  const [hasChanges, setHasChanges] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const lastSavedRef = useRef(null);
 
   // Marcar presupuesto como visto cuando se abre
   useEffect(() => {
@@ -149,8 +172,49 @@ function PresupuestoForm() {
     }
   }, [id, activeTab, mensajes]);
 
+  // Auto-guardado silencioso
+  const autoSave = useCallback(async () => {
+    if (!isEditing || !hasChanges || isSaving) return;
+    
+    // No guardar si no hay datos mínimos
+    if (!formData.descripcionPedido && !selectedCliente) return;
+    
+    try {
+      setIsSaving(true);
+      const payload = {
+        ...formData,
+        clienteId: selectedCliente?.id || null,
+        items: items.filter(i => i.concepto)
+      };
+      
+      await updatePresupuesto.mutateAsync(payload);
+      setHasChanges(false);
+      lastSavedRef.current = new Date();
+    } catch (error) {
+      console.error('Error en auto-guardado:', error);
+    } finally {
+      setIsSaving(false);
+    }
+  }, [isEditing, hasChanges, isSaving, formData, selectedCliente, items, updatePresupuesto]);
+  
+  // Debounce del auto-guardado (2 segundos después de dejar de escribir)
+  const debouncedAutoSave = useDebounce(autoSave, 2000);
+
   const handleChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+    if (isEditing) {
+      setHasChanges(true);
+      debouncedAutoSave();
+    }
+  };
+  
+  // Cambio de tab con auto-guardado
+  const handleTabChange = async (tabId) => {
+    // Si hay cambios pendientes, guardar antes de cambiar
+    if (isEditing && hasChanges) {
+      await autoSave();
+    }
+    setActiveTab(tabId);
   };
 
   const selectCliente = (cliente) => {
@@ -164,6 +228,10 @@ function PresupuestoForm() {
       solicitanteEmail: cliente.email || '',
       solicitanteTelefono: cliente.telefono || ''
     }));
+    if (isEditing) {
+      setHasChanges(true);
+      debouncedAutoSave();
+    }
   };
 
   // Items handlers
@@ -178,6 +246,10 @@ function PresupuestoForm() {
       base: 'IMPORTE_FIJO',
       cantidad: 1
     }]);
+    if (isEditing) {
+      setHasChanges(true);
+      debouncedAutoSave();
+    }
   };
 
   const updateItem = (index, field, value) => {
@@ -188,10 +260,18 @@ function PresupuestoForm() {
       updated[index][field] = value;
     }
     setItems(updated);
+    if (isEditing) {
+      setHasChanges(true);
+      debouncedAutoSave();
+    }
   };
 
   const removeItem = (index) => {
     setItems(items.filter((_, i) => i !== index));
+    if (isEditing) {
+      setHasChanges(true);
+      debouncedAutoSave();
+    }
   };
 
   const handleSubmit = async () => {
@@ -209,6 +289,7 @@ function PresupuestoForm() {
 
       if (isEditing) {
         await updatePresupuesto.mutateAsync(payload);
+        setHasChanges(false);
         toast.success('Presupuesto actualizado');
       } else {
         const result = await createPresupuesto.mutateAsync(payload);
@@ -309,6 +390,21 @@ function PresupuestoForm() {
               Convertir a Carpeta
             </Button>
           )}
+          {/* Indicador de auto-guardado */}
+          {isEditing && (
+            <div className="flex items-center gap-2 text-sm">
+              {isSaving ? (
+                <span className="flex items-center gap-1 text-amber-600">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Guardando...
+                </span>
+              ) : hasChanges ? (
+                <span className="text-amber-600">Sin guardar</span>
+              ) : (
+                <span className="text-green-600">Guardado</span>
+              )}
+            </div>
+          )}
           <Button onClick={handleSubmit} loading={createPresupuesto.isPending || updatePresupuesto.isPending}>
             <Save className="w-4 h-4" />
             {isEditing ? 'Guardar' : 'Crear'}
@@ -321,7 +417,7 @@ function PresupuestoForm() {
         {tabs.map((tab) => (
           <button
             key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
+            onClick={() => handleTabChange(tab.id)}
             className={cn(
               'flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 -mb-px transition-colors',
               activeTab === tab.id
