@@ -4,7 +4,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { 
   Plus, Search, Truck, MoreVertical, Eye, Edit, Trash2, 
-  Ship, Plane, Building2, Package, Shield, Warehouse, Phone, Mail, Globe
+  Ship, Plane, Building2, Package, Shield, Warehouse, Phone, Mail, Globe,
+  Star, CreditCard
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Layout from '../../components/layout/Layout';
@@ -29,6 +30,8 @@ const TIPOS_PROVEEDOR = [
   { value: 'Otros', label: 'Otros', icon: Building2, color: 'bg-gray-100 text-gray-800' }
 ];
 
+const MONEDAS = ['ARS', 'USD', 'EUR'];
+
 const proveedorSchema = z.object({
   razonSocial: z.string().min(2, 'Mínimo 2 caracteres'),
   nombreFantasia: z.string().optional().nullable().transform(v => v || undefined),
@@ -49,10 +52,6 @@ const proveedorSchema = z.object({
   contactoEmail: z.string().optional().nullable().transform(v => v || undefined),
   contactoTelefono: z.string().optional().nullable().transform(v => v || undefined),
   contactoCargo: z.string().optional().nullable().transform(v => v || undefined),
-  bancoNombre: z.string().optional().nullable().transform(v => v || undefined),
-  bancoCuenta: z.string().optional().nullable().transform(v => v || undefined),
-  bancoCbu: z.string().optional().nullable().transform(v => v || undefined),
-  bancoAlias: z.string().optional().nullable().transform(v => v || undefined),
   servicios: z.string().optional().nullable().transform(v => v || undefined),
   notas: z.string().optional().nullable().transform(v => v || undefined)
 });
@@ -69,6 +68,7 @@ function ProveedoresPage() {
   const [viewingProveedor, setViewingProveedor] = useState(null);
   const [activeTab, setActiveTab] = useState('datos');
   const [menuOpen, setMenuOpen] = useState(null);
+  const [cuentasBancarias, setCuentasBancarias] = useState([]);
 
   const { data, isLoading, refetch } = useProveedores(filters);
   const createProveedor = useCreateProveedor();
@@ -96,11 +96,16 @@ function ProveedoresPage() {
 
   const onSubmit = async (formData) => {
     try {
+      const payload = {
+        ...formData,
+        cuentasBancarias
+      };
+      
       if (editingProveedor) {
-        await updateProveedor.mutateAsync(formData);
+        await updateProveedor.mutateAsync(payload);
         toast.success('Proveedor actualizado');
       } else {
-        await createProveedor.mutateAsync(formData);
+        await createProveedor.mutateAsync(payload);
         toast.success('Proveedor creado');
       }
       closeModal();
@@ -115,14 +120,18 @@ function ProveedoresPage() {
     setActiveTab('datos');
     if (proveedor) {
       Object.keys(proveedor).forEach(key => {
-        setValue(key, proveedor[key]);
+        if (key !== 'cuentasBancarias') {
+          setValue(key, proveedor[key]);
+        }
       });
+      setCuentasBancarias(proveedor.cuentasBancarias || []);
     } else {
       reset({
         tipoDocumento: 'CUIT',
         pais: 'Argentina',
         tipoProveedor: ''
       });
+      setCuentasBancarias([]);
     }
     setModalOpen(true);
   };
@@ -130,7 +139,47 @@ function ProveedoresPage() {
   const closeModal = () => {
     setModalOpen(false);
     setEditingProveedor(null);
+    setCuentasBancarias([]);
     reset();
+  };
+
+  // Funciones para manejar cuentas bancarias
+  const addCuentaBancaria = () => {
+    setCuentasBancarias([
+      ...cuentasBancarias,
+      {
+        id: Date.now().toString(),
+        banco: '',
+        cuenta: '',
+        cbu: '',
+        alias: '',
+        titular: '',
+        moneda: 'ARS',
+        esPrincipal: cuentasBancarias.length === 0 // Primera cuenta es principal por defecto
+      }
+    ]);
+  };
+
+  const updateCuentaBancaria = (id, field, value) => {
+    setCuentasBancarias(cuentasBancarias.map(cuenta => 
+      cuenta.id === id ? { ...cuenta, [field]: value } : cuenta
+    ));
+  };
+
+  const removeCuentaBancaria = (id) => {
+    const updated = cuentasBancarias.filter(c => c.id !== id);
+    // Si eliminamos la principal, hacer la primera como principal
+    if (updated.length > 0 && !updated.some(c => c.esPrincipal)) {
+      updated[0].esPrincipal = true;
+    }
+    setCuentasBancarias(updated);
+  };
+
+  const setAsMainAccount = (id) => {
+    setCuentasBancarias(cuentasBancarias.map(cuenta => ({
+      ...cuenta,
+      esPrincipal: cuenta.id === id
+    })));
   };
 
   const handleDelete = async (id) => {
@@ -477,23 +526,123 @@ function ProveedoresPage() {
 
             {/* Tab Datos Bancarios */}
             {activeTab === 'banco' && (
-              <div className="grid grid-cols-2 gap-4">
-                <div className="col-span-2">
-                  <label className="block text-sm font-medium mb-1">Banco</label>
-                  <Input {...register('bancoNombre')} placeholder="Nombre del banco" />
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-medium">Cuentas Bancarias</h4>
+                  <Button type="button" variant="outline" size="sm" onClick={addCuentaBancaria}>
+                    <Plus className="w-4 h-4" /> Agregar Cuenta
+                  </Button>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Número de Cuenta</label>
-                  <Input {...register('bancoCuenta')} placeholder="Número de cuenta" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">CBU</label>
-                  <Input {...register('bancoCbu')} placeholder="CBU" />
-                </div>
-                <div className="col-span-2">
-                  <label className="block text-sm font-medium mb-1">Alias</label>
-                  <Input {...register('bancoAlias')} placeholder="Alias de transferencia" />
-                </div>
+                
+                {cuentasBancarias.length === 0 ? (
+                  <div className="text-center py-8 border rounded-lg" style={{ borderColor: 'var(--color-border)' }}>
+                    <CreditCard className="w-12 h-12 mx-auto text-slate-300 mb-2" />
+                    <p className="text-sm text-slate-500">No hay cuentas bancarias</p>
+                    <Button type="button" variant="outline" size="sm" className="mt-2" onClick={addCuentaBancaria}>
+                      <Plus className="w-4 h-4" /> Agregar primera cuenta
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {cuentasBancarias.map((cuenta, index) => (
+                      <div 
+                        key={cuenta.id} 
+                        className={cn(
+                          'border rounded-lg p-4 relative',
+                          cuenta.esPrincipal ? 'border-primary-300 bg-primary-50/30' : ''
+                        )}
+                        style={{ borderColor: cuenta.esPrincipal ? undefined : 'var(--color-border)' }}
+                      >
+                        {/* Badge principal */}
+                        {cuenta.esPrincipal && (
+                          <div className="absolute -top-2 left-3 px-2 py-0.5 bg-primary-500 text-white text-xs rounded-full flex items-center gap-1">
+                            <Star className="w-3 h-3" /> Principal
+                          </div>
+                        )}
+                        
+                        {/* Botones de acción */}
+                        <div className="absolute top-2 right-2 flex gap-1">
+                          {!cuenta.esPrincipal && (
+                            <button
+                              type="button"
+                              onClick={() => setAsMainAccount(cuenta.id)}
+                              className="p-1 rounded hover:bg-slate-100 text-slate-400 hover:text-amber-500"
+                              title="Marcar como principal"
+                            >
+                              <Star className="w-4 h-4" />
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => removeCuentaBancaria(cuenta.id)}
+                            className="p-1 rounded hover:bg-slate-100 text-slate-400 hover:text-red-500"
+                            title="Eliminar cuenta"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                        
+                        <div className="grid grid-cols-2 gap-3 mt-2">
+                          <div className="col-span-2 sm:col-span-1">
+                            <label className="block text-xs font-medium mb-1 text-slate-500">Banco</label>
+                            <Input
+                              value={cuenta.banco}
+                              onChange={(e) => updateCuentaBancaria(cuenta.id, 'banco', e.target.value)}
+                              placeholder="Nombre del banco"
+                              className="text-sm"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium mb-1 text-slate-500">Moneda</label>
+                            <select
+                              value={cuenta.moneda}
+                              onChange={(e) => updateCuentaBancaria(cuenta.id, 'moneda', e.target.value)}
+                              className="w-full px-3 py-2 border rounded-lg text-sm"
+                            >
+                              {MONEDAS.map(m => <option key={m} value={m}>{m}</option>)}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium mb-1 text-slate-500">Número de Cuenta</label>
+                            <Input
+                              value={cuenta.cuenta}
+                              onChange={(e) => updateCuentaBancaria(cuenta.id, 'cuenta', e.target.value)}
+                              placeholder="Número de cuenta"
+                              className="text-sm"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium mb-1 text-slate-500">CBU / IBAN</label>
+                            <Input
+                              value={cuenta.cbu}
+                              onChange={(e) => updateCuentaBancaria(cuenta.id, 'cbu', e.target.value)}
+                              placeholder="CBU o IBAN"
+                              className="text-sm"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium mb-1 text-slate-500">Alias</label>
+                            <Input
+                              value={cuenta.alias}
+                              onChange={(e) => updateCuentaBancaria(cuenta.id, 'alias', e.target.value)}
+                              placeholder="Alias de transferencia"
+                              className="text-sm"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium mb-1 text-slate-500">Titular</label>
+                            <Input
+                              value={cuenta.titular}
+                              onChange={(e) => updateCuentaBancaria(cuenta.id, 'titular', e.target.value)}
+                              placeholder="Nombre del titular"
+                              className="text-sm"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
@@ -576,14 +725,35 @@ function ProveedoresPage() {
                     <p><span className="text-slate-500">Teléfono:</span> {viewingProveedor.contactoTelefono || '-'}</p>
                   </div>
                 </div>
-                {(viewingProveedor.bancoNombre || viewingProveedor.bancoCbu) && (
+                {viewingProveedor.cuentasBancarias?.length > 0 && (
                   <div className="col-span-2">
-                    <h4 className="font-medium mb-3 text-sm text-slate-500 uppercase">Datos Bancarios</h4>
-                    <div className="space-y-2 text-sm">
-                      <p><span className="text-slate-500">Banco:</span> {viewingProveedor.bancoNombre || '-'}</p>
-                      <p><span className="text-slate-500">Cuenta:</span> {viewingProveedor.bancoCuenta || '-'}</p>
-                      <p><span className="text-slate-500">CBU:</span> {viewingProveedor.bancoCbu || '-'}</p>
-                      <p><span className="text-slate-500">Alias:</span> {viewingProveedor.bancoAlias || '-'}</p>
+                    <h4 className="font-medium mb-3 text-sm text-slate-500 uppercase">Cuentas Bancarias</h4>
+                    <div className="space-y-3">
+                      {viewingProveedor.cuentasBancarias.map((cuenta, idx) => (
+                        <div 
+                          key={cuenta.id || idx} 
+                          className={cn(
+                            'p-3 rounded-lg border text-sm',
+                            cuenta.esPrincipal ? 'border-primary-300 bg-primary-50/30' : 'bg-slate-50'
+                          )}
+                        >
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="font-medium">{cuenta.banco || 'Sin nombre'}</span>
+                            {cuenta.esPrincipal && (
+                              <Badge className="bg-primary-100 text-primary-700 text-xs">
+                                <Star className="w-3 h-3 mr-1" /> Principal
+                              </Badge>
+                            )}
+                            <Badge className="text-xs">{cuenta.moneda}</Badge>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2 text-slate-600">
+                            {cuenta.cuenta && <p><span className="text-slate-400">Cuenta:</span> {cuenta.cuenta}</p>}
+                            {cuenta.cbu && <p><span className="text-slate-400">CBU:</span> {cuenta.cbu}</p>}
+                            {cuenta.alias && <p><span className="text-slate-400">Alias:</span> {cuenta.alias}</p>}
+                            {cuenta.titular && <p><span className="text-slate-400">Titular:</span> {cuenta.titular}</p>}
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 )}

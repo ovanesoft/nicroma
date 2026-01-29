@@ -128,10 +128,7 @@ const crearProveedor = async (req, res) => {
       contactoEmail,
       contactoTelefono,
       contactoCargo,
-      bancoNombre,
-      bancoCuenta,
-      bancoCbu,
-      bancoAlias,
+      cuentasBancarias,
       servicios,
       notas
     } = req.body;
@@ -181,10 +178,7 @@ const crearProveedor = async (req, res) => {
         contactoEmail,
         contactoTelefono,
         contactoCargo,
-        bancoNombre,
-        bancoCuenta,
-        bancoCbu,
-        bancoAlias,
+        cuentasBancarias: cuentasBancarias || [],
         servicios,
         notas,
         createdBy: userId

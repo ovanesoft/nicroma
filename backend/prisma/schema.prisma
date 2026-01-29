@@ -703,11 +703,9 @@ model Proveedor {
   contactoTelefono String? @map("contacto_telefono") @db.VarChar(50)
   contactoCargo   String?  @map("contacto_cargo") @db.VarChar(100)
   
-  // Datos bancarios (para pagos)
-  bancoNombre     String?  @map("banco_nombre") @db.VarChar(255)
-  bancoCuenta     String?  @map("banco_cuenta") @db.VarChar(100)
-  bancoCbu        String?  @map("banco_cbu") @db.VarChar(30)
-  bancoAlias      String?  @map("banco_alias") @db.VarChar(100)
+  // Datos bancarios (múltiples cuentas como JSON)
+  // Formato: [{ id, banco, cuenta, cbu, alias, titular, moneda, esPrincipal }]
+  cuentasBancarias Json?   @default("[]") @map("cuentas_bancarias")
   
   // Servicios y notas
   servicios       String?  // Descripción de servicios que ofrece
