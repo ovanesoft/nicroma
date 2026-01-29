@@ -1,4 +1,16 @@
-const terminales = require('../data/terminales.json');
+const path = require('path');
+const fs = require('fs');
+
+// Cargar terminales de forma segura
+let terminales = { m: [], a: [], t: [] };
+try {
+  const dataPath = path.join(__dirname, '../data/terminales.json');
+  const data = fs.readFileSync(dataPath, 'utf8');
+  terminales = JSON.parse(data);
+  console.log(`✅ Terminales cargadas: ${terminales.m?.length || 0} marítimas, ${terminales.a?.length || 0} aéreas, ${terminales.t?.length || 0} terrestres`);
+} catch (err) {
+  console.error('⚠️ Error cargando terminales.json:', err.message);
+}
 
 /**
  * Buscar terminales por nombre o código
