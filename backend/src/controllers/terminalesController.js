@@ -3,6 +3,10 @@ const terminales = require('../data/terminales.json');
 /**
  * Buscar terminales por nombre o código
  * GET /api/terminales/buscar?q=texto&tipo=maritima|aerea|terrestre
+ * 
+ * El JSON usa keys cortas para optimizar tamaño:
+ * m = marítimas, a = aéreas, t = terrestres
+ * n = nombre, c = código, u = ciudad
  */
 const buscarTerminales = async (req, res) => {
   try {
@@ -19,24 +23,24 @@ const buscarTerminales = async (req, res) => {
     
     let lista = [];
     
-    // Seleccionar lista según tipo
+    // Seleccionar lista según tipo (keys optimizadas: m, a, t)
     if (tipo === 'maritima' || tipo === 'Marítimo') {
-      lista = terminales.maritimas;
+      lista = terminales.m || [];
     } else if (tipo === 'aerea' || tipo === 'Aéreo') {
-      lista = terminales.aereas;
+      lista = terminales.a || [];
     } else if (tipo === 'terrestre' || tipo === 'Terrestre') {
-      lista = terminales.terrestres;
+      lista = terminales.t || [];
     } else {
       // Si no hay tipo, buscar en todas
-      lista = [...terminales.maritimas, ...terminales.aereas, ...terminales.terrestres];
+      lista = [...(terminales.m || []), ...(terminales.a || []), ...(terminales.t || [])];
     }
 
-    // Filtrar por nombre, código o ciudad
+    // Filtrar por nombre (n), código (c) o ciudad (u)
     const resultados = lista
       .filter(t => {
-        const nombre = (t.Nombre || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-        const codigo = (t.Código || '').toLowerCase();
-        const ciudad = (t.Ciudad || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const nombre = (t.n || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const codigo = (t.c || '').toLowerCase();
+        const ciudad = (t.u || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
         
         return nombre.includes(searchTerm) || 
                codigo.includes(searchTerm) || 
@@ -44,11 +48,11 @@ const buscarTerminales = async (req, res) => {
       })
       .slice(0, 20) // Limitar a 20 resultados
       .map(t => ({
-        nombre: t.Nombre,
-        codigo: t.Código,
-        ciudad: t.Ciudad,
+        nombre: t.n,
+        codigo: t.c,
+        ciudad: t.u,
         // Formato para mostrar: "Código - Nombre (Ciudad)"
-        label: `${t.Código} - ${t.Nombre}${t.Ciudad ? ` (${t.Ciudad})` : ''}`
+        label: `${t.c} - ${t.n}${t.u ? ` (${t.u})` : ''}`
       }));
 
     res.json({
@@ -77,16 +81,16 @@ const obtenerTerminal = async (req, res) => {
     let lista = [];
     
     if (tipo === 'maritima' || tipo === 'Marítimo') {
-      lista = terminales.maritimas;
+      lista = terminales.m || [];
     } else if (tipo === 'aerea' || tipo === 'Aéreo') {
-      lista = terminales.aereas;
+      lista = terminales.a || [];
     } else if (tipo === 'terrestre' || tipo === 'Terrestre') {
-      lista = terminales.terrestres;
+      lista = terminales.t || [];
     } else {
-      lista = [...terminales.maritimas, ...terminales.aereas, ...terminales.terrestres];
+      lista = [...(terminales.m || []), ...(terminales.a || []), ...(terminales.t || [])];
     }
 
-    const terminal = lista.find(t => t.Código === codigo);
+    const terminal = lista.find(t => t.c === codigo);
 
     if (!terminal) {
       return res.status(404).json({
@@ -98,9 +102,9 @@ const obtenerTerminal = async (req, res) => {
     res.json({
       success: true,
       data: {
-        nombre: terminal.Nombre,
-        codigo: terminal.Código,
-        ciudad: terminal.Ciudad
+        nombre: terminal.n,
+        codigo: terminal.c,
+        ciudad: terminal.u
       }
     });
 
