@@ -499,6 +499,7 @@ const solicitarPredespacho = async (req, res) => {
         estado: 'BORRADOR',
         usuarioId: adminUser?.id || tenant.id, // fallback
         clienteId,
+        visibleCliente: true, // El cliente que lo crea siempre puede verlo
         solicitanteNombre: data.nombre,
         solicitanteEmail: data.email,
         solicitanteTelefono: data.telefono,
