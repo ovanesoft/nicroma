@@ -960,7 +960,6 @@ function PredespachoForm() {
           </button>
         </>
       )}
-      </div>
     </Layout>
   );
 }
