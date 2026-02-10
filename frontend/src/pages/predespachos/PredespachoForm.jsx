@@ -8,6 +8,7 @@ import {
 import Layout from '../../components/layout/Layout';
 import { Card, CardContent, CardHeader, CardTitle, Button, Input } from '../../components/ui';
 import { useAuth } from '../../context/AuthContext';
+import { useQueryClient } from '@tanstack/react-query';
 import { 
   usePredespacho, useCreatePredespacho, useUpdatePredespacho,
   useCambiarEstadoPredespacho, useBuscarClientes, 
@@ -142,6 +143,7 @@ function PredespachoForm() {
   const isNew = !id;
   const isClient = user?.role === 'client';
 
+  const queryClient = useQueryClient();
   const { data: predespachoData, isLoading } = usePredespacho(id);
   const createMutation = useCreatePredespacho();
   const updateMutation = useUpdatePredespacho(id);
@@ -163,6 +165,13 @@ function PredespachoForm() {
   const { data: mensajesData } = useMensajesPredespacho(id);
   const agregarMensaje = useAgregarMensajePredespacho();
   const mensajes = mensajesData?.data?.mensajes || [];
+
+  // Al abrir, refrescar notificaciones inmediatamente (el backend ya marcó como visto)
+  useEffect(() => {
+    if (id && predespachoData?.data?.predespacho) {
+      queryClient.invalidateQueries({ queryKey: ['notificaciones'] });
+    }
+  }, [id, predespachoData]);
 
   // Cargar datos existentes
   useEffect(() => {
