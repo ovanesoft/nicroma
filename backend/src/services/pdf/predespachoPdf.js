@@ -37,7 +37,48 @@ function generarPredespachoPdf(predespacho, tenant, bancoSeleccionado = null) {
   const pageWidth = doc.page.width - 70;
   let y = 35;
 
-  // ============ ENCABEZADO ============
+  // ============ ENCABEZADO CON LOGO ============
+  const logoMaxW = 100;
+  const logoMaxH = 50;
+  let logoDrawn = false;
+
+  // Intentar dibujar el logo del tenant arriba a la derecha
+  if (tenant?.logoUrl) {
+    try {
+      const logoData = tenant.logoUrl;
+      if (logoData.startsWith('data:image/')) {
+        // Extraer el buffer del base64
+        const base64Match = logoData.match(/^data:image\/(png|jpeg|jpg|gif|webp);base64,(.+)$/);
+        if (base64Match) {
+          const imgBuffer = Buffer.from(base64Match[2], 'base64');
+          const logoX = doc.page.width - 35 - logoMaxW;
+          doc.image(imgBuffer, logoX, y, { 
+            fit: [logoMaxW, logoMaxH],
+            align: 'right',
+            valign: 'top'
+          });
+          logoDrawn = true;
+        }
+      }
+    } catch (logoErr) {
+      // Si falla el logo, simplemente no lo muestra
+      console.error('Error insertando logo en PDF:', logoErr.message);
+    }
+  }
+
+  // Nombre de la empresa arriba a la izquierda si hay logo
+  if (logoDrawn && tenant?.name) {
+    doc.fontSize(10).fillColor(textColor).font('Helvetica-Bold');
+    doc.text(tenant.name, 35, y, { width: pageWidth - logoMaxW - 20 });
+    if (tenant.companyPhone || tenant.companyEmail) {
+      doc.fontSize(7).fillColor(lightText).font('Helvetica');
+      const contactParts = [tenant.companyEmail, tenant.companyPhone].filter(Boolean);
+      doc.text(contactParts.join(' • '), 35, y + 14, { width: pageWidth - logoMaxW - 20 });
+    }
+    y += logoMaxH + 8;
+  }
+
+  // Título principal
   doc.fontSize(16).fillColor(primaryColor).font('Helvetica-Bold');
   const titulo = predespacho.tipoDocumento === 'PRESUPUESTO' ? 'PRESUPUESTO' : 'PEDIDO DE FONDOS';
   doc.text(titulo, 35, y, { align: 'center' });
