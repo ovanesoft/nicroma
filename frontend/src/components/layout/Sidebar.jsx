@@ -36,7 +36,7 @@ function Sidebar() {
       return (notificaciones.predespachosPendientes || 0) + (notificaciones.mensajesPredespachoNoLeidos || 0);
     }
     if (href === '/mis-predespachos' || itemName === 'Mis Predespachos') {
-      return notificaciones.predespachosParaRevisar || 0;
+      return (notificaciones.predespachosParaRevisar || 0) + (notificaciones.mensajesPredespachoNoLeidos || 0);
     }
     return 0;
   };

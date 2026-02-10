@@ -1805,6 +1805,8 @@ model Predespacho {
   // Tracking de visualización
   vistoPorCliente     Boolean   @default(false) @map("visto_por_cliente")
   fechaVistoPorCliente DateTime? @map("fecha_visto_por_cliente") @db.Timestamptz(6)
+  vistoPorTenant      Boolean   @default(false) @map("visto_por_tenant")
+  fechaVistoPorTenant DateTime? @map("fecha_visto_por_tenant") @db.Timestamptz(6)
   
   // Banco seleccionado para PDF
   bancoPdfId      String?  @map("banco_pdf_id") @db.VarChar(50)

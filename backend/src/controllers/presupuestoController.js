@@ -893,11 +893,23 @@ const obtenerNotificaciones = async (req, res) => {
         const predespachosParaRevisar = await prisma.predespacho.count({
           where: {
             clienteId: cliente.id,
+            visibleCliente: true,
             estado: 'ENVIADO',
             vistoPorCliente: false
           }
         });
+
+        // Mensajes de predespacho no leídos del tenant hacia el cliente
+        const mensajesPredespachoNoLeidosCliente = await prisma.mensajePredespacho.count({
+          where: {
+            predespacho: { clienteId: cliente.id, visibleCliente: true },
+            tipoRemitente: 'TENANT',
+            leido: false
+          }
+        });
+
         notificaciones.predespachosParaRevisar = predespachosParaRevisar;
+        notificaciones.mensajesPredespachoNoLeidos = mensajesPredespachoNoLeidosCliente;
       }
     } else if (tenantId && ['admin', 'manager', 'user'].includes(userRole)) {
       // Para usuarios del tenant
@@ -924,12 +936,11 @@ const obtenerNotificaciones = async (req, res) => {
       notificaciones.presupuestosPendientes = presupuestosPendientes;
       notificaciones.mensajesNoLeidos = mensajesNoLeidos;
 
-      // Predespachos: solicitudes nuevas (en borrador, recién llegadas de clientes)
+      // Predespachos: nuevos no vistos por el tenant
       const predespachosPendientes = await prisma.predespacho.count({
         where: {
           tenantId,
-          estado: 'BORRADOR',
-          descripcionPedido: { not: null } // Solo los que vienen de solicitudes de clientes
+          vistoPorTenant: false
         }
       });
 

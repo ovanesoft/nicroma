@@ -203,8 +203,23 @@ const obtenerPredespacho = async (req, res) => {
       if (!clienteVinculado || !predespacho.visibleCliente) {
         return res.status(403).json({ success: false, message: 'No autorizado' });
       }
+      // Marcar como visto por cliente
+      if (!predespacho.vistoPorCliente) {
+        await prisma.predespacho.update({
+          where: { id },
+          data: { vistoPorCliente: true, fechaVistoPorCliente: new Date() }
+        });
+      }
     } else if (predespacho.tenantId !== tenantId) {
       return res.status(403).json({ success: false, message: 'No autorizado' });
+    } else {
+      // Marcar como visto por tenant
+      if (!predespacho.vistoPorTenant) {
+        await prisma.predespacho.update({
+          where: { id },
+          data: { vistoPorTenant: true, fechaVistoPorTenant: new Date() }
+        });
+      }
     }
 
     res.json({ success: true, data: { predespacho } });
