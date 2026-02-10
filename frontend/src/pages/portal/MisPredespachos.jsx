@@ -9,7 +9,7 @@ import {
   Card, CardContent, Button, Badge,
   Table, TableHeader, TableBody, TableRow, TableHead, TableCell
 } from '../../components/ui';
-import { usePredespachosCliente, useCambiarEstadoPredespacho, useMarcarPredespachoVisto } from '../../hooks/useApi';
+import { usePredespachosCliente, useCambiarEstadoPredespacho, useMarcarPredespachosVistosCliente } from '../../hooks/useApi';
 import { formatDate, cn } from '../../lib/utils';
 import { PREDESPACHO_ESTADOS } from '../../lib/constants';
 import toast from 'react-hot-toast';
@@ -19,25 +19,18 @@ function MisPredespachos() {
   const navigate = useNavigate();
   const { data, isLoading, refetch } = usePredespachosCliente();
   const cambiarEstado = useCambiarEstadoPredespacho();
-  const marcarVisto = useMarcarPredespachoVisto();
+  const marcarVistos = useMarcarPredespachosVistosCliente();
 
   const predespachos = data?.data?.predespachos || [];
-  const marcadosRef = useRef(new Set());
   const hasMarcado = useRef(false);
 
-  // Marcar como vistos los enviados
+  // Al entrar, marcar todo como visto y mensajes como leídos → quita badges al instante
   useEffect(() => {
-    if (!predespachos.length || hasMarcado.current) return;
-    const noVistos = predespachos.filter(p => 
-      p.estado === 'ENVIADO' && !p.vistoPorCliente && !marcadosRef.current.has(p.id)
-    );
-    if (noVistos.length === 0) return;
-    hasMarcado.current = true;
-    noVistos.forEach(p => {
-      marcadosRef.current.add(p.id);
-      marcarVisto.mutate(p.id);
-    });
-  }, [predespachos]);
+    if (!hasMarcado.current && data?.data?.predespachos !== undefined) {
+      hasMarcado.current = true;
+      marcarVistos.mutate();
+    }
+  }, [data]);
 
   const handleAprobar = async (id) => {
     if (!confirm('¿Confirmar aprobación de este predespacho?')) return;

@@ -536,6 +536,35 @@ const marcarPredespachoVisto = async (req, res) => {
   }
 };
 
+const marcarTodosVistosCliente = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const cliente = await prisma.cliente.findFirst({ where: { userId } });
+    if (!cliente) return res.json({ success: true });
+
+    // Marcar predespachos como vistos
+    await prisma.predespacho.updateMany({
+      where: { clienteId: cliente.id, visibleCliente: true, vistoPorCliente: false },
+      data: { vistoPorCliente: true, fechaVistoPorCliente: new Date() }
+    });
+
+    // Marcar mensajes del tenant como leídos
+    await prisma.mensajePredespacho.updateMany({
+      where: {
+        predespacho: { clienteId: cliente.id, visibleCliente: true },
+        tipoRemitente: 'TENANT',
+        leido: false
+      },
+      data: { leido: true, leidoAt: new Date() }
+    });
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error marcando vistos cliente:', error);
+    res.status(500).json({ success: false, message: 'Error' });
+  }
+};
+
 const marcarTodosVistosTenant = async (req, res) => {
   try {
     const tenantId = req.user.tenant_id;
@@ -610,6 +639,7 @@ module.exports = {
   listarPredespachosCliente,
   solicitarPredespacho,
   marcarPredespachoVisto,
+  marcarTodosVistosCliente,
   marcarTodosVistosTenant,
   generarPDF
 };

@@ -12,8 +12,9 @@ router.get('/mis-predespachos', authenticateToken, predespachoController.listarP
 // Rutas protegidas para tenant
 router.use(authenticateToken);
 
-// Rutas estáticas ANTES de las de :id (para que Express no confunda "marcar-vistos" con un :id)
+// Rutas estáticas ANTES de las de :id (para que Express no confunda con un :id)
 router.post('/marcar-vistos', requireRole('admin', 'manager', 'user'), predespachoController.marcarTodosVistosTenant);
+router.post('/marcar-vistos-cliente', predespachoController.marcarTodosVistosCliente);
 
 // CRUD de predespachos
 router.get('/', requireRole('admin', 'manager', 'user'), predespachoController.listarPredespachos);

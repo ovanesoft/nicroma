@@ -1565,6 +1565,22 @@ export function useMarcarMensajesPredespachoLeidos() {
   });
 }
 
+// Marcar todos los predespachos como vistos (cliente)
+export function useMarcarPredespachosVistosCliente() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const response = await api.post('/predespachos/marcar-vistos-cliente');
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notificaciones'] });
+      queryClient.invalidateQueries({ queryKey: ['predespachosCliente'] });
+      queryClient.invalidateQueries({ queryKey: ['portalDashboard'] });
+    }
+  });
+}
+
 // Marcar todos los predespachos como vistos (tenant)
 export function useMarcarPredespachosVistosTenant() {
   const queryClient = useQueryClient();
