@@ -1549,6 +1549,21 @@ export function usePredespachosCliente() {
   });
 }
 
+// Marcar todos los predespachos como vistos (tenant)
+export function useMarcarPredespachosVistosTenant() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const response = await api.post('/predespachos/marcar-vistos');
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notificaciones'] });
+      queryClient.invalidateQueries({ queryKey: ['predespachos'] });
+    }
+  });
+}
+
 // Marcar predespacho como visto
 export function useMarcarPredespachoVisto() {
   const queryClient = useQueryClient();

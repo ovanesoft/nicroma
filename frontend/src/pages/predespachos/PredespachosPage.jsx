@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Plus, Search, FileText, Clock, CheckCircle, XCircle, 
@@ -9,7 +9,7 @@ import {
   Card, CardContent, Button, Input, Badge,
   Table, TableHeader, TableBody, TableRow, TableHead, TableCell
 } from '../../components/ui';
-import { usePredespachos, useCambiarEstadoPredespacho } from '../../hooks/useApi';
+import { usePredespachos, useCambiarEstadoPredespacho, useMarcarPredespachosVistosTenant } from '../../hooks/useApi';
 import { formatDate, formatCurrency, cn } from '../../lib/utils';
 import { PREDESPACHO_ESTADOS } from '../../lib/constants';
 import toast from 'react-hot-toast';
@@ -27,6 +27,16 @@ function PredespachosPage() {
 
   const { data, isLoading } = usePredespachos(filters);
   const cambiarEstado = useCambiarEstadoPredespacho();
+  const marcarVistos = useMarcarPredespachosVistosTenant();
+  const hasMarcado = useRef(false);
+
+  // Al entrar a la lista, marcar todos como vistos → quita el badge al instante
+  useEffect(() => {
+    if (!hasMarcado.current && data?.data?.predespachos?.length >= 0) {
+      hasMarcado.current = true;
+      marcarVistos.mutate();
+    }
+  }, [data]);
 
   const predespachos = data?.data?.predespachos || [];
   const pagination = data?.data?.pagination || {};

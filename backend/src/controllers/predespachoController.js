@@ -536,6 +536,20 @@ const marcarPredespachoVisto = async (req, res) => {
   }
 };
 
+const marcarTodosVistosTenant = async (req, res) => {
+  try {
+    const tenantId = req.user.tenant_id;
+    await prisma.predespacho.updateMany({
+      where: { tenantId, vistoPorTenant: false },
+      data: { vistoPorTenant: true, fechaVistoPorTenant: new Date() }
+    });
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error marcando vistos:', error);
+    res.status(500).json({ success: false, message: 'Error al marcar como vistos' });
+  }
+};
+
 // ==========================================
 // PDF
 // ==========================================
@@ -596,5 +610,6 @@ module.exports = {
   listarPredespachosCliente,
   solicitarPredespacho,
   marcarPredespachoVisto,
+  marcarTodosVistosTenant,
   generarPDF
 };

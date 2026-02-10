@@ -29,6 +29,9 @@ router.post('/:id/mensajes/leidos', predespachoController.marcarMensajesLeidos);
 // Marcar como visto (clientes)
 router.post('/:id/visto', predespachoController.marcarPredespachoVisto);
 
+// Marcar todos como vistos (tenant)
+router.post('/marcar-vistos', requireRole('admin', 'manager', 'user'), predespachoController.marcarTodosVistosTenant);
+
 // PDF
 router.get('/:id/pdf', requireRole('admin', 'manager', 'user'), predespachoController.generarPDF);
 
