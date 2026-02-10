@@ -149,12 +149,13 @@ function PredespachoForm() {
   const [formData, setFormData] = useState(INITIAL_STATE);
   const [clienteSearch, setClienteSearch] = useState('');
   const [showClienteDropdown, setShowClienteDropdown] = useState(false);
+  const [selectedCliente, setSelectedCliente] = useState(null);
   const [nuevoMensaje, setNuevoMensaje] = useState('');
   const [saving, setSaving] = useState(false);
   const autoSaveTimer = useRef(null);
 
   const { data: clientesData } = useBuscarClientes(clienteSearch, 'cliente');
-  const clientesResultados = clientesData || [];
+  const clientesResultados = clientesData?.data?.clientes || clientesData || [];
 
   const { data: mensajesData } = useMensajesPredespacho(id);
   const agregarMensaje = useAgregarMensajePredespacho();
@@ -174,6 +175,7 @@ function PredespachoForm() {
         gastos: pd.gastos || GASTOS_DEFAULT
       });
       if (pd.cliente) {
+        setSelectedCliente(pd.cliente);
         setClienteSearch(pd.cliente.razonSocial);
       }
     }
@@ -331,12 +333,13 @@ function PredespachoForm() {
   };
 
   const handleSelectCliente = (cliente) => {
+    setSelectedCliente(cliente);
     setFormData(prev => ({
       ...prev,
       clienteId: cliente.id,
       clienteCuit: cliente.numeroDocumento
     }));
-    setClienteSearch(cliente.razonSocial);
+    setClienteSearch('');
     setShowClienteDropdown(false);
   };
 
@@ -399,7 +402,24 @@ function PredespachoForm() {
                 onChange={(v) => handleChange('tipoDocumento', v)} options={TIPOS_DOCUMENTO_PD} />
               <Select label="Moneda Principal" value={formData.monedaPrincipal}
                 onChange={(v) => handleChange('monedaPrincipal', v)}
-                options={[{ value: 'USD', label: 'USD - Dólar' }, { value: 'EUR', label: 'EUR - Euro' }]} />
+                options={[
+                  { value: 'USD', label: 'USD - Dólar Estadounidense' },
+                  { value: 'EUR', label: 'EUR - Euro' },
+                  { value: 'ARS', label: 'ARS - Peso Argentino' },
+                  { value: 'CNY', label: 'CNY - Yuan Chino' },
+                  { value: 'BRL', label: 'BRL - Real Brasileño' },
+                  { value: 'GBP', label: 'GBP - Libra Esterlina' },
+                  { value: 'JPY', label: 'JPY - Yen Japonés' },
+                  { value: 'KRW', label: 'KRW - Won Coreano' },
+                  { value: 'INR', label: 'INR - Rupia India' },
+                  { value: 'TWD', label: 'TWD - Dólar Taiwanés' },
+                  { value: 'CHF', label: 'CHF - Franco Suizo' },
+                  { value: 'CLP', label: 'CLP - Peso Chileno' },
+                  { value: 'UYU', label: 'UYU - Peso Uruguayo' },
+                  { value: 'PYG', label: 'PYG - Guaraní Paraguayo' },
+                  { value: 'MXN', label: 'MXN - Peso Mexicano' },
+                  { value: 'COP', label: 'COP - Peso Colombiano' }
+                ]} />
               <Select label="Vía" value={formData.via}
                 onChange={(v) => handleChange('via', v)} options={VIAS} />
               <Input label="Nuestra Referencia" value={formData.nuestraReferencia}
@@ -421,33 +441,55 @@ function PredespachoForm() {
                 <Building2 className="w-5 h-5" /> Cliente
               </CardTitle>
             </CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="relative">
-                <Input label="Buscar Cliente" value={clienteSearch}
-                  onChange={(e) => { setClienteSearch(e.target.value); setShowClienteDropdown(true); }}
-                  onFocus={() => setShowClienteDropdown(true)}
-                  placeholder="Nombre o CUIT..."
-                />
-                {showClienteDropdown && clientesResultados.length > 0 && (
-                  <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-xl max-h-48 overflow-y-auto">
-                    {clientesResultados.map(c => (
-                      <button key={c.id}
-                        className="w-full px-4 py-2 text-left hover:bg-slate-50 text-sm"
-                        onClick={() => handleSelectCliente(c)}
-                      >
-                        <span className="font-medium">{c.razonSocial}</span>
-                        <span className="text-slate-400 ml-2">{c.numeroDocumento}</span>
-                      </button>
-                    ))}
+            <CardContent className="space-y-4">
+              {/* Selector de cliente */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Cliente</label>
+                {selectedCliente ? (
+                  <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-200">
+                    <div>
+                      <p className="font-medium text-slate-800">{selectedCliente.razonSocial}</p>
+                      <p className="text-sm text-slate-500">{selectedCliente.numeroDocumento} {selectedCliente.email ? `• ${selectedCliente.email}` : ''}</p>
+                    </div>
+                    <Button variant="ghost" size="sm" onClick={() => { setSelectedCliente(null); handleChange('clienteId', null); }}>
+                      Cambiar
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="relative">
+                    <input
+                      type="text"
+                      placeholder="Buscar cliente por nombre o CUIT..."
+                      value={clienteSearch}
+                      onChange={(e) => { setClienteSearch(e.target.value); setShowClienteDropdown(true); }}
+                      onFocus={() => clienteSearch.length >= 2 && setShowClienteDropdown(true)}
+                      className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none"
+                    />
+                    {showClienteDropdown && clientesResultados.length > 0 && (
+                      <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-xl max-h-48 overflow-y-auto">
+                        {clientesResultados.map(c => (
+                          <button key={c.id} type="button"
+                            className="w-full px-4 py-2 text-left hover:bg-slate-50 text-sm"
+                            onClick={() => handleSelectCliente(c)}
+                          >
+                            <p className="font-medium">{c.razonSocial}</p>
+                            <p className="text-xs text-slate-500">{c.numeroDocumento} {c.email ? `• ${c.email}` : ''}</p>
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
-              <Input label="CUIT" value={formData.clienteCuit}
-                onChange={(e) => handleChange('clienteCuit', e.target.value)} />
-              <Input label="Cliente / Vendedor Exterior" value={formData.clienteVendedorExterior}
-                onChange={(e) => handleChange('clienteVendedorExterior', e.target.value)} />
-              <Input label="Agente de Carga" value={formData.agenteCarga}
-                onChange={(e) => handleChange('agenteCarga', e.target.value)} />
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Input label="CUIT" value={formData.clienteCuit}
+                  onChange={(e) => handleChange('clienteCuit', e.target.value)} />
+                <Input label="Cliente / Vendedor Exterior" value={formData.clienteVendedorExterior}
+                  onChange={(e) => handleChange('clienteVendedorExterior', e.target.value)} />
+                <Input label="Agente de Carga" value={formData.agenteCarga}
+                  onChange={(e) => handleChange('agenteCarga', e.target.value)} />
+              </div>
             </CardContent>
           </Card>
 
@@ -785,38 +827,62 @@ function PredespachoForm() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <MessageSquare className="w-5 h-5" /> Conversaciones
+                  {mensajes.length > 0 && (
+                    <span className="text-xs font-normal text-slate-400 ml-2">
+                      {mensajes.length} mensaje{mensajes.length !== 1 ? 's' : ''}
+                    </span>
+                  )}
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 {/* Mensajes */}
-                <div className="space-y-3 max-h-96 overflow-y-auto mb-4">
+                <div className="space-y-3 max-h-96 overflow-y-auto mb-4 scroll-smooth" ref={(el) => {
+                  if (el) el.scrollTop = el.scrollHeight;
+                }}>
                   {mensajes.length === 0 ? (
-                    <p className="text-sm text-slate-400 text-center py-4">No hay mensajes aún</p>
+                    <div className="text-center py-8">
+                      <MessageSquare className="w-10 h-10 mx-auto text-slate-200 mb-2" />
+                      <p className="text-sm text-slate-400">No hay mensajes aún</p>
+                      <p className="text-xs text-slate-300 mt-1">Escribí un mensaje para iniciar la conversación</p>
+                    </div>
                   ) : (
-                    mensajes.map(msg => (
-                      <div key={msg.id} className={cn(
-                        'p-3 rounded-lg max-w-[80%]',
-                        msg.tipoRemitente === 'CLIENTE'
-                          ? 'bg-blue-50 ml-auto text-right'
-                          : msg.tipoRemitente === 'SISTEMA'
-                          ? 'bg-slate-100 mx-auto text-center text-xs'
-                          : 'bg-slate-50'
-                      )}>
-                        <p className="text-xs font-medium text-slate-500 mb-1">{msg.nombreRemitente}</p>
-                        <p className="text-sm text-slate-800">{msg.mensaje}</p>
-                        <p className="text-xs text-slate-400 mt-1">{formatDate(msg.createdAt)}</p>
-                      </div>
-                    ))
+                    mensajes.map(msg => {
+                      const isMine = msg.tipoRemitente === (isClient ? 'CLIENTE' : 'TENANT');
+                      const isSystem = msg.tipoRemitente === 'SISTEMA';
+                      return (
+                        <div key={msg.id} className={cn(
+                          'p-3 rounded-lg',
+                          isSystem
+                            ? 'bg-slate-100 mx-auto text-center text-xs max-w-[90%]'
+                            : isMine
+                            ? 'bg-primary-50 ml-auto max-w-[80%]'
+                            : 'bg-slate-50 mr-auto max-w-[80%]'
+                        )}>
+                          <p className="text-xs font-medium text-slate-500 mb-1">
+                            {msg.nombreRemitente}
+                            <span className="text-slate-300 ml-2">
+                              {msg.tipoRemitente === 'CLIENTE' ? '(Cliente)' : msg.tipoRemitente === 'TENANT' ? '(Equipo)' : ''}
+                            </span>
+                          </p>
+                          <p className="text-sm text-slate-800 whitespace-pre-wrap">{msg.mensaje}</p>
+                          <p className="text-xs text-slate-400 mt-1">
+                            {new Date(msg.createdAt).toLocaleString('es-AR', { 
+                              day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' 
+                            })}
+                          </p>
+                        </div>
+                      );
+                    })
                   )}
                 </div>
                 {/* Nuevo mensaje */}
-                <div className="flex gap-2">
+                <div className="flex gap-2 pt-3 border-t border-slate-200">
                   <input
                     value={nuevoMensaje}
                     onChange={(e) => setNuevoMensaje(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleEnviarMensaje()}
+                    onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleEnviarMensaje()}
                     placeholder="Escribir un mensaje..."
-                    className="flex-1 px-3 py-2 rounded-lg border border-slate-300 text-sm focus:border-primary-500 outline-none"
+                    className="flex-1 px-3 py-2 rounded-lg border border-slate-300 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none"
                   />
                   <Button size="sm" onClick={handleEnviarMensaje} loading={agregarMensaje.isPending}>
                     <Send className="w-4 h-4" />
