@@ -345,10 +345,12 @@ function PredespachoForm() {
 
   const handleSelectCliente = (cliente) => {
     setSelectedCliente(cliente);
+    // No mostrar CUIT si es un temporal generado por el sistema
+    const cuit = cliente.numeroDocumento?.startsWith('TEMP-') ? '' : (cliente.numeroDocumento || '');
     setFormData(prev => ({
       ...prev,
       clienteId: cliente.id,
-      clienteCuit: cliente.numeroDocumento
+      clienteCuit: cuit
     }));
     setClienteSearch('');
     setShowClienteDropdown(false);
@@ -460,7 +462,10 @@ function PredespachoForm() {
                   <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-200">
                     <div>
                       <p className="font-medium text-slate-800">{selectedCliente.razonSocial}</p>
-                      <p className="text-sm text-slate-500">{selectedCliente.numeroDocumento} {selectedCliente.email ? `• ${selectedCliente.email}` : ''}</p>
+                      <p className="text-sm text-slate-500">
+                        {selectedCliente.numeroDocumento && !selectedCliente.numeroDocumento.startsWith('TEMP-') ? selectedCliente.numeroDocumento : ''}
+                        {selectedCliente.email ? `${selectedCliente.numeroDocumento && !selectedCliente.numeroDocumento.startsWith('TEMP-') ? ' • ' : ''}${selectedCliente.email}` : ''}
+                      </p>
                     </div>
                     <Button variant="ghost" size="sm" onClick={() => { setSelectedCliente(null); handleChange('clienteId', null); }}>
                       Cambiar
