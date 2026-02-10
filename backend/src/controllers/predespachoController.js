@@ -58,6 +58,67 @@ const GASTOS_DEFAULT = [
 ];
 
 // ==========================================
+// SANITIZACIÓN DE DATOS
+// ==========================================
+
+const FLOAT_FIELDS = [
+  'pesoNeto', 'pesoBruto', 'volumenM3',
+  'fobDivisas', 'fobUsd', 'fleteDivisas', 'fleteUsd',
+  'seguroDivisas', 'seguroUsd', 'ajusteIncluir', 'ajusteDeducir',
+  'paseUsdFlete', 'paseUsdSeguro', 'tipoCambioSim', 'tipoCambioGastos',
+  'valorAduana', 'baseImponible',
+  'totalDerechosUsd', 'totalDerechosArs',
+  'totalImpuestosUsd', 'totalImpuestosArs',
+  'totalGastosUsd', 'totalGastosArs',
+  'totalTransferirForwarderUsd', 'totalTransferirForwarderArs',
+  'totalTransferirDepositoUsd', 'totalTransferirDepositoArs',
+  'totalTransferirDespachanteUsd', 'totalTransferirDespachanteArs',
+  'totalGravamenesVepUsd', 'totalGravamenesVepArs'
+];
+
+const DATE_FIELDS = ['fecha', 'validoHasta', 'fechaEnvioCliente', 'fechaVistoPorCliente'];
+
+const sanitizeData = (data) => {
+  const sanitized = { ...data };
+
+  // Convertir fechas "YYYY-MM-DD" a ISO DateTime completo
+  DATE_FIELDS.forEach(field => {
+    if (sanitized[field] !== undefined) {
+      if (!sanitized[field] || sanitized[field] === '') {
+        sanitized[field] = null;
+      } else if (typeof sanitized[field] === 'string' && sanitized[field].length === 10) {
+        // "2026-02-10" → "2026-02-10T00:00:00.000Z"
+        sanitized[field] = new Date(sanitized[field] + 'T12:00:00.000Z');
+      } else if (typeof sanitized[field] === 'string') {
+        sanitized[field] = new Date(sanitized[field]);
+      }
+    }
+  });
+
+  // Convertir strings vacíos a null en campos Float
+  FLOAT_FIELDS.forEach(field => {
+    if (sanitized[field] !== undefined) {
+      if (sanitized[field] === '' || sanitized[field] === null) {
+        sanitized[field] = null;
+      } else {
+        const parsed = parseFloat(sanitized[field]);
+        sanitized[field] = isNaN(parsed) ? null : parsed;
+      }
+    }
+  });
+
+  // Limpiar campos que no van a la base
+  delete sanitized.cliente;
+  delete sanitized.mensajes;
+  delete sanitized._count;
+  delete sanitized.id;
+  delete sanitized.createdAt;
+  delete sanitized.updatedAt;
+
+  return sanitized;
+};
+
+// ==========================================
 // CRUD PARA TENANT
 // ==========================================
 
@@ -159,27 +220,31 @@ const crearPredespacho = async (req, res) => {
     const usuarioId = req.user.id;
     const numero = await generarNumeroPredespacho(tenantId);
 
+    const body = sanitizeData(req.body);
+
     const data = {
-      tenantId,
-      numero,
-      usuarioId,
-      estado: 'BORRADOR',
       derechos: DERECHOS_DEFAULT,
       impuestos: IMPUESTOS_DEFAULT,
       gastos: GASTOS_DEFAULT,
-      ...req.body,
-      // Forzar tenantId y usuarioId
+      ...body,
       tenantId,
-      usuarioId
+      numero,
+      usuarioId,
+      estado: 'BORRADOR'
     };
 
-    // No permitir campos de relación directa
-    delete data.cliente;
-    delete data.mensajes;
-    delete data.id;
+    // No enviar tenantId/numero/usuarioId duplicados
+    delete data.tenantId;
+    delete data.numero;
+    delete data.usuarioId;
 
     const predespacho = await prisma.predespacho.create({
-      data,
+      data: {
+        ...data,
+        tenantId,
+        numero,
+        usuarioId
+      },
       include: {
         cliente: {
           select: { id: true, razonSocial: true, numeroDocumento: true, email: true }
@@ -204,16 +269,11 @@ const actualizarPredespacho = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Predespacho no encontrado' });
     }
 
-    const data = { ...req.body };
-    delete data.id;
+    const data = sanitizeData(req.body);
     delete data.tenantId;
     delete data.usuarioId;
     delete data.numero;
-    delete data.cliente;
-    delete data.mensajes;
-    delete data._count;
-    delete data.createdAt;
-    delete data.updatedAt;
+    delete data.estado; // estado se cambia por endpoint aparte
 
     const predespacho = await prisma.predespacho.update({
       where: { id },
