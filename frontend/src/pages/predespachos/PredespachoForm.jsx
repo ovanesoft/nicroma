@@ -969,11 +969,15 @@ function PredespachoForm() {
             ) : (
               <div className="relative">
                 <MessageSquare className="w-6 h-6 text-white" />
-                {mensajes.length > 0 && (
-                  <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-bold min-w-[18px] h-[18px] rounded-full flex items-center justify-center px-1">
-                    {mensajes.length}
-                  </span>
-                )}
+                {(() => {
+                  const tipoOpuesto = isClient ? 'TENANT' : 'CLIENTE';
+                  const noLeidos = mensajes.filter(m => m.tipoRemitente === tipoOpuesto && !m.leido).length;
+                  return noLeidos > 0 ? (
+                    <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-bold min-w-[18px] h-[18px] rounded-full flex items-center justify-center px-1 animate-pulse">
+                      {noLeidos}
+                    </span>
+                  ) : null;
+                })()}
               </div>
             )}
           </button>
