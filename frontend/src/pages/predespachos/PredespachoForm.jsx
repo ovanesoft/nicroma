@@ -2,7 +2,8 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, Save, Send, Download, FileCheck, MessageSquare,
-  Plus, Trash2, DollarSign, Building2, Ship, Package, Receipt
+  Plus, Trash2, DollarSign, Building2, Ship, Package, Receipt,
+  X, Minimize2, Maximize2
 } from 'lucide-react';
 import Layout from '../../components/layout/Layout';
 import { Card, CardContent, CardHeader, CardTitle, Button, Input } from '../../components/ui';
@@ -151,6 +152,8 @@ function PredespachoForm() {
   const [showClienteDropdown, setShowClienteDropdown] = useState(false);
   const [selectedCliente, setSelectedCliente] = useState(null);
   const [nuevoMensaje, setNuevoMensaje] = useState('');
+  const [chatOpen, setChatOpen] = useState(false);
+  const chatEndRef = useRef(null);
   const [saving, setSaving] = useState(false);
   const autoSaveTimer = useRef(null);
 
@@ -304,10 +307,18 @@ function PredespachoForm() {
     try {
       await agregarMensaje.mutateAsync({ predespachoId: id, mensaje: nuevoMensaje });
       setNuevoMensaje('');
+      setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
     } catch (error) {
       toast.error('Error al enviar mensaje');
     }
   };
+
+  // Scroll al final del chat cuando se abren o llegan mensajes
+  useEffect(() => {
+    if (chatOpen && chatEndRef.current) {
+      chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [chatOpen, mensajes]);
 
   // Helpers para arrays (derechos, impuestos, gastos)
   const updateArrayItem = (arrayName, index, field, value) => {
@@ -821,77 +832,134 @@ function PredespachoForm() {
             </CardContent>
           </Card>
 
-          {/* ==================== CONVERSACIONES ==================== */}
-          {id && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <MessageSquare className="w-5 h-5" /> Conversaciones
-                  {mensajes.length > 0 && (
-                    <span className="text-xs font-normal text-slate-400 ml-2">
-                      {mensajes.length} mensaje{mensajes.length !== 1 ? 's' : ''}
-                    </span>
-                  )}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {/* Mensajes */}
-                <div className="space-y-3 max-h-96 overflow-y-auto mb-4 scroll-smooth" ref={(el) => {
-                  if (el) el.scrollTop = el.scrollHeight;
-                }}>
-                  {mensajes.length === 0 ? (
-                    <div className="text-center py-8">
-                      <MessageSquare className="w-10 h-10 mx-auto text-slate-200 mb-2" />
-                      <p className="text-sm text-slate-400">No hay mensajes aún</p>
-                      <p className="text-xs text-slate-300 mt-1">Escribí un mensaje para iniciar la conversación</p>
-                    </div>
-                  ) : (
-                    mensajes.map(msg => {
-                      const isMine = msg.tipoRemitente === (isClient ? 'CLIENTE' : 'TENANT');
-                      const isSystem = msg.tipoRemitente === 'SISTEMA';
-                      return (
-                        <div key={msg.id} className={cn(
-                          'p-3 rounded-lg',
-                          isSystem
-                            ? 'bg-slate-100 mx-auto text-center text-xs max-w-[90%]'
-                            : isMine
-                            ? 'bg-primary-50 ml-auto max-w-[80%]'
-                            : 'bg-slate-50 mr-auto max-w-[80%]'
-                        )}>
-                          <p className="text-xs font-medium text-slate-500 mb-1">
-                            {msg.nombreRemitente}
-                            <span className="text-slate-300 ml-2">
-                              {msg.tipoRemitente === 'CLIENTE' ? '(Cliente)' : msg.tipoRemitente === 'TENANT' ? '(Equipo)' : ''}
-                            </span>
-                          </p>
-                          <p className="text-sm text-slate-800 whitespace-pre-wrap">{msg.mensaje}</p>
-                          <p className="text-xs text-slate-400 mt-1">
-                            {new Date(msg.createdAt).toLocaleString('es-AR', { 
-                              day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' 
-                            })}
-                          </p>
-                        </div>
-                      );
-                    })
-                  )}
+          {/* Espaciado inferior para que el botón flotante no tape el contenido */}
+          {id && <div className="h-16" />}
+        </div>
+      </div>
+
+      {/* ==================== CHAT FLOTANTE ==================== */}
+      {id && (
+        <>
+          {/* Panel de chat */}
+          {chatOpen && (
+            <div className="fixed bottom-20 right-6 z-50 w-96 max-w-[calc(100vw-2rem)] rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col"
+              style={{ 
+                backgroundColor: 'var(--color-card, #ffffff)',
+                height: '480px',
+                maxHeight: 'calc(100vh - 140px)'
+              }}
+            >
+              {/* Header del chat */}
+              <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200"
+                style={{ backgroundColor: 'var(--color-primary, #6366f1)' }}>
+                <div className="flex items-center gap-2 text-white">
+                  <MessageSquare className="w-5 h-5" />
+                  <div>
+                    <p className="font-medium text-sm">Conversación</p>
+                    <p className="text-xs opacity-80">
+                      {formData.numero} • {mensajes.length} mensaje{mensajes.length !== 1 ? 's' : ''}
+                    </p>
+                  </div>
                 </div>
-                {/* Nuevo mensaje */}
-                <div className="flex gap-2 pt-3 border-t border-slate-200">
+                <button onClick={() => setChatOpen(false)}
+                  className="p-1.5 rounded-lg hover:bg-white/20 text-white transition-colors">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Mensajes */}
+              <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                {mensajes.length === 0 ? (
+                  <div className="text-center py-12">
+                    <MessageSquare className="w-12 h-12 mx-auto text-slate-200 mb-3" />
+                    <p className="text-sm text-slate-400">No hay mensajes aún</p>
+                    <p className="text-xs text-slate-300 mt-1">Escribí un mensaje para iniciar la conversación</p>
+                  </div>
+                ) : (
+                  mensajes.map(msg => {
+                    const isMine = msg.tipoRemitente === (isClient ? 'CLIENTE' : 'TENANT');
+                    const isSystem = msg.tipoRemitente === 'SISTEMA';
+                    return (
+                      <div key={msg.id} className={cn(
+                        'rounded-xl px-3 py-2.5',
+                        isSystem
+                          ? 'bg-slate-100 mx-auto text-center text-xs max-w-[90%]'
+                          : isMine
+                          ? 'bg-primary-100 ml-auto max-w-[85%]'
+                          : 'bg-slate-100 mr-auto max-w-[85%]'
+                      )}>
+                        <div className="flex items-baseline justify-between gap-2 mb-0.5">
+                          <p className="text-xs font-semibold" style={{ color: isMine ? 'var(--color-primary, #6366f1)' : '#64748b' }}>
+                            {msg.nombreRemitente}
+                          </p>
+                          <span className="text-[10px] text-slate-400 whitespace-nowrap">
+                            {msg.tipoRemitente === 'CLIENTE' ? 'Cliente' : msg.tipoRemitente === 'TENANT' ? 'Equipo' : ''}
+                          </span>
+                        </div>
+                        <p className="text-sm text-slate-800 whitespace-pre-wrap leading-relaxed">{msg.mensaje}</p>
+                        <p className="text-[10px] text-slate-400 mt-1 text-right">
+                          {new Date(msg.createdAt).toLocaleString('es-AR', { 
+                            day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' 
+                          })}
+                        </p>
+                      </div>
+                    );
+                  })
+                )}
+                <div ref={chatEndRef} />
+              </div>
+
+              {/* Input de mensaje */}
+              <div className="p-3 border-t border-slate-200" style={{ backgroundColor: 'var(--color-background, #f8fafc)' }}>
+                <div className="flex gap-2">
                   <input
                     value={nuevoMensaje}
                     onChange={(e) => setNuevoMensaje(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleEnviarMensaje()}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        handleEnviarMensaje();
+                      }
+                    }}
                     placeholder="Escribir un mensaje..."
-                    className="flex-1 px-3 py-2 rounded-lg border border-slate-300 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none"
+                    className="flex-1 px-3 py-2 rounded-xl border border-slate-300 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none"
+                    style={{ backgroundColor: 'var(--color-card, #ffffff)' }}
                   />
-                  <Button size="sm" onClick={handleEnviarMensaje} loading={agregarMensaje.isPending}>
+                  <button onClick={handleEnviarMensaje}
+                    disabled={agregarMensaje.isPending || !nuevoMensaje.trim()}
+                    className="p-2.5 rounded-xl text-white transition-all disabled:opacity-50 hover:opacity-90"
+                    style={{ backgroundColor: 'var(--color-primary, #6366f1)' }}>
                     <Send className="w-4 h-4" />
-                  </Button>
+                  </button>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           )}
-        </div>
+
+          {/* Botón flotante */}
+          <button
+            onClick={() => setChatOpen(!chatOpen)}
+            className={cn(
+              'fixed bottom-6 right-6 z-50 p-4 rounded-full shadow-lg transition-all hover:scale-105 active:scale-95',
+              chatOpen ? 'bg-slate-600 hover:bg-slate-700' : 'hover:shadow-xl'
+            )}
+            style={{ backgroundColor: chatOpen ? undefined : 'var(--color-primary, #6366f1)' }}
+          >
+            {chatOpen ? (
+              <Minimize2 className="w-6 h-6 text-white" />
+            ) : (
+              <div className="relative">
+                <MessageSquare className="w-6 h-6 text-white" />
+                {mensajes.length > 0 && (
+                  <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-bold min-w-[18px] h-[18px] rounded-full flex items-center justify-center px-1">
+                    {mensajes.length}
+                  </span>
+                )}
+              </div>
+            )}
+          </button>
+        </>
+      )}
       </div>
     </Layout>
   );
