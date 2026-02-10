@@ -666,6 +666,7 @@ model Cliente {
   presupuestos       Presupuesto[]
   presupuestosShipper    Presupuesto[] @relation("PresupuestoShipper")
   presupuestosConsignee  Presupuesto[] @relation("PresupuestoConsignee")
+  predespachos       Predespacho[]
 
   @@unique([tenantId, numeroDocumento])
   @@index([tenantId])
@@ -1679,4 +1680,179 @@ model MensajePresupuesto {
   @@index([presupuestoId])
   @@index([createdAt])
   @@map("mensajes_presupuesto")
+}
+
+// ===========================================
+// MÓDULO: PREDESPACHO (Pedido de Fondos)
+// ===========================================
+
+model Predespacho {
+  id              String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenantId        String   @map("tenant_id") @db.Uuid
+  numero          String   @db.VarChar(50)
+  
+  // Estado del predespacho
+  estado          String   @default("BORRADOR") @db.VarChar(30)
+  // BORRADOR - En edición por el despachante
+  // ENVIADO - Enviado al cliente
+  // APROBADO - Cliente aprobó / fondos recibidos
+  // RECHAZADO - Cliente rechazó
+  // EN_PROCESO - Operación en curso
+  // FINALIZADO - Operación terminada
+  
+  // Tipo de documento
+  tipoDocumento   String   @default("PEDIDO_DE_FONDOS") @map("tipo_documento") @db.VarChar(30)
+  // PEDIDO_DE_FONDOS, PRESUPUESTO
+  
+  // Moneda principal
+  monedaPrincipal String   @default("USD") @map("moneda_principal") @db.VarChar(5)
+  
+  // Referencias
+  nuestraReferencia   String?  @map("nuestra_referencia") @db.VarChar(100)
+  vuestraReferencia   String?  @map("vuestra_referencia") @db.VarChar(255)
+  
+  // Fechas
+  fecha               DateTime @default(now()) @db.Timestamptz(6)
+  validoHasta         DateTime? @map("valido_hasta") @db.Timestamptz(6)
+  
+  // Cliente
+  clienteId       String?  @map("cliente_id") @db.Uuid
+  cliente         Cliente? @relation(fields: [clienteId], references: [id])
+  clienteCuit     String?  @map("cliente_cuit") @db.VarChar(20)
+  
+  // Datos del solicitante (si viene del portal sin cliente registrado)
+  solicitanteNombre   String?  @map("solicitante_nombre") @db.VarChar(255)
+  solicitanteEmail    String?  @map("solicitante_email") @db.VarChar(255)
+  solicitanteTelefono String?  @map("solicitante_telefono") @db.VarChar(50)
+  solicitanteEmpresa  String?  @map("solicitante_empresa") @db.VarChar(255)
+  
+  // Datos de la operación
+  mercaderia      String?  @db.VarChar(255)
+  destinacion     String?  @db.VarChar(50)
+  // IMPORTACION_A_CONSUMO, EXPORTACION_A_CONSUMO, OTRO_IMPORTACION, OTRO_EXPORTACION
+  
+  etaEtd          String?  @map("eta_etd") @db.VarChar(100)
+  facturasProforma String? @map("facturas_proforma") @db.VarChar(255)
+  blGuia          String?  @map("bl_guia") @db.VarChar(100)
+  aduana          String?  @db.VarChar(100)
+  via             String?  @db.VarChar(20) // AEREO, TERRESTRE, MARITIMO, MULTIMODAL
+  despachante     String?  @db.VarChar(255)
+  origenDestino   String?  @map("origen_destino") @db.VarChar(255)
+  condicionVenta  String?  @map("condicion_venta") @db.VarChar(50) // Incoterm
+  clienteVendedorExterior String? @map("cliente_vendedor_exterior") @db.VarChar(255)
+  agenteCarga     String?  @map("agente_carga") @db.VarChar(255)
+  simiSali        String?  @map("simi_sali") @db.VarChar(255)
+  
+  // Pesos y medidas
+  pesoNeto        Float?   @map("peso_neto")
+  pesoBruto       Float?   @map("peso_bruto")
+  volumenM3       Float?   @map("volumen_m3")
+  
+  // Posición arancelaria
+  posicionArancelaria String? @map("posicion_arancelaria") @db.VarChar(50)
+  
+  // Valores base (en divisas y en USD)
+  fobDivisas      Float?   @map("fob_divisas")
+  fobUsd          Float?   @map("fob_usd")
+  fleteDivisas    Float?   @map("flete_divisas")
+  fleteUsd        Float?   @map("flete_usd")
+  seguroDivisas   Float?   @map("seguro_divisas")
+  seguroUsd       Float?   @map("seguro_usd")
+  ajusteIncluir   Float?   @default(0) @map("ajuste_incluir")
+  ajusteDeducir   Float?   @default(0) @map("ajuste_deducir")
+  
+  // Tipos de cambio
+  paseUsdFlete    Float?   @map("pase_usd_flete")
+  paseUsdSeguro   Float?   @map("pase_usd_seguro")
+  tipoCambioSim   Float?   @map("tipo_cambio_sim")
+  tipoCambioGastos Float?  @map("tipo_cambio_gastos")
+  
+  // Valores calculados
+  valorAduana     Float?   @map("valor_aduana")
+  baseImponible   Float?   @map("base_imponible")
+  
+  // Derechos, Impuestos y Gastos como JSON
+  // Formato: [{ concepto, alicuota, importeUsd, importeArs }]
+  derechos        Json?    @default("[]")
+  impuestos       Json?    @default("[]")
+  // Formato gastos: [{ concepto, importeUsd, importeArs, grupo }]
+  // grupo: AGENTE_CARGA o OPERATIVO
+  gastos          Json?    @default("[]")
+  
+  // Totales
+  totalDerechosUsd  Float? @map("total_derechos_usd")
+  totalDerechosArs  Float? @map("total_derechos_ars")
+  totalImpuestosUsd Float? @map("total_impuestos_usd")
+  totalImpuestosArs Float? @map("total_impuestos_ars")
+  totalGastosUsd    Float? @map("total_gastos_usd")
+  totalGastosArs    Float? @map("total_gastos_ars")
+  
+  // Totales a transferir
+  totalTransferirForwarderUsd Float? @map("total_transferir_forwarder_usd")
+  totalTransferirForwarderArs Float? @map("total_transferir_forwarder_ars")
+  totalTransferirDepositoUsd  Float? @map("total_transferir_deposito_usd")
+  totalTransferirDepositoArs  Float? @map("total_transferir_deposito_ars")
+  totalTransferirDespachanteUsd Float? @map("total_transferir_despachante_usd")
+  totalTransferirDespachanteArs Float? @map("total_transferir_despachante_ars")
+  totalGravamenesVepUsd       Float? @map("total_gravamenes_vep_usd")
+  totalGravamenesVepArs       Float? @map("total_gravamenes_vep_ars")
+  
+  // Visibilidad para el cliente
+  visibleCliente  Boolean  @default(false) @map("visible_cliente")
+  enviadoCliente  Boolean  @default(false) @map("enviado_cliente")
+  fechaEnvioCliente DateTime? @map("fecha_envio_cliente") @db.Timestamptz(6)
+  
+  // Tracking de visualización
+  vistoPorCliente     Boolean   @default(false) @map("visto_por_cliente")
+  fechaVistoPorCliente DateTime? @map("fecha_visto_por_cliente") @db.Timestamptz(6)
+  
+  // Banco seleccionado para PDF
+  bancoPdfId      String?  @map("banco_pdf_id") @db.VarChar(50)
+  
+  // Observaciones
+  observaciones       String?
+  notasInternas       String?  @map("notas_internas")
+  motivoRechazo       String?  @map("motivo_rechazo")
+  
+  // Descripción del pedido (desde portal cliente)
+  descripcionPedido   String?  @map("descripcion_pedido")
+  
+  // Usuario que creó
+  usuarioId       String   @map("usuario_id") @db.Uuid
+  
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  
+  // Relaciones
+  mensajes        MensajePredespacho[]
+
+  @@unique([tenantId, numero])
+  @@index([tenantId])
+  @@index([clienteId])
+  @@index([estado])
+  @@index([fecha])
+  @@map("predespachos")
+}
+
+// Mensajes/Chat del predespacho
+model MensajePredespacho {
+  id              String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  predespachoId   String   @map("predespacho_id") @db.Uuid
+  predespacho     Predespacho @relation(fields: [predespachoId], references: [id], onDelete: Cascade)
+  
+  tipoRemitente   String   @map("tipo_remitente") @db.VarChar(20)
+  usuarioId       String?  @map("usuario_id") @db.Uuid
+  nombreRemitente String   @map("nombre_remitente") @db.VarChar(255)
+  
+  mensaje         String
+  adjuntos        Json?
+  
+  leido           Boolean  @default(false)
+  leidoAt         DateTime? @map("leido_at") @db.Timestamptz(6)
+  
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([predespachoId])
+  @@index([createdAt])
+  @@map("mensajes_predespacho")
 }

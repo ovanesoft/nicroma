@@ -1407,6 +1407,160 @@ export function useDeactivateNotification() {
 }
 
 // =====================================================
+// PREDESPACHOS
+// =====================================================
+
+// Lista de predespachos (tenant)
+export function usePredespachos(params = {}) {
+  return useQuery({
+    queryKey: ['predespachos', params],
+    queryFn: async () => {
+      const searchParams = new URLSearchParams();
+      if (params.page) searchParams.append('page', params.page);
+      if (params.limit) searchParams.append('limit', params.limit);
+      if (params.search) searchParams.append('search', params.search);
+      if (params.estado) searchParams.append('estado', params.estado);
+      const response = await api.get(`/predespachos?${searchParams.toString()}`);
+      return response.data;
+    },
+    refetchInterval: 15000,
+    staleTime: 10000,
+    refetchOnWindowFocus: false,
+    placeholderData: keepPreviousData
+  });
+}
+
+// Predespacho por ID
+export function usePredespacho(id) {
+  return useQuery({
+    queryKey: ['predespacho', id],
+    queryFn: async () => {
+      const response = await api.get(`/predespachos/${id}`);
+      return response.data;
+    },
+    enabled: !!id,
+    refetchInterval: 15000,
+    staleTime: 10000,
+    refetchOnWindowFocus: false,
+    placeholderData: keepPreviousData
+  });
+}
+
+// Crear predespacho
+export function useCreatePredespacho() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (data) => {
+      const response = await api.post('/predespachos', data);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['predespachos'] });
+    }
+  });
+}
+
+// Actualizar predespacho
+export function useUpdatePredespacho(id) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (data) => {
+      const response = await api.put(`/predespachos/${id}`, data);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['predespachos'] });
+      queryClient.invalidateQueries({ queryKey: ['predespacho', id] });
+    }
+  });
+}
+
+// Cambiar estado
+export function useCambiarEstadoPredespacho() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, estado, motivoRechazo }) => {
+      const response = await api.post(`/predespachos/${id}/estado`, { estado, motivoRechazo });
+      return response.data;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['predespachos'] });
+      queryClient.invalidateQueries({ queryKey: ['predespacho', variables.id] });
+    }
+  });
+}
+
+// Mensajes de predespacho
+export function useMensajesPredespacho(id) {
+  return useQuery({
+    queryKey: ['predespachoMensajes', id],
+    queryFn: async () => {
+      const response = await api.get(`/predespachos/${id}/mensajes`);
+      return response.data;
+    },
+    enabled: !!id,
+    refetchInterval: 10000,
+    staleTime: 5000,
+    refetchOnWindowFocus: false,
+    placeholderData: keepPreviousData
+  });
+}
+
+// Agregar mensaje
+export function useAgregarMensajePredespacho() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ predespachoId, mensaje, adjuntos }) => {
+      const response = await api.post(`/predespachos/${predespachoId}/mensajes`, { mensaje, adjuntos });
+      return response.data;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['predespachoMensajes', variables.predespachoId] });
+      queryClient.invalidateQueries({ queryKey: ['predespacho', variables.predespachoId] });
+    }
+  });
+}
+
+// Solicitar predespacho desde portal
+export function useSolicitarPredespacho() {
+  return useMutation({
+    mutationFn: async ({ portalSlug, data }) => {
+      const response = await api.post(`/predespachos/solicitar/${portalSlug}`, data);
+      return response.data;
+    }
+  });
+}
+
+// Predespachos del cliente (portal)
+export function usePredespachosCliente() {
+  return useQuery({
+    queryKey: ['predespachosCliente'],
+    queryFn: async () => {
+      const response = await api.get('/predespachos/mis-predespachos');
+      return response.data;
+    },
+    refetchInterval: 15000,
+    staleTime: 10000,
+    refetchOnWindowFocus: false,
+    placeholderData: keepPreviousData
+  });
+}
+
+// Marcar predespacho como visto
+export function useMarcarPredespachoVisto() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (predespachoId) => {
+      const response = await api.post(`/predespachos/${predespachoId}/visto`);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['predespachosCliente'] });
+    }
+  });
+}
+
+// =====================================================
 // CONVERSACIONES / MENSAJERÍA
 // =====================================================
 

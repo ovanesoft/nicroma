@@ -21,7 +21,8 @@ import {
   MessageSquare,
   Sparkles,
   Bell,
-  Megaphone
+  Megaphone,
+  FileCheck
 } from 'lucide-react';
 
 // Navegación según rol
@@ -73,6 +74,7 @@ export const getNavigation = (role) => {
       icon: Ship,
       children: [
         { name: 'Presupuestos', href: '/presupuestos', icon: Calculator },
+        { name: 'Predespacho', href: '/predespachos', icon: FileCheck },
         { name: 'Carpetas', href: '/carpetas', icon: FileText },
         { name: 'Clientes', href: '/clientes', icon: Users },
         { name: 'Proveedores', href: '/proveedores', icon: Package },
@@ -115,6 +117,7 @@ export const getNavigation = (role) => {
       icon: Ship,
       children: [
         { name: 'Presupuestos', href: '/presupuestos', icon: Calculator },
+        { name: 'Predespacho', href: '/predespachos', icon: FileCheck },
         { name: 'Carpetas', href: '/carpetas', icon: FileText },
         { name: 'Clientes', href: '/clientes', icon: Users },
         { name: 'Proveedores', href: '/proveedores', icon: Package },
@@ -142,6 +145,8 @@ export const getNavigation = (role) => {
     { name: 'Mensajes', href: '/messages', icon: MessageSquare },
     { name: 'Solicitar Presupuesto', href: '/solicitar-presupuesto', icon: Calculator },
     { name: 'Mis Presupuestos', href: '/mis-presupuestos', icon: Mail },
+    { name: 'Solicitar Predespacho', href: '/solicitar-predespacho', icon: FileCheck },
+    { name: 'Mis Predespachos', href: '/mis-predespachos', icon: FileCheck },
     { name: 'Mis Envíos', href: '/mis-envios', icon: Ship },
     { name: 'Mis Facturas', href: '/mis-facturas', icon: FileText },
     { name: 'Tracking', href: '/tracking', icon: MapPin },
@@ -228,3 +233,50 @@ export const PREPAID_COLLECT = [
   'Prepaid',
   'Collect'
 ];
+
+// ==========================================
+// PREDESPACHO
+// ==========================================
+
+export const DESTINACIONES = [
+  { value: 'IMPORTACION_A_CONSUMO', label: 'Importación a Consumo' },
+  { value: 'EXPORTACION_A_CONSUMO', label: 'Exportación a Consumo' },
+  { value: 'OTRO_IMPORTACION', label: 'Otro - Importación' },
+  { value: 'OTRO_EXPORTACION', label: 'Otro - Exportación' }
+];
+
+export const VIAS = [
+  { value: 'AEREO', label: 'Aéreo' },
+  { value: 'TERRESTRE', label: 'Terrestre' },
+  { value: 'MARITIMO', label: 'Marítimo' },
+  { value: 'MULTIMODAL', label: 'Multimodal' }
+];
+
+export const ADUANAS = [
+  { value: '073 - EZEIZA', label: '073 - Ezeiza' },
+  { value: '001 - BUENOS AIRES', label: '001 - Buenos Aires' },
+  { value: '000 - OTRO', label: '000 - Otro' }
+];
+
+export const CONDICIONES_VENTA = [
+  { value: 'EXW - EX WORKS', label: 'EXW - Ex Works' },
+  { value: 'FCA - FREE CARRIER', label: 'FCA - Free Carrier' },
+  { value: 'FOB - FREE ON BOARD', label: 'FOB - Free on Board' },
+  { value: 'CFR - COST & FREIGHT', label: 'CFR - Cost & Freight' },
+  { value: 'CIF - COST, INSURANCE & FREIGHT', label: 'CIF - Cost, Insurance & Freight' },
+  { value: 'DDP - DDU - FAS', label: 'Otro - DDP / DDU / FAS' }
+];
+
+export const TIPOS_DOCUMENTO_PD = [
+  { value: 'PEDIDO_DE_FONDOS', label: 'Pedido de Fondos' },
+  { value: 'PRESUPUESTO', label: 'Presupuesto' }
+];
+
+export const PREDESPACHO_ESTADOS = {
+  BORRADOR: { label: 'Borrador', color: 'bg-slate-100 text-slate-800' },
+  ENVIADO: { label: 'Enviado', color: 'bg-purple-100 text-purple-800' },
+  APROBADO: { label: 'Aprobado', color: 'bg-green-100 text-green-800' },
+  RECHAZADO: { label: 'Rechazado', color: 'bg-red-100 text-red-800' },
+  EN_PROCESO: { label: 'En Proceso', color: 'bg-blue-100 text-blue-800' },
+  FINALIZADO: { label: 'Finalizado', color: 'bg-emerald-100 text-emerald-800' }
+};

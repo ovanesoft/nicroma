@@ -43,6 +43,10 @@ import ProveedoresPage from './pages/proveedores/ProveedoresPage';
 import PresupuestosPage from './pages/presupuestos/PresupuestosPage';
 import PresupuestoForm from './pages/presupuestos/PresupuestoForm';
 
+// Pages - Predespachos
+import PredespachosPage from './pages/predespachos/PredespachosPage';
+import PredespachoForm from './pages/predespachos/PredespachoForm';
+
 // Pages - Facturación
 import PrefacturasPage from './pages/facturacion/PrefacturasPage';
 import PrefacturaDetalle from './pages/facturacion/PrefacturaDetalle';
@@ -74,6 +78,8 @@ import FacturaClienteDetalle from './pages/portal/FacturaDetalle';
 import Pagos from './pages/portal/Pagos';
 import SolicitarPresupuesto from './pages/portal/SolicitarPresupuesto';
 import MisPresupuestos from './pages/portal/MisPresupuestos';
+import SolicitarPredespacho from './pages/portal/SolicitarPredespacho';
+import MisPredespachos from './pages/portal/MisPredespachos';
 
 // Pages - Billing
 import PricingPage from './pages/billing/PricingPage';
@@ -273,6 +279,23 @@ function AppRoutes() {
         </ProtectedRoute>
       } />
 
+      {/* ==================== PREDESPACHO ROUTES ==================== */}
+      <Route path="/predespachos" element={
+        <ProtectedRoute allowedRoles={['admin', 'manager', 'user']}>
+          <PredespachosPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/predespachos/nuevo" element={
+        <ProtectedRoute allowedRoles={['admin', 'manager']}>
+          <PredespachoForm />
+        </ProtectedRoute>
+      } />
+      <Route path="/predespachos/:id" element={
+        <ProtectedRoute allowedRoles={['admin', 'manager', 'user', 'client']}>
+          <PredespachoForm />
+        </ProtectedRoute>
+      } />
+
       {/* ==================== LOGÍSTICA ROUTES (Admin/Manager) ==================== */}
       <Route path="/carpetas" element={
         <ProtectedRoute allowedRoles={['admin', 'manager', 'user']}>
@@ -416,6 +439,16 @@ function AppRoutes() {
       <Route path="/mis-presupuestos" element={
         <ProtectedRoute allowedRoles={['client']}>
           <MisPresupuestos />
+        </ProtectedRoute>
+      } />
+      <Route path="/solicitar-predespacho" element={
+        <ProtectedRoute allowedRoles={['client']}>
+          <SolicitarPredespacho />
+        </ProtectedRoute>
+      } />
+      <Route path="/mis-predespachos" element={
+        <ProtectedRoute allowedRoles={['client']}>
+          <MisPredespachos />
         </ProtectedRoute>
       } />
 
