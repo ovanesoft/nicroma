@@ -12,10 +12,13 @@ router.get('/mis-predespachos', authenticateToken, predespachoController.listarP
 // Rutas protegidas para tenant
 router.use(authenticateToken);
 
+// Rutas estáticas ANTES de las de :id (para que Express no confunda "marcar-vistos" con un :id)
+router.post('/marcar-vistos', requireRole('admin', 'manager', 'user'), predespachoController.marcarTodosVistosTenant);
+
 // CRUD de predespachos
 router.get('/', requireRole('admin', 'manager', 'user'), predespachoController.listarPredespachos);
-router.get('/:id', predespachoController.obtenerPredespacho);
 router.post('/', requireRole('admin', 'manager'), predespachoController.crearPredespacho);
+router.get('/:id', predespachoController.obtenerPredespacho);
 router.put('/:id', requireRole('admin', 'manager'), predespachoController.actualizarPredespacho);
 
 // Acciones especiales
@@ -28,9 +31,6 @@ router.post('/:id/mensajes/leidos', predespachoController.marcarMensajesLeidos);
 
 // Marcar como visto (clientes)
 router.post('/:id/visto', predespachoController.marcarPredespachoVisto);
-
-// Marcar todos como vistos (tenant)
-router.post('/marcar-vistos', requireRole('admin', 'manager', 'user'), predespachoController.marcarTodosVistosTenant);
 
 // PDF
 router.get('/:id/pdf', requireRole('admin', 'manager', 'user'), predespachoController.generarPDF);

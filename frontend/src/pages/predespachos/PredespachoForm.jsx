@@ -12,7 +12,8 @@ import { useQueryClient } from '@tanstack/react-query';
 import { 
   usePredespacho, useCreatePredespacho, useUpdatePredespacho,
   useCambiarEstadoPredespacho, useBuscarClientes, 
-  useMensajesPredespacho, useAgregarMensajePredespacho
+  useMensajesPredespacho, useAgregarMensajePredespacho,
+  useMarcarMensajesPredespachoLeidos
 } from '../../hooks/useApi';
 import { 
   DESTINACIONES, VIAS, ADUANAS, CONDICIONES_VENTA, 
@@ -164,6 +165,7 @@ function PredespachoForm() {
 
   const { data: mensajesData } = useMensajesPredespacho(id);
   const agregarMensaje = useAgregarMensajePredespacho();
+  const marcarLeidos = useMarcarMensajesPredespachoLeidos();
   const mensajes = mensajesData?.data?.mensajes || [];
 
   // Al abrir, refrescar notificaciones inmediatamente (el backend ya marcó como visto)
@@ -322,10 +324,13 @@ function PredespachoForm() {
     }
   };
 
-  // Scroll al final del chat cuando se abren o llegan mensajes
+  // Scroll al final del chat y marcar como leídos cuando se abre
   useEffect(() => {
     if (chatOpen && chatEndRef.current) {
       chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+    if (chatOpen && id && mensajes.length > 0) {
+      marcarLeidos.mutate(id);
     }
   }, [chatOpen, mensajes]);
 

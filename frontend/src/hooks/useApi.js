@@ -1549,6 +1549,22 @@ export function usePredespachosCliente() {
   });
 }
 
+// Marcar mensajes de predespacho como leídos
+export function useMarcarMensajesPredespachoLeidos() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (predespachoId) => {
+      const response = await api.post(`/predespachos/${predespachoId}/mensajes/leidos`);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notificaciones'] });
+      queryClient.invalidateQueries({ queryKey: ['predespachoMensajes'] });
+      queryClient.invalidateQueries({ queryKey: ['predespacho'] });
+    }
+  });
+}
+
 // Marcar todos los predespachos como vistos (tenant)
 export function useMarcarPredespachosVistosTenant() {
   const queryClient = useQueryClient();
