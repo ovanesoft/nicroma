@@ -1486,6 +1486,9 @@ export function useCambiarEstadoPredespacho() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['predespachos'] });
       queryClient.invalidateQueries({ queryKey: ['predespacho', variables.id] });
+      queryClient.invalidateQueries({ queryKey: ['predespachosCliente'] });
+      queryClient.invalidateQueries({ queryKey: ['notificaciones'] });
+      queryClient.invalidateQueries({ queryKey: ['portalDashboard'] });
     }
   });
 }
@@ -1556,6 +1559,8 @@ export function useMarcarPredespachoVisto() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['predespachosCliente'] });
+      queryClient.invalidateQueries({ queryKey: ['notificaciones'] });
+      queryClient.invalidateQueries({ queryKey: ['portalDashboard'] });
     }
   });
 }
