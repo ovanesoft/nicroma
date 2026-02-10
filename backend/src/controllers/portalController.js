@@ -60,7 +60,10 @@ exports.getDashboard = async (req, res) => {
             proximaLlegada: null
           },
           enviosRecientes: [],
-          facturasRecientes: []
+          facturasRecientes: [],
+          predespachosActivos: 0,
+          predespachosPendientes: 0,
+          predespachosRecientes: []
         }
       });
     }
@@ -72,7 +75,10 @@ exports.getDashboard = async (req, res) => {
       facturasPendientes,
       totalFacturado,
       enviosRecientes,
-      facturasRecientes
+      facturasRecientes,
+      predespachosActivos,
+      predespachosPendientes,
+      predespachosRecientes
     ] = await Promise.all([
       // Carpetas activas (no cerradas ni canceladas)
       prisma.carpeta.count({
@@ -131,6 +137,34 @@ exports.getDashboard = async (req, res) => {
         },
         orderBy: { fecha: 'desc' },
         take: 5
+      }),
+      // Predespachos activos (visibles para el cliente, no finalizados)
+      prisma.predespacho.count({
+        where: {
+          tenantId,
+          clienteId: cliente.id,
+          visibleCliente: true,
+          estado: { notIn: ['FINALIZADO', 'RECHAZADO'] }
+        }
+      }),
+      // Predespachos pendientes de revisión (enviados)
+      prisma.predespacho.count({
+        where: {
+          tenantId,
+          clienteId: cliente.id,
+          visibleCliente: true,
+          estado: 'ENVIADO'
+        }
+      }),
+      // Predespachos recientes
+      prisma.predespacho.findMany({
+        where: {
+          tenantId,
+          clienteId: cliente.id,
+          visibleCliente: true
+        },
+        orderBy: { fecha: 'desc' },
+        take: 5
       })
     ]);
 
@@ -177,6 +211,18 @@ exports.getDashboard = async (req, res) => {
           total: f.total,
           moneda: f.moneda,
           estado: f.estado
+        })),
+        predespachosActivos,
+        predespachosPendientes,
+        predespachosRecientes: predespachosRecientes.map(pd => ({
+          id: pd.id,
+          numero: pd.numero,
+          estado: pd.estado,
+          tipoDocumento: pd.tipoDocumento,
+          mercaderia: pd.mercaderia,
+          via: pd.via,
+          fecha: pd.fecha,
+          destinacion: pd.destinacion
         }))
       }
     });

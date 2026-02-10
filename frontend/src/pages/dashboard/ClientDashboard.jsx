@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { 
   Ship, FileText, MapPin, Package, CreditCard, Clock, 
   CheckCircle, AlertCircle, ArrowRight, TrendingUp, RefreshCw,
-  Landmark, Copy, Check, Wallet, Phone, Mail
+  Landmark, Copy, Check, Wallet, Phone, Mail, FileCheck, Eye
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, Button } from '../../components/ui';
 import { useAuth } from '../../context/AuthContext';
@@ -103,6 +103,9 @@ function ClientDashboard() {
   const stats = dashboardData.stats || {};
   const enviosRecientes = dashboardData.enviosRecientes || [];
   const facturasRecientes = dashboardData.facturasRecientes || [];
+  const predespachosRecientes = dashboardData.predespachosRecientes || [];
+  const predespachosPendientes = dashboardData.predespachosPendientes || 0;
+  const predespachosActivos = dashboardData.predespachosActivos || 0;
   const paymentInfo = paymentData?.data || {};
 
   const copyToClipboard = async (text, field) => {
@@ -158,7 +161,15 @@ function ClientDashboard() {
       )}
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+        <StatCard
+          title="Predespachos"
+          value={predespachosActivos}
+          icon={FileCheck}
+          color="bg-indigo-500"
+          subtitle={predespachosPendientes ? `${predespachosPendientes} para revisar` : null}
+          loading={isLoading}
+        />
         <StatCard
           title="Envíos Activos"
           value={stats.enviosActivos || 0}
@@ -191,6 +202,83 @@ function ClientDashboard() {
           loading={isLoading}
         />
       </div>
+
+      {/* Alerta de predespachos pendientes de revisión */}
+      {predespachosPendientes > 0 && (
+        <Card className="border-purple-200 bg-purple-50">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                  <Eye className="w-5 h-5 text-purple-600" />
+                </div>
+                <div>
+                  <p className="font-medium text-purple-800">
+                    Tenés {predespachosPendientes} predespacho{predespachosPendientes !== 1 ? 's' : ''} para revisar
+                  </p>
+                  <p className="text-sm text-purple-600">Revisalos y aprobá o rechazá</p>
+                </div>
+              </div>
+              <Link to="/mis-predespachos">
+                <Button size="sm">
+                  Ver predespachos <ArrowRight className="w-4 h-4 ml-1" />
+                </Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Predespachos recientes */}
+      {predespachosRecientes.length > 0 && (
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <FileCheck className="w-5 h-5" />
+              Predespachos Recientes
+            </CardTitle>
+            <Link to="/mis-predespachos">
+              <Button variant="ghost" size="sm">
+                Ver todos <ArrowRight className="w-4 h-4 ml-1" />
+              </Button>
+            </Link>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {predespachosRecientes.map(pd => {
+              const estadoConfig = {
+                'BORRADOR': { color: 'bg-slate-100 text-slate-700', label: 'Borrador' },
+                'ENVIADO': { color: 'bg-purple-100 text-purple-700', label: 'Para revisar' },
+                'APROBADO': { color: 'bg-green-100 text-green-700', label: 'Aprobado' },
+                'RECHAZADO': { color: 'bg-red-100 text-red-700', label: 'Rechazado' },
+                'EN_PROCESO': { color: 'bg-blue-100 text-blue-700', label: 'En Proceso' },
+                'FINALIZADO': { color: 'bg-emerald-100 text-emerald-700', label: 'Finalizado' }
+              };
+              const estado = estadoConfig[pd.estado] || estadoConfig.BORRADOR;
+              return (
+                <Link key={pd.id} to={`/predespachos/${pd.id}`}>
+                  <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer">
+                    <div className="flex items-center gap-4">
+                      <div className={cn('w-10 h-10 rounded-lg flex items-center justify-center', estado.color)}>
+                        <FileCheck className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-slate-800">{pd.numero}</p>
+                        <p className="text-sm text-slate-500">{pd.mercaderia || pd.tipoDocumento?.replace(/_/g, ' ') || '-'}</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <span className={cn('text-xs px-2 py-1 rounded-full', estado.color)}>
+                        {estado.label}
+                      </span>
+                      <p className="text-xs text-slate-400 mt-1">{pd.via || ''}</p>
+                    </div>
+                  </div>
+                </Link>
+              );
+            })}
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Envíos recientes */}
@@ -291,7 +379,13 @@ function ClientDashboard() {
           <CardTitle>Acciones Rápidas</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <Link to="/mis-predespachos" className="block">
+              <div className="p-4 bg-slate-50 rounded-xl text-center hover:bg-slate-100 transition-colors">
+                <FileCheck className="w-8 h-8 mx-auto text-indigo-500 mb-2" />
+                <p className="text-sm font-medium text-slate-700">Predespachos</p>
+              </div>
+            </Link>
             <Link to="/tracking" className="block">
               <div className="p-4 bg-slate-50 rounded-xl text-center hover:bg-slate-100 transition-colors">
                 <MapPin className="w-8 h-8 mx-auto text-blue-500 mb-2" />
