@@ -2,11 +2,11 @@ import { useNavigate } from 'react-router-dom';
 import { 
   Ship, Users, FileText, DollarSign, TrendingUp, Receipt, 
   Clock, CheckCircle, AlertCircle, ArrowRight, Building,
-  Calendar, Package, ExternalLink, Globe
+  Calendar, Package, ExternalLink, Globe, FileCheck, MessageSquare
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, Button, Badge } from '../../components/ui';
 import { useAuth } from '../../context/AuthContext';
-import { useStats, useCompanyConfig } from '../../hooks/useApi';
+import { useStats, useCompanyConfig, useNotificaciones } from '../../hooks/useApi';
 import { formatDate, cn } from '../../lib/utils';
 
 const ESTADO_COLORS = {
@@ -24,8 +24,10 @@ function AdminDashboard() {
   const { user } = useAuth();
   const { data, isLoading } = useStats();
   const { data: companyData } = useCompanyConfig();
+  const { data: notifData } = useNotificaciones();
 
   const stats = data?.data || {};
+  const notificaciones = notifData?.data?.notificaciones || {};
   const portalSlug = companyData?.data?.portal?.slug;
   const portalEnabled = companyData?.data?.portal?.enabled;
   const frontendUrl = window.location.origin;
@@ -145,6 +147,50 @@ function AdminDashboard() {
               </Button>
             </a>
           </div>
+        </div>
+      )}
+
+      {/* Alertas de solicitudes nuevas */}
+      {((notificaciones.presupuestosPendientes || 0) > 0 || (notificaciones.predespachosPendientes || 0) > 0) && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {(notificaciones.presupuestosPendientes || 0) > 0 && (
+            <div 
+              className="flex items-center justify-between p-4 rounded-xl border border-amber-200 bg-amber-50 cursor-pointer hover:bg-amber-100 transition-colors"
+              onClick={() => navigate('/presupuestos')}
+            >
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-amber-100 rounded-lg">
+                  <MessageSquare className="w-5 h-5 text-amber-600" />
+                </div>
+                <div>
+                  <p className="font-medium text-amber-900">
+                    {notificaciones.presupuestosPendientes} solicitud{notificaciones.presupuestosPendientes !== 1 ? 'es' : ''} de presupuesto
+                  </p>
+                  <p className="text-sm text-amber-600">Nuevas solicitudes de clientes por atender</p>
+                </div>
+              </div>
+              <ArrowRight className="w-5 h-5 text-amber-500" />
+            </div>
+          )}
+          {(notificaciones.predespachosPendientes || 0) > 0 && (
+            <div 
+              className="flex items-center justify-between p-4 rounded-xl border border-indigo-200 bg-indigo-50 cursor-pointer hover:bg-indigo-100 transition-colors"
+              onClick={() => navigate('/predespachos')}
+            >
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-indigo-100 rounded-lg">
+                  <FileCheck className="w-5 h-5 text-indigo-600" />
+                </div>
+                <div>
+                  <p className="font-medium text-indigo-900">
+                    {notificaciones.predespachosPendientes} solicitud{notificaciones.predespachosPendientes !== 1 ? 'es' : ''} de predespacho
+                  </p>
+                  <p className="text-sm text-indigo-600">Nuevos pedidos de fondos por atender</p>
+                </div>
+              </div>
+              <ArrowRight className="w-5 h-5 text-indigo-500" />
+            </div>
+          )}
         </div>
       )}
 

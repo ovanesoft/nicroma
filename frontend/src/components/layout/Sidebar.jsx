@@ -32,6 +32,12 @@ function Sidebar() {
       const total = (notificaciones.presupuestosParaRevisar || 0) + (notificaciones.mensajesNoLeidos || 0);
       return total;
     }
+    if (href === '/predespachos' || itemName === 'Predespacho') {
+      return (notificaciones.predespachosPendientes || 0) + (notificaciones.mensajesPredespachoNoLeidos || 0);
+    }
+    if (href === '/mis-predespachos' || itemName === 'Mis Predespachos') {
+      return notificaciones.predespachosParaRevisar || 0;
+    }
     return 0;
   };
 

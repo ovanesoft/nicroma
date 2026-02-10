@@ -853,7 +853,10 @@ const obtenerNotificaciones = async (req, res) => {
     let notificaciones = {
       presupuestosPendientes: 0,
       presupuestosParaRevisar: 0,
-      mensajesNoLeidos: 0
+      mensajesNoLeidos: 0,
+      predespachosPendientes: 0,
+      predespachosParaRevisar: 0,
+      mensajesPredespachoNoLeidos: 0
     };
 
     if (userRole === 'client') {
@@ -885,6 +888,16 @@ const obtenerNotificaciones = async (req, res) => {
 
         notificaciones.presupuestosParaRevisar = presupuestosParaRevisar;
         notificaciones.mensajesNoLeidos = mensajesNoLeidos;
+
+        // Predespachos enviados al cliente para revisar
+        const predespachosParaRevisar = await prisma.predespacho.count({
+          where: {
+            clienteId: cliente.id,
+            estado: 'ENVIADO',
+            vistoPorCliente: false
+          }
+        });
+        notificaciones.predespachosParaRevisar = predespachosParaRevisar;
       }
     } else if (tenantId && ['admin', 'manager', 'user'].includes(userRole)) {
       // Para usuarios del tenant
@@ -910,6 +923,27 @@ const obtenerNotificaciones = async (req, res) => {
 
       notificaciones.presupuestosPendientes = presupuestosPendientes;
       notificaciones.mensajesNoLeidos = mensajesNoLeidos;
+
+      // Predespachos: solicitudes nuevas (en borrador, recién llegadas de clientes)
+      const predespachosPendientes = await prisma.predespacho.count({
+        where: {
+          tenantId,
+          estado: 'BORRADOR',
+          descripcionPedido: { not: null } // Solo los que vienen de solicitudes de clientes
+        }
+      });
+
+      // Mensajes de predespacho no leídos de clientes
+      const mensajesPredespachoNoLeidos = await prisma.mensajePredespacho.count({
+        where: {
+          predespacho: { tenantId },
+          tipoRemitente: 'CLIENTE',
+          leido: false
+        }
+      });
+
+      notificaciones.predespachosPendientes = predespachosPendientes;
+      notificaciones.mensajesPredespachoNoLeidos = mensajesPredespachoNoLeidos;
     }
 
     res.json({
