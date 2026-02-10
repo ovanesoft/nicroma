@@ -2,11 +2,11 @@ import { useNavigate } from 'react-router-dom';
 import { 
   Ship, Users, FileText, DollarSign, TrendingUp, Receipt, 
   Clock, CheckCircle, AlertCircle, ArrowRight, Building,
-  Calendar, Package
+  Calendar, Package, ExternalLink, Globe
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, Button, Badge } from '../../components/ui';
 import { useAuth } from '../../context/AuthContext';
-import { useStats } from '../../hooks/useApi';
+import { useStats, useCompanyConfig } from '../../hooks/useApi';
 import { formatDate, cn } from '../../lib/utils';
 
 const ESTADO_COLORS = {
@@ -23,8 +23,12 @@ function AdminDashboard() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { data, isLoading } = useStats();
+  const { data: companyData } = useCompanyConfig();
 
   const stats = data?.data || {};
+  const portalSlug = companyData?.data?.portal?.slug;
+  const portalEnabled = companyData?.data?.portal?.enabled;
+  const frontendUrl = window.location.origin;
   const carpetas = stats.carpetas || {};
   const facturacion = stats.facturacion || {};
   const clientes = stats.clientes || {};
@@ -105,6 +109,44 @@ function AdminDashboard() {
           </p>
         </div>
       </div>
+
+      {/* Acceso al Portal de Clientes */}
+      {portalEnabled && portalSlug && (
+        <div className="flex items-center justify-between p-4 rounded-xl border border-indigo-200 bg-indigo-50/50">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-indigo-100 rounded-lg">
+              <Globe className="w-5 h-5 text-indigo-600" />
+            </div>
+            <div>
+              <p className="font-medium text-indigo-900">Portal de Clientes</p>
+              <p className="text-sm text-indigo-600">{frontendUrl}/portal/{portalSlug}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => {
+                navigator.clipboard.writeText(`${frontendUrl}/portal/${portalSlug}`);
+                // toast se importa por separado si lo necesitás
+              }}
+              className="text-indigo-700 border-indigo-300 hover:bg-indigo-100"
+            >
+              Copiar link
+            </Button>
+            <a 
+              href={`${frontendUrl}/portal/${portalSlug}`}
+              target="_blank" 
+              rel="noopener noreferrer"
+            >
+              <Button size="sm" className="bg-indigo-600 hover:bg-indigo-700">
+                <ExternalLink className="w-4 h-4" />
+                Abrir Portal
+              </Button>
+            </a>
+          </div>
+        </div>
+      )}
 
       {/* KPIs */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
