@@ -838,12 +838,12 @@ function PredespachoForm() {
           </Card>
 
           {/* Espaciado inferior para que el botón flotante no tape el contenido */}
-          {id && <div className="h-16" />}
+          {id && formData.clienteId && <div className="h-16" />}
         </div>
       </div>
 
-      {/* ==================== CHAT FLOTANTE ==================== */}
-      {id && (
+      {/* ==================== CHAT FLOTANTE (solo si hay cliente asignado) ==================== */}
+      {id && formData.clienteId && (
         <>
           {/* Panel de chat */}
           {chatOpen && (
