@@ -11,14 +11,19 @@ export const AuthProvider = ({ children }) => {
   // Verificar si hay un usuario autenticado al cargar
   useEffect(() => {
     const checkAuth = async () => {
-      // Check for OAuth callback token in URL FIRST
+      // Check for OAuth callback tokens in URL FIRST
       const params = new URLSearchParams(window.location.search);
       const oauthToken = params.get('token');
+      const oauthRefreshToken = params.get('refreshToken');
       
       if (oauthToken) {
         console.log('OAuth token detected, saving...');
         localStorage.setItem('accessToken', oauthToken);
-        // Limpiar URL
+        if (oauthRefreshToken) {
+          console.log('OAuth refresh token detected, saving...');
+          localStorage.setItem('refreshToken', oauthRefreshToken);
+        }
+        // Limpiar URL (remover tokens de la barra de direcciones)
         window.history.replaceState({}, document.title, window.location.pathname);
       }
 

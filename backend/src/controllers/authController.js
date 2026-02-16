@@ -880,9 +880,9 @@ const oauthCallback = async (req, res) => {
       ]
     ).catch(err => console.error('Error en auditoría:', err));
 
-    // Redirect al frontend con token
-    const redirectUrl = `${process.env.FRONTEND_URL}/dashboard?token=${accessToken}`;
-    console.log('OAuth callback - redirecting to:', redirectUrl);
+    // Redirect al frontend con ambos tokens
+    const redirectUrl = `${process.env.FRONTEND_URL}/dashboard?token=${accessToken}&refreshToken=${refreshToken}`;
+    console.log('OAuth callback - redirecting to:', redirectUrl.split('?')[0] + '?token=***&refreshToken=***');
     res.redirect(redirectUrl);
 
   } catch (error) {

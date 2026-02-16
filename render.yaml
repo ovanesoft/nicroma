@@ -59,25 +59,25 @@ services:
         value: 7d
       - key: JWT_REFRESH_EXPIRES_IN
         value: 30d
-      # URLs automáticas de Render
+      # URLs - usar dominio personalizado
       - key: FRONTEND_URL
-        value: https://nicroma-frontend.onrender.com
+        value: https://nicroma.com
       - key: API_URL
-        value: https://nicroma-backend.onrender.com
-      # Google OAuth (configurado para Render)
+        value: https://api.nicroma.com
+      # Google OAuth (configurado con dominio personalizado)
       - key: GOOGLE_CLIENT_ID
         sync: false
       - key: GOOGLE_CLIENT_SECRET
         sync: false
       - key: GOOGLE_CALLBACK_URL
-        value: https://nicroma-backend.onrender.com/api/auth/google/callback
+        value: https://api.nicroma.com/api/auth/google/callback
       # Facebook OAuth
       - key: FACEBOOK_APP_ID
         sync: false
       - key: FACEBOOK_APP_SECRET
         sync: false
       - key: FACEBOOK_CALLBACK_URL
-        value: https://nicroma-backend.onrender.com/api/auth/facebook/callback
+        value: https://api.nicroma.com/api/auth/facebook/callback
       # Email
       - key: RESEND_API_KEY
         sync: false
@@ -125,4 +125,4 @@ services:
         destination: /index.html
     envVars:
       - key: VITE_API_URL
-        value: https://nicroma-backend.onrender.com
+        value: https://api.nicroma.com

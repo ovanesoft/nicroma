@@ -164,21 +164,37 @@ router.get('/google/callback', async (req, res) => {
     const { query } = require('../config/database');
     const email = googleUser.email.toLowerCase();
 
+    // Primero buscar por google_id (match más específico y confiable)
     let result = await query(
-      'SELECT * FROM users WHERE LOWER(email) = $1 OR google_id = $2',
-      [email, googleUser.id]
+      'SELECT * FROM users WHERE google_id = $1',
+      [googleUser.id]
     );
 
     let user = result.rows[0];
 
+    // Si no hay match por google_id, buscar por email
+    if (!user) {
+      result = await query(
+        'SELECT * FROM users WHERE LOWER(email) = $1 ORDER BY is_active DESC, last_login DESC NULLS LAST LIMIT 1',
+        [email]
+      );
+      user = result.rows[0];
+    }
+
     if (user) {
-      // Usuario existe, actualizar google_id si no lo tiene
+      // Usuario existe, vincular google_id si no lo tiene
       if (!user.google_id) {
-        await query(
-          'UPDATE users SET google_id = $1, email_verified = true WHERE id = $2',
-          [googleUser.id, user.id]
-        );
-        user.google_id = googleUser.id;
+        try {
+          await query(
+            'UPDATE users SET google_id = $1, email_verified = true WHERE id = $2',
+            [googleUser.id, user.id]
+          );
+          user.google_id = googleUser.id;
+        } catch (linkError) {
+          // Si falla por constraint unique, el google_id ya está en otro usuario
+          // Continuar sin vincular, el login sigue funcionando
+          console.warn('No se pudo vincular google_id al usuario (ya existe en otro registro):', linkError.message);
+        }
       }
       
       // Pasar el usuario al controlador de OAuth
@@ -186,7 +202,6 @@ router.get('/google/callback', async (req, res) => {
       return authController.oauthCallback(req, res);
     } else {
       // Usuario NO existe - redirigir al registro con datos de Google
-      // Guardamos los datos en la URL para el registro
       const registerData = encodeURIComponent(JSON.stringify({
         email,
         firstName: googleUser.given_name || '',

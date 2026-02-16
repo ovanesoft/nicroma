@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Eye, EyeOff, AlertCircle, Loader2 } from 'lucide-react';
 
@@ -9,9 +9,28 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [localError, setLocalError] = useState('');
+  const [searchParams, setSearchParams] = useSearchParams();
   
   const { login, googleLogin, facebookLogin, error } = useAuth();
   const navigate = useNavigate();
+
+  // Mostrar errores de OAuth que vienen en la URL
+  useEffect(() => {
+    const oauthError = searchParams.get('error');
+    if (oauthError) {
+      const errorMessages = {
+        'google_denied': 'Inicio de sesión con Google cancelado',
+        'facebook_denied': 'Inicio de sesión con Facebook cancelado',
+        'oauth_failed': 'Error en la autenticación. Por favor, intente nuevamente',
+        'no_code': 'No se recibió código de autorización',
+        'facebook_failed': 'Error en la autenticación con Facebook',
+      };
+      setLocalError(errorMessages[oauthError] || `Error de autenticación: ${oauthError}`);
+      // Limpiar el parámetro de error de la URL
+      searchParams.delete('error');
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
