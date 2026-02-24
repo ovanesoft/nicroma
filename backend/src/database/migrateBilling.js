@@ -54,6 +54,22 @@ const migrations = [
 
   // Campos para promotions
   `ALTER TABLE promotions ADD COLUMN IF NOT EXISTS duration_months INTEGER`,
+
+  // ============ SCHEMA: Presupuestos - Actores del Proceso ============
+  `ALTER TABLE presupuestos ADD COLUMN IF NOT EXISTS proveedor_id UUID`,
+  `DO $$ BEGIN
+     IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'presupuestos_proveedor_id_fkey') THEN
+       ALTER TABLE presupuestos ADD CONSTRAINT presupuestos_proveedor_id_fkey FOREIGN KEY (proveedor_id) REFERENCES proveedores(id);
+     END IF;
+   END $$`,
+
+  // ============ SCHEMA: Dimensiones de mercancías (CBM) ============
+  `ALTER TABLE mercancias_presupuesto ADD COLUMN IF NOT EXISTS largo DOUBLE PRECISION`,
+  `ALTER TABLE mercancias_presupuesto ADD COLUMN IF NOT EXISTS ancho DOUBLE PRECISION`,
+  `ALTER TABLE mercancias_presupuesto ADD COLUMN IF NOT EXISTS alto DOUBLE PRECISION`,
+  `ALTER TABLE mercancias ADD COLUMN IF NOT EXISTS largo DOUBLE PRECISION`,
+  `ALTER TABLE mercancias ADD COLUMN IF NOT EXISTS ancho DOUBLE PRECISION`,
+  `ALTER TABLE mercancias ADD COLUMN IF NOT EXISTS alto DOUBLE PRECISION`,
 ];
 
 async function runMigrations() {
