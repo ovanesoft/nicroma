@@ -10,6 +10,7 @@
     "db:push": "npx prisma db push --accept-data-loss",
     "db:seed-plans": "node src/database/seedPlans.js",
     "db:migrate-billing": "node src/database/migrateBilling.js",
+    "db:migrate-schema": "node src/database/migrateSchema.js",
     "prisma:generate": "npx prisma generate",
     "postinstall": "npx prisma generate",
     "build": "rm -rf node_modules/.prisma && npm run prisma:generate && npm run db:push && (npm run db:init || true)"
