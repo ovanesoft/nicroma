@@ -130,6 +130,7 @@ const obtenerPresupuesto = async (req, res) => {
         cliente: true,
         shipper: true,
         consignee: true,
+        proveedor: true,
         items: {
           orderBy: { createdAt: 'asc' }
         },
@@ -189,6 +190,10 @@ const crearPresupuesto = async (req, res) => {
         estado: 'EN_PROCESO',
         
         clienteId: data.clienteId || null,
+        shipperId: data.shipperId || null,
+        consigneeId: data.consigneeId || null,
+        proveedorId: data.proveedorId || null,
+        
         solicitanteNombre: data.solicitanteNombre,
         solicitanteEmail: data.solicitanteEmail,
         solicitanteTelefono: data.solicitanteTelefono,
@@ -374,6 +379,10 @@ const actualizarPresupuesto = async (req, res) => {
         where: { id },
         data: {
           clienteId: restData.clienteId || null,
+          shipperId: restData.shipperId || null,
+          consigneeId: restData.consigneeId || null,
+          proveedorId: restData.proveedorId || null,
+          
           solicitanteNombre: restData.solicitanteNombre,
           solicitanteEmail: restData.solicitanteEmail,
           solicitanteTelefono: restData.solicitanteTelefono,
@@ -499,6 +508,9 @@ const actualizarPresupuesto = async (req, res) => {
         data: { totalVenta, totalCosto },
         include: {
           cliente: true,
+          shipper: true,
+          consignee: true,
+          proveedor: true,
           items: { orderBy: { createdAt: 'asc' } },
           mercancias: { orderBy: { createdAt: 'asc' } },
           contenedores: { orderBy: { createdAt: 'asc' } },
@@ -610,7 +622,9 @@ const convertirACarpeta = async (req, res) => {
       where: { id, tenantId },
       include: {
         items: true,
-        cliente: true
+        cliente: true,
+        shipper: true,
+        consignee: true
       }
     });
 
@@ -669,6 +683,8 @@ const convertirACarpeta = async (req, res) => {
           tipoOperacion: presupuesto.tipoOperacion || 'FCL-FCL',
           
           clienteId: presupuesto.clienteId,
+          shipperId: presupuesto.shipperId || null,
+          consigneeId: presupuesto.consigneeId || null,
           puertoOrigen: presupuesto.puertoOrigen,
           puertoDestino: presupuesto.puertoDestino,
           
@@ -1119,6 +1135,7 @@ const generarPDFPresupuestoFormal = async (req, res) => {
         cliente: true,
         shipper: true,
         consignee: true,
+        proveedor: true,
         items: true,
         mercancias: true,
         contenedores: true

@@ -723,6 +723,8 @@ model Proveedor {
   updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   createdBy       String?  @map("created_by") @db.Uuid
 
+  presupuestos    Presupuesto[] @relation("PresupuestoProveedor")
+
   @@unique([tenantId, numeroDocumento])
   @@index([tenantId])
   @@index([razonSocial])
@@ -1503,6 +1505,10 @@ model Presupuesto {
   shipper         Cliente? @relation("PresupuestoShipper", fields: [shipperId], references: [id])
   consigneeId     String?  @map("consignee_id") @db.Uuid
   consignee       Cliente? @relation("PresupuestoConsignee", fields: [consigneeId], references: [id])
+  
+  // Proveedor vinculado
+  proveedorId     String?  @map("proveedor_id") @db.Uuid
+  proveedor       Proveedor? @relation("PresupuestoProveedor", fields: [proveedorId], references: [id])
   
   // Fechas de solicitud
   fechaSolicitud      DateTime @default(now()) @map("fecha_solicitud") @db.Timestamptz(6)

@@ -167,11 +167,6 @@ function generarPresupuestoFormal(presupuesto, tenant, bancoSeleccionado = null)
     doc.font('Helvetica').text(presupuesto.incoterm, 110, y);
   }
   
-  if (presupuesto.shipper) {
-    doc.font('Helvetica-Bold').text('Shipper:', 300, y);
-    doc.font('Helvetica').text(presupuesto.shipper?.razonSocial || '-', 360, y, { width: 180 });
-  }
-
   // ============ SECCIÓN DETALLE DE LA CARGA ============
   if (presupuesto.mercancias?.length > 0 || presupuesto.contenedores?.length > 0) {
     y += 30;
@@ -209,30 +204,76 @@ function generarPresupuestoFormal(presupuesto, tenant, bancoSeleccionado = null)
     }
   }
 
-  // ============ SECCIÓN CLIENTE ============
+  // ============ SECCIÓN ACTORES DEL PROCESO ============
   y += 35;
   doc.rect(40, y, 515, 20).fill(headerBg).stroke();
   doc.fillColor(primaryColor).font('Helvetica-Bold').fontSize(11);
-  doc.text('CLIENTE', 50, y + 5);
+  doc.text('ACTORES DEL PROCESO', 50, y + 5);
   
   y += 25;
   doc.font('Helvetica').fontSize(9).fillColor(textColor);
   
-  const clienteNombre = presupuesto.cliente?.razonSocial || presupuesto.solicitanteNombre || '-';
-  const clienteCuit = presupuesto.cliente?.numeroDocumento || '-';
-  const clienteTel = presupuesto.cliente?.telefono || presupuesto.solicitanteTelefono || '-';
-  const clienteEmail = presupuesto.cliente?.email || presupuesto.solicitanteEmail || '-';
-  
-  doc.font('Helvetica-Bold').text('Nombre:', 50, y);
-  doc.font('Helvetica').text(clienteNombre, 110, y);
-  doc.font('Helvetica-Bold').text('Teléfono:', 300, y);
-  doc.font('Helvetica').text(clienteTel, 360, y);
-  
-  y += 15;
-  doc.font('Helvetica-Bold').text('CUIT:', 50, y);
-  doc.font('Helvetica').text(clienteCuit, 110, y);
-  doc.font('Helvetica-Bold').text('E-mail:', 300, y);
-  doc.font('Helvetica').text(clienteEmail, 360, y, { width: 180 });
+  const actores = [
+    {
+      rol: 'Customer',
+      datos: presupuesto.cliente
+        ? { nombre: presupuesto.cliente.razonSocial, doc: presupuesto.cliente.numeroDocumento, email: presupuesto.cliente.email, tel: presupuesto.cliente.telefono }
+        : (presupuesto.solicitanteNombre || presupuesto.solicitanteEmpresa)
+          ? { nombre: presupuesto.solicitanteNombre || presupuesto.solicitanteEmpresa, doc: null, email: presupuesto.solicitanteEmail, tel: presupuesto.solicitanteTelefono }
+          : null
+    },
+    {
+      rol: 'Shipper',
+      datos: presupuesto.shipper
+        ? { nombre: presupuesto.shipper.razonSocial, doc: presupuesto.shipper.numeroDocumento, email: presupuesto.shipper.email, tel: presupuesto.shipper.telefono }
+        : null
+    },
+    {
+      rol: 'Consignee',
+      datos: presupuesto.consignee
+        ? { nombre: presupuesto.consignee.razonSocial, doc: presupuesto.consignee.numeroDocumento, email: presupuesto.consignee.email, tel: presupuesto.consignee.telefono }
+        : null
+    },
+    {
+      rol: 'Proveedor',
+      datos: presupuesto.proveedor
+        ? { nombre: presupuesto.proveedor.razonSocial, doc: presupuesto.proveedor.numeroDocumento, email: presupuesto.proveedor.email, tel: presupuesto.proveedor.telefono, tipo: presupuesto.proveedor.tipoProveedor }
+        : null
+    }
+  ].filter(a => a.datos);
+
+  actores.forEach((actor, idx) => {
+    if (y > 700) { doc.addPage(); y = 50; }
+    
+    doc.font('Helvetica-Bold').text(`${actor.rol}:`, 50, y, { width: 70 });
+    doc.font('Helvetica').text(actor.datos.nombre || '-', 125, y, { width: 180 });
+    if (actor.datos.doc) {
+      doc.font('Helvetica-Bold').text('CUIT:', 310, y);
+      doc.font('Helvetica').text(actor.datos.doc, 345, y, { width: 190 });
+    }
+    if (actor.datos.tipo) {
+      doc.font('Helvetica').fillColor(lightText).text(`(${actor.datos.tipo})`, 310, y, { width: 190 });
+      doc.fillColor(textColor);
+    }
+    y += 13;
+    
+    const hasContact = actor.datos.email || actor.datos.tel;
+    if (hasContact) {
+      if (actor.datos.email) {
+        doc.font('Helvetica-Bold').text('Email:', 125, y);
+        doc.font('Helvetica').text(actor.datos.email, 165, y, { width: 140 });
+      }
+      if (actor.datos.tel) {
+        doc.font('Helvetica-Bold').text('Tel:', 310, y);
+        doc.font('Helvetica').text(actor.datos.tel, 335, y, { width: 200 });
+      }
+      y += 13;
+    }
+    
+    if (idx < actores.length - 1) {
+      y += 2;
+    }
+  });
 
   // ============ SECCIÓN COTIZACIÓN ============
   if (presupuesto.items && presupuesto.items.length > 0) {

@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { 
   ArrowLeft, Save, Send, CheckCircle, XCircle, FolderOpen,
   Plus, Trash2, Search, MessageSquare, User, Building2, Clock, Loader2, FileDown,
-  Ship, Package, FileText
+  Ship, Package, FileText, Users, X
 } from 'lucide-react';
 import api from '../../api/axios';
 import Layout from '../../components/layout/Layout';
@@ -13,7 +13,7 @@ import {
 import TerminalSelector from '../../components/ui/TerminalSelector';
 import { 
   usePresupuesto, useCreatePresupuesto, useUpdatePresupuesto,
-  useBuscarClientes, useCambiarEstadoPresupuesto, useConvertirPresupuesto,
+  useBuscarClientes, useBuscarProveedores, useCambiarEstadoPresupuesto, useConvertirPresupuesto,
   useMensajesPresupuesto, useAgregarMensaje, useMarcarMensajesLeidos,
   useMarcarPresupuestoVisto, useCuentasBancarias
 } from '../../hooks/useApi';
@@ -67,9 +67,13 @@ function PresupuestoForm() {
   const chatEndRef = useRef(null);
 
   const [activeTab, setActiveTab] = useState('datos');
-  const [clienteSearch, setClienteSearch] = useState('');
-  const [showClienteDropdown, setShowClienteDropdown] = useState(false);
   const [selectedCliente, setSelectedCliente] = useState(null);
+  const [selectedShipper, setSelectedShipper] = useState(null);
+  const [selectedConsignee, setSelectedConsignee] = useState(null);
+  const [selectedProveedor, setSelectedProveedor] = useState(null);
+  const [showActorPanel, setShowActorPanel] = useState(false);
+  const [actorRol, setActorRol] = useState('cliente');
+  const [actorSearch, setActorSearch] = useState('');
   const [nuevoMensaje, setNuevoMensaje] = useState('');
   
   // Form data
@@ -111,7 +115,16 @@ function PresupuestoForm() {
   const [items, setItems] = useState([]);
 
   const { data: presupuestoData, isLoading } = usePresupuesto(id);
-  const { data: clientesData } = useBuscarClientes(clienteSearch, 'cliente');
+  const isActorCliente = ['cliente', 'shipper', 'consignee'].includes(actorRol);
+  const { data: actorClientesData } = useBuscarClientes(
+    isActorCliente ? actorSearch : '', actorRol
+  );
+  const { data: actorProveedoresData } = useBuscarProveedores(
+    !isActorCliente ? actorSearch : ''
+  );
+  const actorResultados = isActorCliente
+    ? (actorClientesData?.data?.clientes || [])
+    : (actorProveedoresData?.data?.proveedores || []);
   const { data: mensajesData, refetch: refetchMensajes } = useMensajesPresupuesto(id);
   const { data: cuentasBancarias = [] } = useCuentasBancarias();
   
@@ -127,7 +140,6 @@ function PresupuestoForm() {
   const cuentaPrincipal = cuentasBancarias.find(c => c.esPrincipal) || cuentasBancarias[0];
   const [bancoPdfId, setBancoPdfId] = useState('');
 
-  const clientes = clientesData?.data?.clientes || [];
   const mensajes = mensajesData?.data?.mensajes || [];
   const presupuesto = presupuestoData?.data?.presupuesto;
   
@@ -184,7 +196,10 @@ function PresupuestoForm() {
         observaciones: presupuesto.observaciones || '',
         notasInternas: presupuesto.notasInternas || ''
       });
-      setSelectedCliente(presupuesto.cliente);
+      setSelectedCliente(presupuesto.cliente || null);
+      setSelectedShipper(presupuesto.shipper || null);
+      setSelectedConsignee(presupuesto.consignee || null);
+      setSelectedProveedor(presupuesto.proveedor || null);
       setItems(presupuesto.items || []);
       setMercancias(presupuesto.mercancias || []);
       setContenedores(presupuesto.contenedores || []);
@@ -218,25 +233,29 @@ function PresupuestoForm() {
     }
   }, [id, activeTab, mensajes]);
 
+  const buildPayload = () => ({
+    ...formData,
+    fechaSalidaEstimada: formData.etd || null,
+    fechaLlegadaEstimada: formData.eta || null,
+    clienteId: selectedCliente?.id || null,
+    shipperId: selectedShipper?.id || null,
+    consigneeId: selectedConsignee?.id || null,
+    proveedorId: selectedProveedor?.id || null,
+    items: items.filter(i => i.concepto),
+    mercancias: mercancias.filter(m => m.descripcion),
+    contenedores: contenedores.filter(c => c.tipo),
+    bancoPdfId: bancoPdfId || null
+  });
+
   // Auto-guardado silencioso
   const autoSave = useCallback(async () => {
     if (!isEditing || !hasChanges || isSaving) return;
     
-    // No guardar si no hay datos mínimos
     if (!formData.descripcionPedido && !selectedCliente) return;
     
     try {
       setIsSaving(true);
-      const payload = {
-        ...formData,
-        fechaSalidaEstimada: formData.etd || null,
-        fechaLlegadaEstimada: formData.eta || null,
-        clienteId: selectedCliente?.id || null,
-        items: items.filter(i => i.concepto),
-        mercancias: mercancias.filter(m => m.descripcion),
-        contenedores: contenedores.filter(c => c.tipo),
-        bancoPdfId: bancoPdfId || null
-      };
+      const payload = buildPayload();
       
       await updatePresupuesto.mutateAsync(payload);
       setHasChanges(false);
@@ -246,7 +265,7 @@ function PresupuestoForm() {
     } finally {
       setIsSaving(false);
     }
-  }, [isEditing, hasChanges, isSaving, formData, selectedCliente, items, mercancias, contenedores, updatePresupuesto]);
+  }, [isEditing, hasChanges, isSaving, formData, selectedCliente, selectedShipper, selectedConsignee, selectedProveedor, items, mercancias, contenedores, bancoPdfId, updatePresupuesto]);
   
   // Debounce del auto-guardado (2 segundos después de dejar de escribir)
   const debouncedAutoSave = useDebounce(autoSave, 2000);
@@ -268,17 +287,38 @@ function PresupuestoForm() {
     setActiveTab(tabId);
   };
 
-  const selectCliente = (cliente) => {
-    setSelectedCliente(cliente);
-    setShowClienteDropdown(false);
-    setClienteSearch('');
-    // Auto-llenar datos del solicitante
-    setFormData(prev => ({
-      ...prev,
-      solicitanteNombre: cliente.razonSocial,
-      solicitanteEmail: cliente.email || '',
-      solicitanteTelefono: cliente.telefono || ''
-    }));
+  const selectActor = (entidad) => {
+    const setters = {
+      cliente: setSelectedCliente,
+      shipper: setSelectedShipper,
+      consignee: setSelectedConsignee,
+      proveedor: setSelectedProveedor,
+    };
+    setters[actorRol]?.(entidad);
+    if (actorRol === 'cliente') {
+      setFormData(prev => ({
+        ...prev,
+        solicitanteNombre: entidad.razonSocial,
+        solicitanteEmail: entidad.email || '',
+        solicitanteTelefono: entidad.telefono || ''
+      }));
+    }
+    setShowActorPanel(false);
+    setActorSearch('');
+    if (isEditing) {
+      setHasChanges(true);
+      debouncedAutoSave();
+    }
+  };
+
+  const removeActor = (rol) => {
+    const setters = {
+      cliente: setSelectedCliente,
+      shipper: setSelectedShipper,
+      consignee: setSelectedConsignee,
+      proveedor: setSelectedProveedor,
+    };
+    setters[rol]?.(null);
     if (isEditing) {
       setHasChanges(true);
       debouncedAutoSave();
@@ -420,16 +460,7 @@ function PresupuestoForm() {
     }
 
     try {
-      const payload = {
-        ...formData,
-        fechaSalidaEstimada: formData.etd || null,
-        fechaLlegadaEstimada: formData.eta || null,
-        clienteId: selectedCliente?.id || null,
-        items: items.filter(i => i.concepto),
-        mercancias: mercancias.filter(m => m.descripcion),
-        contenedores: contenedores.filter(c => c.tipo),
-        bancoPdfId: bancoPdfId || null
-      };
+      const payload = buildPayload();
 
       if (isEditing) {
         await updatePresupuesto.mutateAsync(payload);
@@ -618,87 +649,167 @@ function PresupuestoForm() {
       {activeTab === 'datos' && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-6">
-            {/* Cliente/Solicitante */}
+            {/* Actores del Proceso */}
             <Card>
-              <CardHeader>
-                <CardTitle>Cliente / Solicitante</CardTitle>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0">
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="w-5 h-5" />
+                  Actores del Proceso
+                </CardTitle>
+                {!showActorPanel && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => { setShowActorPanel(true); setActorRol('cliente'); setActorSearch(''); }}
+                  >
+                    <Plus className="w-4 h-4 mr-1" />
+                    Agregar actor
+                  </Button>
+                )}
               </CardHeader>
-              <CardContent className="space-y-4">
-                {/* Buscador de cliente */}
-                <div className="relative">
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                    Vincular con cliente existente
-                  </label>
-                  {selectedCliente ? (
-                    <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border">
-                      <div>
-                        <p className="font-medium">{selectedCliente.razonSocial}</p>
-                        <p className="text-sm text-slate-500">{selectedCliente.numeroDocumento}</p>
+              <CardContent className="space-y-3">
+                {/* Lista de actores cargados */}
+                {[
+                  { rol: 'cliente', label: 'Cliente', actor: selectedCliente, colorBg: 'bg-blue-100', colorText: 'text-blue-700' },
+                  { rol: 'shipper', label: 'Shipper', actor: selectedShipper, colorBg: 'bg-emerald-100', colorText: 'text-emerald-700' },
+                  { rol: 'consignee', label: 'Consignee', actor: selectedConsignee, colorBg: 'bg-purple-100', colorText: 'text-purple-700' },
+                  { rol: 'proveedor', label: 'Proveedor', actor: selectedProveedor, colorBg: 'bg-orange-100', colorText: 'text-orange-700' },
+                ].filter(({ actor }) => actor).map(({ rol, label, actor, colorBg, colorText }) => (
+                  <div key={rol} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full whitespace-nowrap ${colorBg} ${colorText}`}>
+                        {label}
+                      </span>
+                      <div className="min-w-0">
+                        <p className="font-medium text-sm truncate">{actor.razonSocial}</p>
+                        <p className="text-xs text-slate-500 truncate">
+                          {actor.numeroDocumento || actor.tipoProveedor || actor.email || ''}
+                        </p>
                       </div>
-                      <Button variant="ghost" size="sm" onClick={() => setSelectedCliente(null)}>
-                        Cambiar
-                      </Button>
                     </div>
-                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => removeActor(rol)}
+                      className="p-1 text-slate-400 hover:text-red-500 transition-colors flex-shrink-0"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+
+                {!selectedCliente && !selectedShipper && !selectedConsignee && !selectedProveedor && !showActorPanel && (
+                  <p className="text-sm text-slate-400 text-center py-4">
+                    No hay actores vinculados. Hacé clic en "Agregar actor" para vincular participantes.
+                  </p>
+                )}
+
+                {/* Panel inline de agregar actor */}
+                {showActorPanel && (
+                  <div className="border border-primary-200 rounded-lg p-4 bg-primary-50/30 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-medium text-slate-700">Agregar actor</p>
+                      <button type="button" onClick={() => { setShowActorPanel(false); setActorSearch(''); }}>
+                        <X className="w-4 h-4 text-slate-400 hover:text-slate-600" />
+                      </button>
+                    </div>
+
+                    {/* Selector de rol */}
+                    <div className="grid grid-cols-4 gap-2">
+                      {[
+                        { id: 'cliente', label: 'Cliente' },
+                        { id: 'shipper', label: 'Shipper' },
+                        { id: 'consignee', label: 'Consignee' },
+                        { id: 'proveedor', label: 'Proveedor' },
+                      ].map(r => (
+                        <button
+                          key={r.id}
+                          type="button"
+                          onClick={() => { setActorRol(r.id); setActorSearch(''); }}
+                          className={cn(
+                            'py-1.5 px-2 rounded-lg text-xs font-medium border transition-colors',
+                            actorRol === r.id
+                              ? 'bg-primary-100 border-primary-300 text-primary-700'
+                              : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
+                          )}
+                        >
+                          {r.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Buscador */}
                     <div className="relative">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                       <input
                         type="text"
-                        placeholder="Buscar cliente..."
-                        value={clienteSearch}
-                        onChange={(e) => {
-                          setClienteSearch(e.target.value);
-                          setShowClienteDropdown(true);
-                        }}
-                        onFocus={() => setShowClienteDropdown(true)}
-                        className="w-full pl-10 pr-4 py-2 rounded-lg border border-slate-300 focus:border-primary-500"
+                        placeholder={`Buscar ${actorRol}...`}
+                        value={actorSearch}
+                        onChange={(e) => setActorSearch(e.target.value)}
+                        className="w-full pl-10 pr-4 py-2 rounded-lg border border-slate-300 focus:border-primary-500 text-sm"
+                        autoFocus
                       />
-                      {showClienteDropdown && clientes.length > 0 && (
-                        <div className="absolute top-full left-0 right-0 mt-1 bg-white rounded-lg shadow-lg border z-10 max-h-48 overflow-y-auto">
-                          {clientes.map(c => (
-                            <button
-                              key={c.id}
-                              type="button"
-                              onClick={() => selectCliente(c)}
-                              className="w-full px-4 py-2 text-left hover:bg-slate-50"
-                            >
-                              <p className="font-medium">{c.razonSocial}</p>
-                              <p className="text-sm text-slate-500">{c.email}</p>
-                            </button>
-                          ))}
-                        </div>
-                      )}
                     </div>
-                  )}
-                </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <Input
-                    label="Nombre del solicitante"
-                    value={formData.solicitanteNombre}
-                    onChange={(e) => handleChange('solicitanteNombre', e.target.value)}
-                    placeholder="Nombre completo"
-                  />
-                  <Input
-                    label="Empresa"
-                    value={formData.solicitanteEmpresa}
-                    onChange={(e) => handleChange('solicitanteEmpresa', e.target.value)}
-                    placeholder="Nombre de la empresa"
-                  />
-                  <Input
-                    label="Email"
-                    type="email"
-                    value={formData.solicitanteEmail}
-                    onChange={(e) => handleChange('solicitanteEmail', e.target.value)}
-                    placeholder="email@ejemplo.com"
-                  />
-                  <Input
-                    label="Teléfono"
-                    value={formData.solicitanteTelefono}
-                    onChange={(e) => handleChange('solicitanteTelefono', e.target.value)}
-                    placeholder="+54 11 1234-5678"
-                  />
-                </div>
+                    {/* Resultados */}
+                    {actorSearch.length >= 2 && actorResultados.length > 0 && (
+                      <div className="bg-white rounded-lg border max-h-48 overflow-y-auto">
+                        {actorResultados.map(e => (
+                          <button
+                            key={e.id}
+                            type="button"
+                            onClick={() => selectActor(e)}
+                            className="w-full px-4 py-2.5 text-left hover:bg-slate-50 border-b last:border-b-0"
+                          >
+                            <p className="font-medium text-sm">{e.razonSocial}</p>
+                            <p className="text-xs text-slate-500">
+                              {e.numeroDocumento || ''}{e.tipoProveedor ? ` · ${e.tipoProveedor}` : ''}{e.email ? ` · ${e.email}` : ''}
+                            </p>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {actorSearch.length >= 2 && actorResultados.length === 0 && (
+                      <p className="text-xs text-slate-400 text-center py-2">
+                        No se encontraron resultados
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* Datos del solicitante (colapsable) */}
+                <details className="mt-2">
+                  <summary className="text-sm font-medium text-slate-600 cursor-pointer hover:text-slate-800">
+                    Datos del solicitante
+                  </summary>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
+                    <Input
+                      label="Nombre"
+                      value={formData.solicitanteNombre}
+                      onChange={(e) => handleChange('solicitanteNombre', e.target.value)}
+                      placeholder="Nombre completo"
+                    />
+                    <Input
+                      label="Empresa"
+                      value={formData.solicitanteEmpresa}
+                      onChange={(e) => handleChange('solicitanteEmpresa', e.target.value)}
+                      placeholder="Nombre de la empresa"
+                    />
+                    <Input
+                      label="Email"
+                      type="email"
+                      value={formData.solicitanteEmail}
+                      onChange={(e) => handleChange('solicitanteEmail', e.target.value)}
+                      placeholder="email@ejemplo.com"
+                    />
+                    <Input
+                      label="Teléfono"
+                      value={formData.solicitanteTelefono}
+                      onChange={(e) => handleChange('solicitanteTelefono', e.target.value)}
+                      placeholder="+54 11 1234-5678"
+                    />
+                  </div>
+                </details>
               </CardContent>
             </Card>
 
