@@ -218,47 +218,110 @@ const crearPresupuesto = async (req, res) => {
         observaciones: data.observaciones,
         notasInternas: data.notasInternas,
         
-        items: data.items ? {
-          create: data.items.filter(i => i.concepto).map(i => ({
-            concepto: i.concepto,
-            descripcion: i.descripcion,
-            prepaidCollect: i.prepaidCollect || 'P',
-            divisa: i.divisa || 'USD',
-            montoVenta: parseFloat(i.montoVenta) || 0,
-            montoCosto: parseFloat(i.montoCosto) || 0,
-            base: i.base,
-            cantidad: parseFloat(i.cantidad) || 1,
-            totalVenta: (parseFloat(i.montoVenta) || 0) * (parseFloat(i.cantidad) || 1),
-            totalCosto: (parseFloat(i.montoCosto) || 0) * (parseFloat(i.cantidad) || 1)
-          }))
-        } : undefined
+        puertoTransbordo: data.puertoTransbordo || null,
+        fechaSalidaEstimada: data.fechaSalidaEstimada ? new Date(data.fechaSalidaEstimada) : null,
+        fechaLlegadaEstimada: data.fechaLlegadaEstimada ? new Date(data.fechaLlegadaEstimada) : null,
+        buque: data.buque || null,
+        viaje: data.viaje || null,
+        transportista: data.transportista || null,
+        booking: data.booking || null,
+        masterBL: data.masterBL || null,
+        houseBL: data.houseBL || null,
+        referenciaCliente: data.referenciaCliente || null,
+        depositoFiscal: data.depositoFiscal || null,
+        bancoPdfId: data.bancoPdfId || null
       },
       include: {
         cliente: true,
-        items: true
+        items: true,
+        mercancias: true,
+        contenedores: true
       }
     });
 
+    // Crear items
+    const itemsData = (data.items || []).filter(i => i.concepto);
+    if (itemsData.length > 0) {
+      await prisma.itemPresupuesto.createMany({
+        data: itemsData.map(i => ({
+          presupuestoId: presupuesto.id,
+          concepto: i.concepto,
+          descripcion: i.descripcion,
+          prepaidCollect: i.prepaidCollect || 'P',
+          divisa: i.divisa || 'USD',
+          montoVenta: parseFloat(i.montoVenta) || 0,
+          montoCosto: parseFloat(i.montoCosto) || 0,
+          base: i.base,
+          cantidad: parseFloat(i.cantidad) || 1,
+          totalVenta: (parseFloat(i.montoVenta) || 0) * (parseFloat(i.cantidad) || 1),
+          totalCosto: (parseFloat(i.montoCosto) || 0) * (parseFloat(i.cantidad) || 1)
+        }))
+      });
+    }
+
+    // Crear mercancías
+    const mercData = (data.mercancias || []).filter(m => m.descripcion);
+    if (mercData.length > 0) {
+      await prisma.mercanciaPresupuesto.createMany({
+        data: mercData.map(m => ({
+          presupuestoId: presupuesto.id,
+          descripcion: m.descripcion,
+          embalaje: m.embalaje || null,
+          marcas: m.marcas || null,
+          bultos: parseInt(m.bultos) || null,
+          largo: m.largo != null ? parseFloat(m.largo) || null : null,
+          ancho: m.ancho != null ? parseFloat(m.ancho) || null : null,
+          alto: m.alto != null ? parseFloat(m.alto) || null : null,
+          volumen: parseFloat(m.volumen) || null,
+          peso: parseFloat(m.peso) || null,
+          valorMercaderia: parseFloat(m.valorMercaderia) || null,
+          valorCIF: parseFloat(m.valorCIF) || null,
+          hsCode: m.hsCode || null
+        }))
+      });
+    }
+
+    // Crear contenedores
+    const contData = (data.contenedores || []).filter(c => c.tipo);
+    if (contData.length > 0) {
+      await prisma.contenedorPresupuesto.createMany({
+        data: contData.map(c => ({
+          presupuestoId: presupuesto.id,
+          tipo: c.tipo,
+          numero: c.numero || null,
+          cantidad: parseInt(c.cantidad) || 1,
+          precinto: c.precinto || null
+        }))
+      });
+    }
+
     // Calcular totales
-    const totalVenta = presupuesto.items.reduce((sum, i) => sum + i.totalVenta, 0);
-    const totalCosto = presupuesto.items.reduce((sum, i) => sum + i.totalCosto, 0);
+    const items = await prisma.itemPresupuesto.findMany({ where: { presupuestoId: presupuesto.id } });
+    const totalVenta = items.reduce((sum, i) => sum + i.totalVenta, 0);
+    const totalCosto = items.reduce((sum, i) => sum + i.totalCosto, 0);
     
-    await prisma.presupuesto.update({
+    const presupuestoFinal = await prisma.presupuesto.update({
       where: { id: presupuesto.id },
-      data: { totalVenta, totalCosto }
+      data: { totalVenta, totalCosto },
+      include: {
+        cliente: true,
+        items: { orderBy: { createdAt: 'asc' } },
+        mercancias: { orderBy: { createdAt: 'asc' } },
+        contenedores: { orderBy: { createdAt: 'asc' } }
+      }
     });
 
     res.status(201).json({
       success: true,
       message: 'Presupuesto creado exitosamente',
-      data: { presupuesto: { ...presupuesto, totalVenta, totalCosto } }
+      data: { presupuesto: presupuestoFinal }
     });
   } catch (error) {
     console.error('Error creando presupuesto:', error);
     res.status(500).json({
       success: false,
       message: 'Error al crear presupuesto',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      error: error.message
     });
   }
 };
