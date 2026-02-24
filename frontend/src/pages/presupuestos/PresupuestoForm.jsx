@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { 
   ArrowLeft, Save, Send, CheckCircle, XCircle, FolderOpen,
   Plus, Trash2, Search, MessageSquare, User, Building2, Clock, Loader2, FileDown,
-  Ship, Package, FileText, Users, X
+  Ship, Package, FileText, Users, X, Calculator
 } from 'lucide-react';
 import api from '../../api/axios';
 import Layout from '../../components/layout/Layout';
@@ -411,7 +411,10 @@ function PresupuestoForm() {
     setMercancias([...mercancias, { 
       descripcion: '', 
       embalaje: '',
-      bultos: null, 
+      bultos: null,
+      largo: null,
+      ancho: null,
+      alto: null,
       volumen: null, 
       peso: null,
       hsCode: '',
@@ -433,6 +436,19 @@ function PresupuestoForm() {
     }
   };
   
+  const calcularCBM = (index) => {
+    const merc = mercancias[index];
+    const largo = parseFloat(merc.largo) || 0;
+    const ancho = parseFloat(merc.ancho) || 0;
+    const alto = parseFloat(merc.alto) || 0;
+    const bultos = parseInt(merc.bultos) || 1;
+    if (!largo || !ancho || !alto) return;
+    const isAereo = formData.area === 'Aéreo';
+    const cbmUnitario = isAereo ? (largo * ancho * alto) / 6000 : largo * ancho * alto;
+    const cbmTotal = parseFloat((cbmUnitario * bultos).toFixed(4));
+    updateMercancia(index, 'volumen', cbmTotal);
+  };
+
   const removeMercancia = (index) => {
     setMercancias(mercancias.filter((_, i) => i !== index));
     if (isEditing) {
@@ -1249,62 +1265,121 @@ function PresupuestoForm() {
                           ) : (
                             <div className="space-y-2">
                               {mercContIndex.map((merc) => (
-                                <div key={merc.originalIndex} className="flex items-start gap-3 p-3 bg-slate-50 rounded-lg">
-                                  <div className="flex-1 grid grid-cols-1 md:grid-cols-6 gap-2">
-                                    <div className="md:col-span-2">
-                                      <input
-                                        type="text"
-                                        value={merc.descripcion || ''}
-                                        onChange={(e) => updateMercancia(merc.originalIndex, 'descripcion', e.target.value)}
-                                        placeholder="Descripción"
-                                        className="w-full px-2 py-1 text-sm rounded border border-slate-300"
-                                      />
+                                <div key={merc.originalIndex} className="p-3 bg-slate-50 rounded-lg">
+                                  <div className="flex items-start gap-3">
+                                    <div className="flex-1 grid grid-cols-1 md:grid-cols-6 gap-2">
+                                      <div className="md:col-span-2">
+                                        <input
+                                          type="text"
+                                          value={merc.descripcion || ''}
+                                          onChange={(e) => updateMercancia(merc.originalIndex, 'descripcion', e.target.value)}
+                                          placeholder="Descripción"
+                                          className="w-full px-2 py-1 text-sm rounded border border-slate-300"
+                                        />
+                                      </div>
+                                      <div>
+                                        <input
+                                          type="text"
+                                          value={merc.embalaje || ''}
+                                          onChange={(e) => updateMercancia(merc.originalIndex, 'embalaje', e.target.value)}
+                                          placeholder="Embalaje"
+                                          className="w-full px-2 py-1 text-sm rounded border border-slate-300"
+                                        />
+                                      </div>
+                                      <div>
+                                        <input
+                                          type="number"
+                                          value={merc.bultos || ''}
+                                          onChange={(e) => updateMercancia(merc.originalIndex, 'bultos', parseInt(e.target.value) || 0)}
+                                          placeholder="Bultos"
+                                          className="w-full px-2 py-1 text-sm rounded border border-slate-300"
+                                        />
+                                      </div>
+                                      <div>
+                                        <input
+                                          type="number"
+                                          step="0.01"
+                                          value={merc.peso || ''}
+                                          onChange={(e) => updateMercancia(merc.originalIndex, 'peso', parseFloat(e.target.value) || 0)}
+                                          placeholder="Peso (kg)"
+                                          className="w-full px-2 py-1 text-sm rounded border border-slate-300"
+                                        />
+                                      </div>
+                                      <div>
+                                        <input
+                                          type="text"
+                                          value={merc.hsCode || ''}
+                                          onChange={(e) => updateMercancia(merc.originalIndex, 'hsCode', e.target.value)}
+                                          placeholder="HS Code"
+                                          className="w-full px-2 py-1 text-sm rounded border border-slate-300"
+                                        />
+                                      </div>
                                     </div>
-                                    <div>
-                                      <input
-                                        type="text"
-                                        value={merc.embalaje || ''}
-                                        onChange={(e) => updateMercancia(merc.originalIndex, 'embalaje', e.target.value)}
-                                        placeholder="Embalaje"
-                                        className="w-full px-2 py-1 text-sm rounded border border-slate-300"
-                                      />
-                                    </div>
-                                    <div>
-                                      <input
-                                        type="number"
-                                        value={merc.bultos || ''}
-                                        onChange={(e) => updateMercancia(merc.originalIndex, 'bultos', parseInt(e.target.value) || 0)}
-                                        placeholder="Bultos"
-                                        className="w-full px-2 py-1 text-sm rounded border border-slate-300"
-                                      />
-                                    </div>
-                                    <div>
-                                      <input
-                                        type="number"
-                                        step="0.01"
-                                        value={merc.peso || ''}
-                                        onChange={(e) => updateMercancia(merc.originalIndex, 'peso', parseFloat(e.target.value) || 0)}
-                                        placeholder="Peso (kg)"
-                                        className="w-full px-2 py-1 text-sm rounded border border-slate-300"
-                                      />
-                                    </div>
-                                    <div>
-                                      <input
-                                        type="text"
-                                        value={merc.hsCode || ''}
-                                        onChange={(e) => updateMercancia(merc.originalIndex, 'hsCode', e.target.value)}
-                                        placeholder="HS Code"
-                                        className="w-full px-2 py-1 text-sm rounded border border-slate-300"
-                                      />
+                                    <button 
+                                      type="button"
+                                      onClick={() => removeMercancia(merc.originalIndex)}
+                                      className="p-1.5 text-red-500 hover:bg-red-50 rounded"
+                                    >
+                                      <Trash2 className="w-3 h-3" />
+                                    </button>
+                                  </div>
+                                  <div className="flex items-end gap-2 mt-2 pt-2 border-t border-slate-200">
+                                    <div className="flex-1 grid grid-cols-4 gap-2">
+                                      <div>
+                                        <label className="block text-xs text-slate-500 mb-1">Largo (cm)</label>
+                                        <input
+                                          type="number"
+                                          step="0.01"
+                                          value={merc.largo || ''}
+                                          onChange={(e) => updateMercancia(merc.originalIndex, 'largo', parseFloat(e.target.value) || 0)}
+                                          placeholder="0"
+                                          className="w-full px-2 py-1 text-sm rounded border border-slate-300"
+                                        />
+                                      </div>
+                                      <div>
+                                        <label className="block text-xs text-slate-500 mb-1">Ancho (cm)</label>
+                                        <input
+                                          type="number"
+                                          step="0.01"
+                                          value={merc.ancho || ''}
+                                          onChange={(e) => updateMercancia(merc.originalIndex, 'ancho', parseFloat(e.target.value) || 0)}
+                                          placeholder="0"
+                                          className="w-full px-2 py-1 text-sm rounded border border-slate-300"
+                                        />
+                                      </div>
+                                      <div>
+                                        <label className="block text-xs text-slate-500 mb-1">Alto (cm)</label>
+                                        <input
+                                          type="number"
+                                          step="0.01"
+                                          value={merc.alto || ''}
+                                          onChange={(e) => updateMercancia(merc.originalIndex, 'alto', parseFloat(e.target.value) || 0)}
+                                          placeholder="0"
+                                          className="w-full px-2 py-1 text-sm rounded border border-slate-300"
+                                        />
+                                      </div>
+                                      <div className="flex items-end gap-2">
+                                        <div className="flex-1">
+                                          <label className="block text-xs text-slate-500 mb-1">Vol. CBM</label>
+                                          <input
+                                            type="number"
+                                            step="0.0001"
+                                            value={merc.volumen || ''}
+                                            onChange={(e) => updateMercancia(merc.originalIndex, 'volumen', parseFloat(e.target.value) || 0)}
+                                            className="w-full px-2 py-1 text-sm rounded border border-slate-300 bg-blue-50"
+                                          />
+                                        </div>
+                                        <button
+                                          type="button"
+                                          onClick={() => calcularCBM(merc.originalIndex)}
+                                          className="p-1.5 text-blue-600 hover:bg-blue-100 rounded border border-blue-300 mb-0"
+                                          title={`Calcular CBM (${formData.area === 'Aéreo' ? 'L×A×H/6000×Bultos' : 'L×A×H×Bultos'})`}
+                                        >
+                                          <Calculator className="w-3.5 h-3.5" />
+                                        </button>
+                                      </div>
                                     </div>
                                   </div>
-                                  <button 
-                                    type="button"
-                                    onClick={() => removeMercancia(merc.originalIndex)}
-                                    className="p-1.5 text-red-500 hover:bg-red-50 rounded"
-                                  >
-                                    <Trash2 className="w-3 h-3" />
-                                  </button>
                                 </div>
                               ))}
                             </div>
@@ -1339,86 +1414,145 @@ function PresupuestoForm() {
               ) : (
                 <div className="space-y-2">
                   {mercanciasSinContenedor.map((merc) => (
-                    <div key={merc.originalIndex} className="flex items-start gap-3 p-3 bg-slate-50 rounded-lg">
-                      <div className="flex-1 grid grid-cols-1 md:grid-cols-7 gap-2">
-                        <div className="md:col-span-2">
-                          <label className="block text-xs text-slate-500 mb-1">Descripción</label>
-                          <input
-                            type="text"
-                            value={merc.descripcion || ''}
-                            onChange={(e) => updateMercancia(merc.originalIndex, 'descripcion', e.target.value)}
-                            placeholder="Descripción"
-                            className="w-full px-2 py-1.5 text-sm rounded border border-slate-300"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs text-slate-500 mb-1">Embalaje</label>
-                          <input
-                            type="text"
-                            value={merc.embalaje || ''}
-                            onChange={(e) => updateMercancia(merc.originalIndex, 'embalaje', e.target.value)}
-                            placeholder="Cajas"
-                            className="w-full px-2 py-1.5 text-sm rounded border border-slate-300"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs text-slate-500 mb-1">Bultos</label>
-                          <input
-                            type="number"
-                            value={merc.bultos || ''}
-                            onChange={(e) => updateMercancia(merc.originalIndex, 'bultos', parseInt(e.target.value) || 0)}
-                            className="w-full px-2 py-1.5 text-sm rounded border border-slate-300"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs text-slate-500 mb-1">Peso (kg)</label>
-                          <input
-                            type="number"
-                            step="0.01"
-                            value={merc.peso || ''}
-                            onChange={(e) => updateMercancia(merc.originalIndex, 'peso', parseFloat(e.target.value) || 0)}
-                            className="w-full px-2 py-1.5 text-sm rounded border border-slate-300"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs text-slate-500 mb-1">HS Code</label>
-                          <input
-                            type="text"
-                            value={merc.hsCode || ''}
-                            onChange={(e) => updateMercancia(merc.originalIndex, 'hsCode', e.target.value)}
-                            placeholder="8471.30"
-                            className="w-full px-2 py-1.5 text-sm rounded border border-slate-300"
-                          />
-                        </div>
-                        {contenedores.length > 0 && (
-                          <div>
-                            <label className="block text-xs text-slate-500 mb-1">Asignar a</label>
-                            <select
-                              value=""
-                              onChange={(e) => {
-                                if (e.target.value !== '') {
-                                  updateMercancia(merc.originalIndex, 'contenedorIndex', parseInt(e.target.value));
-                                }
-                              }}
-                              className="w-full px-2 py-1.5 text-sm rounded border border-slate-300 bg-white"
-                            >
-                              <option value="">Sin asignar</option>
-                              {contenedores.map((c, i) => (
-                                <option key={i} value={i}>
-                                  {c.tipo} {c.numero ? `- ${c.numero}` : `#${i + 1}`}
-                                </option>
-                              ))}
-                            </select>
+                    <div key={merc.originalIndex} className="p-3 bg-slate-50 rounded-lg">
+                      <div className="flex items-start gap-3">
+                        <div className="flex-1 grid grid-cols-1 md:grid-cols-7 gap-2">
+                          <div className="md:col-span-2">
+                            <label className="block text-xs text-slate-500 mb-1">Descripción</label>
+                            <input
+                              type="text"
+                              value={merc.descripcion || ''}
+                              onChange={(e) => updateMercancia(merc.originalIndex, 'descripcion', e.target.value)}
+                              placeholder="Descripción"
+                              className="w-full px-2 py-1.5 text-sm rounded border border-slate-300"
+                            />
                           </div>
-                        )}
+                          <div>
+                            <label className="block text-xs text-slate-500 mb-1">Embalaje</label>
+                            <input
+                              type="text"
+                              value={merc.embalaje || ''}
+                              onChange={(e) => updateMercancia(merc.originalIndex, 'embalaje', e.target.value)}
+                              placeholder="Cajas"
+                              className="w-full px-2 py-1.5 text-sm rounded border border-slate-300"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-slate-500 mb-1">Bultos</label>
+                            <input
+                              type="number"
+                              value={merc.bultos || ''}
+                              onChange={(e) => updateMercancia(merc.originalIndex, 'bultos', parseInt(e.target.value) || 0)}
+                              className="w-full px-2 py-1.5 text-sm rounded border border-slate-300"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-slate-500 mb-1">Peso (kg)</label>
+                            <input
+                              type="number"
+                              step="0.01"
+                              value={merc.peso || ''}
+                              onChange={(e) => updateMercancia(merc.originalIndex, 'peso', parseFloat(e.target.value) || 0)}
+                              className="w-full px-2 py-1.5 text-sm rounded border border-slate-300"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-slate-500 mb-1">HS Code</label>
+                            <input
+                              type="text"
+                              value={merc.hsCode || ''}
+                              onChange={(e) => updateMercancia(merc.originalIndex, 'hsCode', e.target.value)}
+                              placeholder="8471.30"
+                              className="w-full px-2 py-1.5 text-sm rounded border border-slate-300"
+                            />
+                          </div>
+                          {contenedores.length > 0 && (
+                            <div>
+                              <label className="block text-xs text-slate-500 mb-1">Asignar a</label>
+                              <select
+                                value=""
+                                onChange={(e) => {
+                                  if (e.target.value !== '') {
+                                    updateMercancia(merc.originalIndex, 'contenedorIndex', parseInt(e.target.value));
+                                  }
+                                }}
+                                className="w-full px-2 py-1.5 text-sm rounded border border-slate-300 bg-white"
+                              >
+                                <option value="">Sin asignar</option>
+                                {contenedores.map((c, i) => (
+                                  <option key={i} value={i}>
+                                    {c.tipo} {c.numero ? `- ${c.numero}` : `#${i + 1}`}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          )}
+                        </div>
+                        <button 
+                          type="button"
+                          onClick={() => removeMercancia(merc.originalIndex)}
+                          className="p-1.5 text-red-500 hover:bg-red-50 rounded mt-5"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
                       </div>
-                      <button 
-                        type="button"
-                        onClick={() => removeMercancia(merc.originalIndex)}
-                        className="p-1.5 text-red-500 hover:bg-red-50 rounded mt-5"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <div className="flex items-end gap-2 mt-2 pt-2 border-t border-slate-200">
+                        <div className="flex-1 grid grid-cols-4 gap-2">
+                          <div>
+                            <label className="block text-xs text-slate-500 mb-1">Largo (cm)</label>
+                            <input
+                              type="number"
+                              step="0.01"
+                              value={merc.largo || ''}
+                              onChange={(e) => updateMercancia(merc.originalIndex, 'largo', parseFloat(e.target.value) || 0)}
+                              placeholder="0"
+                              className="w-full px-2 py-1.5 text-sm rounded border border-slate-300"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-slate-500 mb-1">Ancho (cm)</label>
+                            <input
+                              type="number"
+                              step="0.01"
+                              value={merc.ancho || ''}
+                              onChange={(e) => updateMercancia(merc.originalIndex, 'ancho', parseFloat(e.target.value) || 0)}
+                              placeholder="0"
+                              className="w-full px-2 py-1.5 text-sm rounded border border-slate-300"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-slate-500 mb-1">Alto (cm)</label>
+                            <input
+                              type="number"
+                              step="0.01"
+                              value={merc.alto || ''}
+                              onChange={(e) => updateMercancia(merc.originalIndex, 'alto', parseFloat(e.target.value) || 0)}
+                              placeholder="0"
+                              className="w-full px-2 py-1.5 text-sm rounded border border-slate-300"
+                            />
+                          </div>
+                          <div className="flex items-end gap-2">
+                            <div className="flex-1">
+                              <label className="block text-xs text-slate-500 mb-1">Vol. CBM</label>
+                              <input
+                                type="number"
+                                step="0.0001"
+                                value={merc.volumen || ''}
+                                onChange={(e) => updateMercancia(merc.originalIndex, 'volumen', parseFloat(e.target.value) || 0)}
+                                className="w-full px-2 py-1.5 text-sm rounded border border-slate-300 bg-blue-50"
+                              />
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => calcularCBM(merc.originalIndex)}
+                              className="p-1.5 text-blue-600 hover:bg-blue-100 rounded border border-blue-300 mb-0"
+                              title={`Calcular CBM (${formData.area === 'Aéreo' ? 'L×A×H/6000×Bultos' : 'L×A×H×Bultos'})`}
+                            >
+                              <Calculator className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   ))}
                 </div>

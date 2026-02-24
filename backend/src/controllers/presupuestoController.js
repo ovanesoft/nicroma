@@ -464,6 +464,9 @@ const actualizarPresupuesto = async (req, res) => {
               embalaje: m.embalaje || null,
               marcas: m.marcas || null,
               bultos: parseInt(m.bultos) || null,
+              largo: m.largo != null ? parseFloat(m.largo) || null : null,
+              ancho: m.ancho != null ? parseFloat(m.ancho) || null : null,
+              alto: m.alto != null ? parseFloat(m.alto) || null : null,
               volumen: parseFloat(m.volumen) || null,
               peso: parseFloat(m.peso) || null,
               valorMercaderia: parseFloat(m.valorMercaderia) || null,
@@ -622,6 +625,8 @@ const convertirACarpeta = async (req, res) => {
       where: { id, tenantId },
       include: {
         items: true,
+        mercancias: true,
+        contenedores: true,
         cliente: true,
         shipper: true,
         consignee: true
@@ -715,6 +720,27 @@ const convertirACarpeta = async (req, res) => {
           gastos: true
         }
       });
+
+      // Copiar mercancías del presupuesto a la carpeta
+      if (presupuesto.mercancias && presupuesto.mercancias.length > 0) {
+        await tx.mercancia.createMany({
+          data: presupuesto.mercancias.map(m => ({
+            carpetaId: carpeta.id,
+            descripcion: m.descripcion,
+            embalaje: m.embalaje || null,
+            marcas: m.marcas || null,
+            bultos: m.bultos || null,
+            largo: m.largo || null,
+            ancho: m.ancho || null,
+            alto: m.alto || null,
+            volumen: m.volumen || null,
+            peso: m.peso || null,
+            valorMercaderia: m.valorMercaderia || null,
+            valorCIF: m.valorCIF || null,
+            hsCode: m.hsCode || null
+          }))
+        });
+      }
 
       // Actualizar presupuesto
       await tx.presupuesto.update({

@@ -202,6 +202,31 @@ function generarPresupuestoFormal(presupuesto, tenant, bancoSeleccionado = null)
       doc.font('Helvetica-Bold').text('Mercadería:', 50, y);
       doc.font('Helvetica').text(descripcionMercaderia, 110, y, { width: 435 });
     }
+
+    // Detalle individual de mercancías con dimensiones
+    const mercConDimensiones = presupuesto.mercancias?.filter(m => m.largo || m.ancho || m.alto) || [];
+    if (mercConDimensiones.length > 0) {
+      y += 20;
+      doc.font('Helvetica-Bold').fontSize(8).fillColor(primaryColor);
+      doc.text('DESCRIPCIÓN', 50, y);
+      doc.text('BULTOS', 200, y);
+      doc.text('L×A×H (cm)', 260, y);
+      doc.text('CBM', 370, y);
+      doc.text('PESO', 430, y);
+      y += 3;
+      doc.moveTo(50, y + 10).lineTo(515, y + 10).strokeColor('#cccccc').lineWidth(0.5).stroke();
+      y += 14;
+      doc.font('Helvetica').fontSize(8).fillColor(textColor);
+      mercConDimensiones.forEach(m => {
+        const dims = `${m.largo || 0} × ${m.ancho || 0} × ${m.alto || 0}`;
+        doc.text(m.descripcion || '-', 50, y, { width: 145 });
+        doc.text(`${m.bultos || 0}`, 200, y);
+        doc.text(dims, 260, y);
+        doc.text(m.volumen ? `${formatCurrency(m.volumen)}` : '-', 370, y);
+        doc.text(m.peso ? `${formatCurrency(m.peso)} kg` : '-', 430, y);
+        y += 14;
+      });
+    }
   }
 
   // ============ SECCIÓN ACTORES DEL PROCESO ============
