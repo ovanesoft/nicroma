@@ -8,6 +8,11 @@
 
 const { PrismaClient } = require('@prisma/client');
 const CryptoJS = require('crypto-js');
+
+// AFIP usa parámetros DH débiles que Node 18+ rechaza. Bajar SECLEVEL para permitir la conexión.
+const tls = require('tls');
+tls.DEFAULT_CIPHERS = 'DEFAULT:@SECLEVEL=0';
+
 const wsaa = require('./wsaa');
 const { service: wsfev1, TIPOS_COMPROBANTE, TIPOS_DOCUMENTO, ALICUOTAS_IVA } = require('./wsfev1');
 

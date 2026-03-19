@@ -6,14 +6,8 @@
  */
 
 const soap = require('soap');
-const https = require('https');
 const forge = require('node-forge');
 const CryptoJS = require('crypto-js');
-
-const afipHttpsAgent = new https.Agent({
-  ciphers: 'DEFAULT:@SECLEVEL=0',
-  secureOptions: require('constants').SSL_OP_LEGACY_SERVER_CONNECT,
-});
 
 // URLs de WSAA
 const WSAA_URLS = {
@@ -160,16 +154,9 @@ class WSAAService {
 
     // Llamar a WSAA
     try {
-      const client = await soap.createClientAsync(wsdlUrl, {
-        wsdl_options: { httpsAgent: afipHttpsAgent },
-      });
-      client.setSecurity(new soap.ClientSSLSecurity(null, null, null, {
-        httpsAgent: afipHttpsAgent,
-        strictSSL: false,
-      }));
-      
+      const client = await soap.createClientAsync(wsdlUrl);
       const result = await client.loginCmsAsync({ in0: cms });
-      
+
       if (!result || !result[0]) {
         throw new Error('Respuesta vacía de WSAA');
       }

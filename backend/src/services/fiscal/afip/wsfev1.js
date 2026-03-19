@@ -5,13 +5,7 @@
  */
 
 const soap = require('soap');
-const https = require('https');
 const wsaa = require('./wsaa');
-
-const afipHttpsAgent = new https.Agent({
-  ciphers: 'DEFAULT:@SECLEVEL=0',
-  secureOptions: require('constants').SSL_OP_LEGACY_SERVER_CONNECT,
-});
 
 // URLs de WSFE
 const WSFE_URLS = {
@@ -101,13 +95,7 @@ class WSFEv1Service {
     const wsdlUrl = environment === 'PRODUCTION' ? WSFE_URLS.PRODUCTION : WSFE_URLS.TESTING;
     
     if (!this.client || this.lastWsdlUrl !== wsdlUrl) {
-      this.client = await soap.createClientAsync(wsdlUrl, {
-        wsdl_options: { httpsAgent: afipHttpsAgent },
-      });
-      this.client.setSecurity(new soap.ClientSSLSecurity(null, null, null, {
-        httpsAgent: afipHttpsAgent,
-        strictSSL: false,
-      }));
+      this.client = await soap.createClientAsync(wsdlUrl);
       this.lastWsdlUrl = wsdlUrl;
     }
     
