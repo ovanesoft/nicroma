@@ -109,7 +109,7 @@ class AFIPService {
       { name: 'commonName', value: `nicroma-${cuit}` },
       { name: 'organizationName', value: razonSocial || 'NicRoma' },
       { name: 'countryName', value: 'AR' },
-      { shortName: 'serialNumber', value: `CUIT ${cuit}` },
+      { type: '2.5.4.5', value: `CUIT ${cuit}` },
     ]);
     csr.sign(keypair.privateKey, forge.md.sha256.create());
 
