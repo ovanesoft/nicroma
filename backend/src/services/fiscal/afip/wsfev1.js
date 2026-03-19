@@ -109,7 +109,7 @@ class WSFEv1Service {
     return {
       Token: token,
       Sign: sign,
-      Cuit: cuit.replace(/-/g, ''),
+      Cuit: parseInt(cuit.replace(/-/g, '')),
     };
   }
 
@@ -180,26 +180,28 @@ class WSFEv1Service {
       return d.toISOString().slice(0, 10).replace(/-/g, '');
     };
 
+    const round2 = (n) => Math.round((parseFloat(n) || 0) * 100) / 100;
+
     // Construir detalle del comprobante
     const detalle = {
-      Concepto: comprobante.concepto || 1, // 1=Productos, 2=Servicios, 3=Ambos
-      DocTipo: comprobante.tipoDocReceptor || 80, // 80=CUIT
-      DocNro: (comprobante.nroDocReceptor || '').replace(/-/g, ''),
+      Concepto: parseInt(comprobante.concepto) || 1,
+      DocTipo: parseInt(comprobante.tipoDocReceptor) || 80,
+      DocNro: parseInt((comprobante.nroDocReceptor || '').replace(/-/g, '')) || 0,
       CbteDesde: nroComprobante,
       CbteHasta: nroComprobante,
       CbteFch: formatFecha(comprobante.fecha || new Date()),
-      ImpTotal: comprobante.importeTotal,
-      ImpTotConc: comprobante.importeNoGravado || 0,
-      ImpNeto: comprobante.importeNeto,
-      ImpOpEx: comprobante.importeExento || 0,
-      ImpIVA: comprobante.importeIVA,
-      ImpTrib: comprobante.importeTributos || 0,
+      ImpTotal: round2(comprobante.importeTotal),
+      ImpTotConc: round2(comprobante.importeNoGravado),
+      ImpNeto: round2(comprobante.importeNeto),
+      ImpOpEx: round2(comprobante.importeExento),
+      ImpIVA: round2(comprobante.importeIVA),
+      ImpTrib: round2(comprobante.importeTributos),
       MonId: comprobante.moneda || 'PES',
-      MonCotiz: comprobante.cotizacion || 1,
+      MonCotiz: round2(comprobante.cotizacion) || 1,
     };
 
     // Agregar fechas de servicio si es necesario (concepto 2 o 3)
-    if (comprobante.concepto >= 2) {
+    if (parseInt(comprobante.concepto) >= 2) {
       detalle.FchServDesde = formatFecha(comprobante.fechaServicioDesde || comprobante.fecha);
       detalle.FchServHasta = formatFecha(comprobante.fechaServicioHasta || comprobante.fecha);
       detalle.FchVtoPago = formatFecha(comprobante.fechaVencimiento || comprobante.fecha);
@@ -209,9 +211,9 @@ class WSFEv1Service {
     if (comprobante.iva && comprobante.iva.length > 0) {
       detalle.Iva = {
         AlicIva: comprobante.iva.map(item => ({
-          Id: item.id, // ID de alícuota (5=21%, 4=10.5%, etc)
-          BaseImp: item.baseImponible,
-          Importe: item.importe,
+          Id: parseInt(item.id),
+          BaseImp: round2(item.baseImponible),
+          Importe: round2(item.importe),
         })),
       };
     }
@@ -220,11 +222,11 @@ class WSFEv1Service {
     if (comprobante.tributos && comprobante.tributos.length > 0) {
       detalle.Tributos = {
         Tributo: comprobante.tributos.map(t => ({
-          Id: t.id,
+          Id: parseInt(t.id),
           Desc: t.descripcion,
-          BaseImp: t.baseImponible,
-          Alic: t.alicuota,
-          Importe: t.importe,
+          BaseImp: round2(t.baseImponible),
+          Alic: round2(t.alicuota),
+          Importe: round2(t.importe),
         })),
       };
     }
@@ -247,14 +249,16 @@ class WSFEv1Service {
       FeCAEReq: {
         FeCabReq: {
           CantReg: 1,
-          PtoVta: comprobante.puntoVenta,
-          CbteTipo: comprobante.tipoComprobante,
+          PtoVta: parseInt(comprobante.puntoVenta),
+          CbteTipo: parseInt(comprobante.tipoComprobante),
         },
         FeDetReq: {
           FECAEDetRequest: detalle,
         },
       },
     };
+
+    console.log('[WSFEV1] FECAESolicitar params:', JSON.stringify(params.FeCAEReq, null, 2));
 
     const result = await client.FECAESolicitarAsync(params);
     const response = result[0]?.FECAESolicitarResult;
