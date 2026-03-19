@@ -11,7 +11,7 @@ import {
 import { 
   useFiscalConfig, useSaveFiscalConfig, useTestFiscalConnection,
   useValidateCertificate, useGenerateCSR, usePuntosVenta, useSyncPuntosVenta,
-  useFiscalServerStatus
+  useSavePuntoVenta, useFiscalServerStatus
 } from '../../hooks/useApi';
 import { cn, formatDate } from '../../lib/utils';
 import toast from 'react-hot-toast';
@@ -82,6 +82,7 @@ function FiscalConfigPage() {
   const validateCertMutation = useValidateCertificate();
   const generateCSRMutation = useGenerateCSR();
   const syncPVMutation = useSyncPuntosVenta();
+  const savePVMutation = useSavePuntoVenta();
   const [csrGenerated, setCsrGenerated] = useState(null);
 
   const [formData, setFormData] = useState({
@@ -537,8 +538,8 @@ function FiscalConfigPage() {
                 <div
                   key={pv.id}
                   className={cn(
-                    'p-4 rounded-lg border',
-                    pv.isActive ? 'bg-white border-slate-200' : 'bg-slate-50 border-slate-100'
+                    'p-4 rounded-lg border-2 transition-colors',
+                    pv.isDefault ? 'bg-blue-50 border-blue-400' : pv.isActive ? 'bg-white border-slate-200' : 'bg-slate-50 border-slate-100'
                   )}
                 >
                   <div className="flex items-center justify-between mb-2">
@@ -546,7 +547,7 @@ function FiscalConfigPage() {
                       {String(pv.numero).padStart(5, '0')}
                     </span>
                     {pv.isDefault && (
-                      <Badge variant="success">Por defecto</Badge>
+                      <Badge variant="success">Seleccionado</Badge>
                     )}
                   </div>
                   <p className="text-sm text-slate-600">{pv.nombre || `Punto de Venta ${pv.numero}`}</p>
@@ -559,6 +560,31 @@ function FiscalConfigPage() {
                     </span>
                     <span className="text-xs text-slate-500">{pv.tipoEmision}</span>
                   </div>
+                  {!pv.isDefault && pv.isActive && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="mt-3 w-full"
+                      disabled={savePVMutation.isPending}
+                      onClick={async () => {
+                        try {
+                          await savePVMutation.mutateAsync({
+                            numero: pv.numero,
+                            nombre: pv.nombre,
+                            tipoEmision: pv.tipoEmision,
+                            isActive: pv.isActive,
+                            isDefault: true,
+                          });
+                          toast.success(`Punto de venta ${String(pv.numero).padStart(5, '0')} seleccionado`);
+                        } catch (error) {
+                          toast.error('Error al seleccionar punto de venta');
+                        }
+                      }}
+                    >
+                      <CheckCircle className="w-3.5 h-3.5 mr-1.5" />
+                      Usar este punto de venta
+                    </Button>
+                  )}
                 </div>
               ))}
             </div>
