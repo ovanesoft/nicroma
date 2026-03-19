@@ -47,11 +47,12 @@ class WSAAService {
    */
   generateTRA(service) {
     const now = new Date();
-    const generationTime = new Date(now.getTime() - 10 * 60 * 1000); // 10 min antes
-    const expirationTime = new Date(now.getTime() + 10 * 60 * 1000); // 10 min después
+    const generationTime = new Date(now.getTime() - 10 * 60 * 1000);
+    const expirationTime = new Date(now.getTime() + 10 * 60 * 1000);
 
     const formatDate = (date) => {
-      return date.toISOString().replace(/\.\d{3}Z$/, '-03:00');
+      const arDate = new Date(date.getTime() - 3 * 60 * 60 * 1000);
+      return arDate.toISOString().replace(/\.\d{3}Z$/, '-03:00');
     };
 
     return `<?xml version="1.0" encoding="UTF-8"?>
