@@ -162,9 +162,11 @@ class WSAAService {
     try {
       const client = await soap.createClientAsync(wsdlUrl, {
         wsdl_options: { httpsAgent: afipHttpsAgent },
-        httpsAgent: afipHttpsAgent,
       });
-      client.setHttpsAgent(afipHttpsAgent);
+      client.setSecurity(new soap.ClientSSLSecurity(null, null, null, {
+        httpsAgent: afipHttpsAgent,
+        strictSSL: false,
+      }));
       
       const result = await client.loginCmsAsync({ in0: cms });
       

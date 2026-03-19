@@ -103,9 +103,11 @@ class WSFEv1Service {
     if (!this.client || this.lastWsdlUrl !== wsdlUrl) {
       this.client = await soap.createClientAsync(wsdlUrl, {
         wsdl_options: { httpsAgent: afipHttpsAgent },
-        httpsAgent: afipHttpsAgent,
       });
-      this.client.setHttpsAgent(afipHttpsAgent);
+      this.client.setSecurity(new soap.ClientSSLSecurity(null, null, null, {
+        httpsAgent: afipHttpsAgent,
+        strictSSL: false,
+      }));
       this.lastWsdlUrl = wsdlUrl;
     }
     
