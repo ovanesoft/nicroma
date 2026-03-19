@@ -21,6 +21,12 @@ router.post('/config',
   fiscalController.saveConfig
 );
 
+// Generar CSR para AFIP
+router.post('/generate-csr',
+  requireRole('admin', 'root'),
+  fiscalController.generateCSR
+);
+
 // Validar certificado digital
 router.post('/validate-certificate',
   requireRole('admin', 'root'),

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { 
   FileText, Upload, CheckCircle, XCircle, AlertCircle, 
-  RefreshCw, Building2, Key, Calendar, Server, Plus
+  RefreshCw, Building2, Key, Calendar, Server, Plus, Download, ShieldCheck
 } from 'lucide-react';
 import Layout from '../../components/layout/Layout';
 import { 
@@ -10,7 +10,7 @@ import {
 } from '../../components/ui';
 import { 
   useFiscalConfig, useSaveFiscalConfig, useTestFiscalConnection,
-  useValidateCertificate, usePuntosVenta, useSyncPuntosVenta,
+  useValidateCertificate, useGenerateCSR, usePuntosVenta, useSyncPuntosVenta,
   useFiscalServerStatus
 } from '../../hooks/useApi';
 import { cn, formatDate } from '../../lib/utils';
@@ -80,7 +80,9 @@ function FiscalConfigPage() {
   const saveMutation = useSaveFiscalConfig();
   const testMutation = useTestFiscalConnection();
   const validateCertMutation = useValidateCertificate();
+  const generateCSRMutation = useGenerateCSR();
   const syncPVMutation = useSyncPuntosVenta();
+  const [csrGenerated, setCsrGenerated] = useState(null);
 
   const [formData, setFormData] = useState({
     environment: 'TESTING',
@@ -333,26 +335,98 @@ function FiscalConfigPage() {
         {/* Certificados */}
         <Card>
           <CardHeader>
-            <CardTitle>Certificado Digital</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <ShieldCheck className="w-5 h-5" />
+              Certificado Digital
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm">
-              <p className="font-medium text-blue-800 mb-2">¿Cómo obtener el certificado?</p>
-              <ol className="list-decimal list-inside text-blue-700 space-y-1">
+            {/* Paso 1: Generar CSR */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <p className="font-medium text-blue-800 mb-2 flex items-center gap-2">
+                <span className="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-xs font-bold">1</span>
+                Generar solicitud de certificado (CSR)
+              </p>
+              <p className="text-sm text-blue-700 mb-3">
+                Se genera una clave privada (se guarda automáticamente en el sistema) y un archivo CSR para subir a AFIP.
+              </p>
+              <Button
+                size="sm"
+                onClick={async () => {
+                  if (!formData.cuit) {
+                    toast.error('Completá el CUIT en los datos fiscales primero');
+                    return;
+                  }
+                  try {
+                    const result = await generateCSRMutation.mutateAsync({
+                      cuit: formData.cuit,
+                      razonSocial: formData.razonSocial,
+                    });
+                    setCsrGenerated(result.data.csrPem);
+                    toast.success('CSR generado. Descargalo y subilo a AFIP.');
+                  } catch (error) {
+                    toast.error(error.response?.data?.error || 'Error al generar CSR');
+                  }
+                }}
+                disabled={generateCSRMutation.isPending || !formData.cuit}
+              >
+                {generateCSRMutation.isPending ? (
+                  <RefreshCw className="w-4 h-4 animate-spin mr-2" />
+                ) : (
+                  <Key className="w-4 h-4 mr-2" />
+                )}
+                Generar CSR
+              </Button>
+
+              {csrGenerated && (
+                <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+                  <p className="text-sm text-green-700 font-medium mb-2">CSR generado correctamente</p>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      const blob = new Blob([csrGenerated], { type: 'application/pkcs10' });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = `nicroma-${formData.cuit.replace(/-/g, '')}.csr`;
+                      a.click();
+                      URL.revokeObjectURL(url);
+                    }}
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    Descargar CSR
+                  </Button>
+                </div>
+              )}
+            </div>
+
+            {/* Paso 2: Subir a AFIP */}
+            <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
+              <p className="font-medium text-slate-700 mb-2 flex items-center gap-2">
+                <span className="w-6 h-6 bg-slate-500 text-white rounded-full flex items-center justify-center text-xs font-bold">2</span>
+                Subir CSR a AFIP
+              </p>
+              <ol className="list-decimal list-inside text-sm text-slate-600 space-y-1">
                 <li>Ingresá a AFIP con clave fiscal</li>
-                <li>Buscá "Administración de Certificados Digitales"</li>
-                <li>Generá un nuevo certificado para Web Services</li>
-                <li>Descargá el certificado (.crt) y la clave (.key)</li>
+                <li>Buscá <strong>"Administración de Certificados Digitales"</strong></li>
+                <li>Hacé clic en <strong>"Agregar alias"</strong></li>
+                <li>Subí el archivo <strong>.csr</strong> que descargaste</li>
+                <li>Descargá el certificado <strong>.crt</strong> que AFIP te devuelve</li>
               </ol>
             </div>
 
-            <div>
-              <Label>Certificado (.crt o .pem)</Label>
-              <div className="mt-1">
-                <label className="flex items-center justify-center gap-2 px-4 py-3 bg-slate-50 border-2 border-dashed border-slate-300 rounded-lg cursor-pointer hover:bg-slate-100 transition-colors">
+            {/* Paso 3: Subir certificado de AFIP */}
+            <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
+              <p className="font-medium text-slate-700 mb-2 flex items-center gap-2">
+                <span className="w-6 h-6 bg-slate-500 text-white rounded-full flex items-center justify-center text-xs font-bold">3</span>
+                Subir el certificado de AFIP
+              </p>
+              <div className="mt-2">
+                <label className="flex items-center justify-center gap-2 px-4 py-3 bg-white border-2 border-dashed border-slate-300 rounded-lg cursor-pointer hover:bg-slate-100 transition-colors">
                   <Upload className="w-5 h-5 text-slate-400" />
                   <span className="text-sm text-slate-600">
-                    {certificate ? 'Certificado cargado ✓' : 'Seleccionar certificado'}
+                    {certificate ? 'Certificado cargado ✓' : 'Seleccionar certificado (.crt)'}
                   </span>
                   <input
                     type="file"
@@ -373,35 +447,32 @@ function FiscalConfigPage() {
                   </p>
                 </div>
               )}
+              <p className="text-xs text-slate-500 mt-2">
+                La clave privada ya fue guardada en el paso 1. Solo necesitás subir el certificado.
+              </p>
             </div>
 
-            <div>
-              <Label>Clave Privada (.key)</Label>
-              <div className="mt-1">
-                <label className="flex items-center justify-center gap-2 px-4 py-3 bg-slate-50 border-2 border-dashed border-slate-300 rounded-lg cursor-pointer hover:bg-slate-100 transition-colors">
-                  <Upload className="w-5 h-5 text-slate-400" />
-                  <span className="text-sm text-slate-600">
-                    {privateKey ? 'Clave cargada ✓' : 'Seleccionar clave privada'}
-                  </span>
-                  <input
-                    type="file"
-                    accept=".key,.pem"
-                    className="hidden"
-                    onChange={(e) => e.target.files[0] && handleFileUpload(e.target.files[0], 'privateKey')}
+            {/* Upload manual de clave privada (por si la tienen de otro lado) */}
+            {!config?.hasPrivateKey && !csrGenerated && (
+              <div className="border-t pt-4">
+                <p className="text-xs text-slate-500 mb-2">¿Ya tenés un certificado y clave privada propios?</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <label className="flex items-center justify-center gap-2 px-3 py-2 bg-slate-50 border border-dashed border-slate-300 rounded-lg cursor-pointer hover:bg-slate-100 text-sm">
+                    <Upload className="w-4 h-4 text-slate-400" />
+                    <span className="text-slate-600">{privateKey ? 'Clave ✓' : 'Clave .key'}</span>
+                    <input type="file" accept=".key,.pem" className="hidden"
+                      onChange={(e) => e.target.files[0] && handleFileUpload(e.target.files[0], 'privateKey')}
+                    />
+                  </label>
+                  <Input
+                    type="password"
+                    value={certPassword}
+                    onChange={(e) => setCertPassword(e.target.value)}
+                    placeholder="Contraseña (si tiene)"
                   />
-                </label>
+                </div>
               </div>
-            </div>
-
-            <div>
-              <Label>Contraseña del certificado (si tiene)</Label>
-              <Input
-                type="password"
-                value={certPassword}
-                onChange={(e) => setCertPassword(e.target.value)}
-                placeholder="Dejar vacío si no tiene"
-              />
-            </div>
+            )}
 
             {config?.lastError && (
               <div className="p-3 bg-red-50 border border-red-200 rounded-lg">

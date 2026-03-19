@@ -103,6 +103,39 @@ exports.saveConfig = async (req, res) => {
 };
 
 /**
+ * POST /api/fiscal/generate-csr
+ * Genera clave privada + CSR para subir a AFIP
+ */
+exports.generateCSR = async (req, res) => {
+  try {
+    const { cuit, razonSocial } = req.body;
+
+    if (!cuit) {
+      return res.status(400).json({ success: false, error: 'CUIT es requerido' });
+    }
+
+    const cuitClean = cuit.replace(/-/g, '');
+    if (!/^\d{11}$/.test(cuitClean)) {
+      return res.status(400).json({ success: false, error: 'CUIT inválido' });
+    }
+
+    const result = await afipService.generateCSR(req.user.tenant_id, {
+      cuit: cuitClean,
+      razonSocial,
+    });
+
+    res.json({
+      success: true,
+      message: 'CSR generado. La clave privada fue guardada automáticamente.',
+      data: { csrPem: result.csrPem },
+    });
+  } catch (error) {
+    console.error('Error generating CSR:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+/**
  * POST /api/fiscal/validate-certificate
  * Valida un certificado digital
  */

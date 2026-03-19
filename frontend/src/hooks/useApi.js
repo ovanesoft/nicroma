@@ -559,6 +559,19 @@ export function useTestFiscalConnection() {
   });
 }
 
+export function useGenerateCSR() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (data) => {
+      const response = await api.post('/fiscal/generate-csr', data);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['fiscalConfig'] });
+    }
+  });
+}
+
 export function useValidateCertificate() {
   return useMutation({
     mutationFn: async (certificate) => {

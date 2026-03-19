@@ -96,6 +96,32 @@ class AFIPService {
   }
 
   /**
+   * Genera clave privada RSA + CSR (PKCS#10) para el tenant
+   */
+  async generateCSR(tenantId, { cuit, razonSocial }) {
+    const forge = require('node-forge');
+
+    const keypair = forge.pki.rsa.generateKeyPair({ bits: 2048 });
+
+    const csr = forge.pki.createCertificationRequest();
+    csr.publicKey = keypair.publicKey;
+    csr.setSubject([
+      { name: 'commonName', value: `nicroma-${cuit}` },
+      { name: 'organizationName', value: razonSocial || 'NicRoma' },
+      { name: 'countryName', value: 'AR' },
+      { shortName: 'serialNumber', value: `CUIT ${cuit}` },
+    ]);
+    csr.sign(keypair.privateKey, forge.md.sha256.create());
+
+    const csrPem = forge.pki.certificationRequestToPem(csr);
+    const privateKeyPem = forge.pki.privateKeyToPem(keypair.privateKey);
+
+    await this.saveConfig(tenantId, { privateKey: privateKeyPem });
+
+    return { csrPem, privateKeyPem };
+  }
+
+  /**
    * Valida el certificado digital
    */
   validateCertificate(certPem) {

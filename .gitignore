@@ -64,6 +64,12 @@ Thumbs.db
 *.pem
 *.p12
 
+# Certificados AFIP
+certs/
+*.csr
+*.crt
+*.key
+
 # Bitácora (información sensible)
 bitacora.md
 
