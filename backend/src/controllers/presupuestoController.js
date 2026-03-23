@@ -1,6 +1,28 @@
 const prisma = require('../services/prisma');
 const { generarPresupuestoFormal } = require('../services/pdf/presupuestoFormal');
 
+// Helper: buscar cliente de portal por userId o email (y auto-vincular si se encuentra por email)
+const findClientePortal = async (userId, userEmail, tenantId) => {
+  const clientes = await prisma.cliente.findMany({
+    where: {
+      tenantId,
+      OR: [
+        { userId },
+        ...(userEmail ? [{ email: userEmail }] : [])
+      ]
+    },
+    select: { id: true, userId: true }
+  });
+  if (!clientes.length) return null;
+  // Vincular automáticamente si se encontró por email sin userId
+  for (const c of clientes) {
+    if (!c.userId) {
+      await prisma.cliente.update({ where: { id: c.id }, data: { userId } }).catch(() => {});
+    }
+  }
+  return clientes[0];
+};
+
 // Generar número de presupuesto
 const generarNumeroPresupuesto = async (tenantId) => {
   const year = new Date().getFullYear();
@@ -909,17 +931,12 @@ const obtenerMensajes = async (req, res) => {
 const listarPresupuestosCliente = async (req, res) => {
   try {
     const userId = req.user.id;
-    
-    // Buscar cliente vinculado
-    const cliente = await prisma.cliente.findFirst({
-      where: { userId }
-    });
+    const tenantId = req.user.tenant_id;
+
+    const cliente = await findClientePortal(userId, req.user.email, tenantId);
 
     if (!cliente) {
-      return res.json({
-        success: true,
-        data: { presupuestos: [] }
-      });
+      return res.json({ success: true, data: { presupuestos: [] } });
     }
 
     const presupuestos = await prisma.presupuesto.findMany({
@@ -927,24 +944,15 @@ const listarPresupuestosCliente = async (req, res) => {
       orderBy: { fechaSolicitud: 'desc' },
       include: {
         _count: {
-          select: {
-            items: true,
-            mensajes: true
-          }
+          select: { items: true, mensajes: true }
         }
       }
     });
 
-    res.json({
-      success: true,
-      data: { presupuestos }
-    });
+    res.json({ success: true, data: { presupuestos } });
   } catch (error) {
     console.error('Error listando presupuestos cliente:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error al listar presupuestos'
-    });
+    res.status(500).json({ success: false, message: 'Error al listar presupuestos' });
   }
 };
 
@@ -966,9 +974,7 @@ const obtenerNotificaciones = async (req, res) => {
 
     if (userRole === 'client') {
       // Para clientes del portal
-      const cliente = await prisma.cliente.findFirst({
-        where: { userId }
-      });
+      const cliente = await findClientePortal(userId, req.user.email, tenantId);
 
       if (cliente) {
         // Presupuestos enviados por el tenant para que el cliente revise (no vistos aún)
@@ -1128,9 +1134,7 @@ const marcarPresupuestoVisto = async (req, res) => {
 
     if (userRole === 'client') {
       // Para clientes: verificar que el presupuesto le pertenece
-      const cliente = await prisma.cliente.findFirst({
-        where: { userId }
-      });
+      const cliente = await findClientePortal(userId, req.user.email, tenantId);
 
       if (!cliente) {
         return res.status(404).json({
