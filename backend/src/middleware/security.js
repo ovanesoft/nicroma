@@ -98,7 +98,14 @@ const SKIP_FIELDS = [
   // Colores (tienen #)
   'color', 'primaryColor', 'portalPrimaryColor', 'backgroundColor',
   // Datos fiscales/certificados
-  'qrData', 'rawData', 'afipResponse'
+  'qrData', 'rawData', 'afipResponse',
+  // Textos libres de presupuestos, carpetas, facturas
+  'nombre', 'descripcion', 'detalle', 'titulo', 'concepto', 'notas', 'nota',
+  'referencia', 'referenciaCliente', 'razonSocial', 'nombreFantasia',
+  'direccion', 'domicilio', 'puertoOrigen', 'puertoDestino', 'puertoTransbordo',
+  'buque', 'viaje', 'booking', 'masterBL', 'houseBL', 'depositoFiscal',
+  'mercanciaDescripcion', 'itemConcepto', 'observacion', 'condicionPago',
+  'nombreContacto', 'cargoContacto', 'emailContacto'
 ];
 
 // Sanitización de inputs (prevención XSS)
@@ -184,10 +191,18 @@ const attackDetection = (req, res, next) => {
   const checkObject = (obj, skipKeys = []) => {
     if (!obj) return false;
     for (const key in obj) {
-      // Saltar campos sensibles que pueden tener caracteres especiales
       if (skipKeys.includes(key)) continue;
-      if (checkValue(key) || checkValue(obj[key])) return true;
-      if (typeof obj[key] === 'object' && checkObject(obj[key], skipKeys)) return true;
+      if (checkValue(key)) return true;
+      const val = obj[key];
+      if (typeof val === 'string') {
+        if (checkValue(val)) return true;
+      } else if (Array.isArray(val)) {
+        for (const item of val) {
+          if (typeof item === 'object' && checkObject(item, skipKeys)) return true;
+        }
+      } else if (typeof val === 'object') {
+        if (checkObject(val, skipKeys)) return true;
+      }
     }
     return false;
   };
