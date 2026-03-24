@@ -601,14 +601,14 @@ function PresupuestoForm() {
     { id: 'datos', label: 'Datos', icon: Building2 },
     { id: 'embarque', label: 'Embarque', icon: Ship },
     { id: 'mercancias', label: 'Mercancías', icon: Package },
-    { id: 'items', label: 'Cotización', icon: Plus },
+    { id: 'items', label: 'Tarifa / Gastos', icon: Plus },
     ...(isEditing ? [{ id: 'chat', label: 'Conversación', icon: MessageSquare, badge: mensajes.length }] : [])
   ];
 
   return (
     <Layout 
       title={isEditing ? `Presupuesto ${presupuesto?.numero || ''}` : 'Nuevo Presupuesto'}
-      subtitle={isEditing ? 'Editar presupuesto' : 'Crear nueva cotización'}
+      subtitle={isEditing ? 'Editar presupuesto' : 'Nuevo presupuesto'}
     >
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
@@ -1589,11 +1589,11 @@ function PresupuestoForm() {
         </div>
       )}
 
-      {/* Tab: Items/Cotización */}
+      {/* Tab: Tarifa / Gastos */}
       {activeTab === 'items' && (
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>Items de la Cotización</CardTitle>
+            <CardTitle>Tarifa / Gastos</CardTitle>
             <Button type="button" size="sm" onClick={addItem}>
               <Plus className="w-4 h-4" />
               Agregar Item
@@ -1603,7 +1603,7 @@ function PresupuestoForm() {
             {items.length === 0 ? (
               <div className="text-center py-12">
                 <Plus className="w-12 h-12 mx-auto text-slate-300 mb-4" />
-                <p className="text-slate-500 mb-4">No hay items en la cotización</p>
+                <p className="text-slate-500 mb-4">No hay gastos cargados</p>
                 <Button onClick={addItem}>Agregar primer item</Button>
               </div>
             ) : (
