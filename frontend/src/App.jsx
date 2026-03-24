@@ -115,8 +115,25 @@ const SettingsRouter = () => {
 };
 
 // Protected Route - requires authentication
+const ROUTE_MODULE_MAP = {
+  '/presupuestos': 'presupuestos',
+  '/predespachos': 'predespachos',
+  '/carpetas': 'carpetas',
+  '/clientes': 'clientes',
+  '/proveedores': 'proveedores',
+  '/prefacturas': 'prefacturas',
+  '/facturas': 'facturas',
+  '/fiscal': 'fiscal',
+  '/integraciones': 'integraciones',
+  '/tracking': 'integraciones',
+  '/schedules': 'integraciones',
+  '/estadisticas': 'estadisticas',
+  '/messages': 'mensajes',
+};
+
 const ProtectedRoute = ({ children, allowedRoles = null }) => {
   const { isAuthenticated, loading, user } = useAuth();
+  const pathname = window.location.pathname;
 
   if (loading) {
     return <LoadingScreen />;
@@ -129,6 +146,16 @@ const ProtectedRoute = ({ children, allowedRoles = null }) => {
   // Check role if specified
   if (allowedRoles && !allowedRoles.includes(user?.role)) {
     return <Navigate to="/dashboard" replace />;
+  }
+
+  // Check module permissions (admin/root have full access = modules is null)
+  if (user?.modules !== null && user?.modules !== undefined) {
+    const matchedModule = Object.entries(ROUTE_MODULE_MAP).find(([route]) => 
+      pathname.startsWith(route)
+    );
+    if (matchedModule && !user.modules.includes(matchedModule[1])) {
+      return <Navigate to="/dashboard" replace />;
+    }
   }
 
   return children;

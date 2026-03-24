@@ -25,8 +25,25 @@ import {
   FileCheck
 } from 'lucide-react';
 
+// Mapeo de rutas a módulos para filtrar permisos
+const ROUTE_MODULE_MAP = {
+  '/presupuestos': 'presupuestos',
+  '/predespachos': 'predespachos',
+  '/carpetas': 'carpetas',
+  '/clientes': 'clientes',
+  '/proveedores': 'proveedores',
+  '/prefacturas': 'prefacturas',
+  '/facturas': 'facturas',
+  '/fiscal/config': 'fiscal',
+  '/integraciones': 'integraciones',
+  '/tracking': 'integraciones',
+  '/schedules': 'integraciones',
+  '/estadisticas': 'estadisticas',
+  '/messages': 'mensajes',
+};
+
 // Navegación según rol
-export const getNavigation = (role) => {
+export const getNavigation = (role, modules = null) => {
   const common = [
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard }
   ];
@@ -163,7 +180,31 @@ export const getNavigation = (role) => {
     client: clientNav
   };
 
-  return navByRole[role] || userNav;
+  const nav = navByRole[role] || userNav;
+
+  // Admin y root tienen acceso total (modules = null)
+  if (modules === null || role === 'admin' || role === 'root' || role === 'client') {
+    return nav;
+  }
+
+  // Filtrar navegación según módulos permitidos
+  const filterNav = (items) => {
+    return items.map(item => {
+      if (item.children) {
+        const filteredChildren = item.children.filter(child => {
+          const mod = ROUTE_MODULE_MAP[child.href];
+          return !mod || modules.includes(mod);
+        });
+        if (filteredChildren.length === 0) return null;
+        return { ...item, children: filteredChildren };
+      }
+      const mod = ROUTE_MODULE_MAP[item.href];
+      if (mod && !modules.includes(mod)) return null;
+      return item;
+    }).filter(Boolean);
+  };
+
+  return filterNav(nav);
 };
 
 // Estados de carpetas

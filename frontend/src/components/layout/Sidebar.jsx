@@ -20,7 +20,7 @@ function Sidebar() {
   const hoverTimeoutRef = useRef(null);
   const buttonRefs = useRef({});
   
-  const navigation = getNavigation(user?.role);
+  const navigation = getNavigation(user?.role, user?.modules);
   const notificaciones = notificacionesData?.data?.notificaciones || {};
   
   // Mapear notificaciones a rutas

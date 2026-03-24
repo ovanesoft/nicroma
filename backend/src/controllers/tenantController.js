@@ -588,7 +588,7 @@ const listTenantUsers = async (req, res) => {
 
     const result = await query(
       `SELECT id, email, first_name, last_name, role, is_active,
-              auth_provider, last_login, created_at
+              auth_provider, last_login, created_at, permissions
        FROM users
        WHERE tenant_id = $1
          AND role != 'client'

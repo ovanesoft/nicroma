@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Plus, Search, MoreVertical, UserPlus, Edit, UserX, UserCheck, Shield, Trash2 } from 'lucide-react';
+import { Plus, Search, MoreVertical, UserPlus, Edit, UserX, UserCheck, Shield, Trash2, Lock, CheckSquare, Square } from 'lucide-react';
 import Layout from '../../components/layout/Layout';
 import { 
   Card, CardContent, Badge, Button, Input,
@@ -20,15 +20,33 @@ const userSchema = z.object({
   password: z.string().min(8, 'Mínimo 8 caracteres'),
   firstName: z.string().min(2, 'Mínimo 2 caracteres'),
   lastName: z.string().min(2, 'Mínimo 2 caracteres'),
-  role: z.enum(['manager', 'user'])
+  role: z.enum(['admin', 'manager', 'user'])
 });
+
+const ALL_MODULES = [
+  { id: 'presupuestos', label: 'Presupuestos' },
+  { id: 'predespachos', label: 'Predespacho' },
+  { id: 'carpetas', label: 'Carpetas' },
+  { id: 'clientes', label: 'Clientes' },
+  { id: 'proveedores', label: 'Proveedores' },
+  { id: 'prefacturas', label: 'Prefacturas' },
+  { id: 'facturas', label: 'Facturas' },
+  { id: 'fiscal', label: 'AFIP (Electrónica)' },
+  { id: 'integraciones', label: 'Integraciones / Tracking' },
+  { id: 'estadisticas', label: 'Estadísticas' },
+  { id: 'mensajes', label: 'Mensajes' },
+];
 
 function OrgUsersPage() {
   const { user: currentUser } = useAuth();
   const [search, setSearch] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
+  const [permissionsModalOpen, setPermissionsModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
+  const [permUser, setPermUser] = useState(null);
+  const [permModules, setPermModules] = useState([]);
+  const [savingPerms, setSavingPerms] = useState(false);
   const [openMenuId, setOpenMenuId] = useState(null);
   
   const { data, isLoading, refetch } = useTenantUsers(currentUser?.tenantId);
@@ -103,6 +121,36 @@ function OrgUsersPage() {
       toast.error('Error al cambiar rol del usuario');
     } finally {
       setActionLoading(null);
+    }
+  };
+
+  const handleOpenPermissions = (user) => {
+    setOpenMenuId(null);
+    setPermUser(user);
+    const currentPerms = user.permissions || ALL_MODULES.map(m => m.id);
+    setPermModules(currentPerms);
+    setPermissionsModalOpen(true);
+  };
+
+  const toggleModule = (moduleId) => {
+    setPermModules(prev => 
+      prev.includes(moduleId) 
+        ? prev.filter(m => m !== moduleId) 
+        : [...prev, moduleId]
+    );
+  };
+
+  const handleSavePermissions = async () => {
+    setSavingPerms(true);
+    try {
+      await api.put(`/users/${permUser.id}`, { permissions: permModules });
+      toast.success('Permisos actualizados');
+      setPermissionsModalOpen(false);
+      refetch();
+    } catch (error) {
+      toast.error('Error al guardar permisos');
+    } finally {
+      setSavingPerms(false);
     }
   };
 
@@ -284,7 +332,29 @@ function OrgUsersPage() {
                                 Editar usuario
                               </button>
                               
+                              {/* Permisos de módulos (solo para no-admin) */}
+                              {user.role !== 'admin' && (
+                                <button
+                                  onClick={() => handleOpenPermissions(user)}
+                                  className="w-full px-4 py-2 text-left text-sm flex items-center gap-2 hover:bg-[var(--color-background)] transition-colors"
+                                  style={{ color: 'var(--color-text)' }}
+                                >
+                                  <Lock className="w-4 h-4" />
+                                  Permisos de módulos
+                                </button>
+                              )}
+                              
                               {/* Cambiar rol */}
+                              {user.role !== 'admin' && (
+                                <button
+                                  onClick={() => handleChangeRole(user, 'admin')}
+                                  className="w-full px-4 py-2 text-left text-sm flex items-center gap-2 hover:bg-[var(--color-background)] transition-colors"
+                                  style={{ color: '#d97706' }}
+                                >
+                                  <Shield className="w-4 h-4" />
+                                  Hacer Administrador
+                                </button>
+                              )}
                               {user.role !== 'manager' && (
                                 <button
                                   onClick={() => handleChangeRole(user, 'manager')}
@@ -295,7 +365,7 @@ function OrgUsersPage() {
                                   Hacer Manager
                                 </button>
                               )}
-                              {user.role !== 'user' && (
+                              {user.role !== 'user' && user.role !== 'admin' && (
                                 <button
                                   onClick={() => handleChangeRole(user, 'user')}
                                   className="w-full px-4 py-2 text-left text-sm flex items-center gap-2 hover:bg-[var(--color-background)] transition-colors"
@@ -405,6 +475,9 @@ function OrgUsersPage() {
               >
                 <option value="user">Usuario</option>
                 <option value="manager">Manager</option>
+                {currentUser?.role === 'admin' && (
+                  <option value="admin">Administrador</option>
+                )}
               </select>
             </div>
           </ModalContent>
@@ -421,6 +494,92 @@ function OrgUsersPage() {
             </Button>
           </ModalFooter>
         </form>
+      </Modal>
+
+      {/* Permissions Modal */}
+      <Modal open={permissionsModalOpen} onClose={() => setPermissionsModalOpen(false)}>
+        <ModalHeader onClose={() => setPermissionsModalOpen(false)}>
+          <ModalTitle>Permisos de Módulos</ModalTitle>
+        </ModalHeader>
+        <ModalContent>
+          {permUser && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 p-3 rounded-lg" style={{ backgroundColor: 'var(--color-background)' }}>
+                <div 
+                  className="w-10 h-10 rounded-lg flex items-center justify-center text-white font-semibold"
+                  style={{ backgroundColor: 'var(--color-primary)' }}
+                >
+                  {getInitials(permUser.first_name, permUser.last_name)}
+                </div>
+                <div>
+                  <p className="font-medium" style={{ color: 'var(--color-text)' }}>
+                    {permUser.first_name} {permUser.last_name}
+                  </p>
+                  <p className="text-xs" style={{ color: 'var(--color-textSecondary)' }}>
+                    {permUser.email} · {getRoleLabel(permUser.role)}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium" style={{ color: 'var(--color-text)' }}>
+                  Módulos habilitados
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPermModules(ALL_MODULES.map(m => m.id))}
+                    className="text-xs px-2 py-1 rounded border hover:bg-green-50 transition-colors"
+                    style={{ borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
+                  >
+                    Seleccionar todo
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPermModules([])}
+                    className="text-xs px-2 py-1 rounded border hover:bg-red-50 transition-colors"
+                    style={{ borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
+                  >
+                    Deseleccionar todo
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                {ALL_MODULES.map(mod => {
+                  const checked = permModules.includes(mod.id);
+                  return (
+                    <button
+                      key={mod.id}
+                      type="button"
+                      onClick={() => toggleModule(mod.id)}
+                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-[var(--color-background)] transition-colors text-left"
+                    >
+                      {checked ? (
+                        <CheckSquare className="w-5 h-5 text-green-500 flex-shrink-0" />
+                      ) : (
+                        <Square className="w-5 h-5 flex-shrink-0" style={{ color: 'var(--color-border)' }} />
+                      )}
+                      <span className="text-sm" style={{ color: 'var(--color-text)' }}>{mod.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <p className="text-xs" style={{ color: 'var(--color-textSecondary)' }}>
+                Los administradores tienen acceso a todos los módulos automáticamente.
+              </p>
+            </div>
+          )}
+        </ModalContent>
+        <ModalFooter>
+          <Button variant="secondary" onClick={() => setPermissionsModalOpen(false)}>
+            Cancelar
+          </Button>
+          <Button onClick={handleSavePermissions} loading={savingPerms}>
+            Guardar Permisos
+          </Button>
+        </ModalFooter>
       </Modal>
 
       {/* Edit Modal */}
@@ -449,7 +608,7 @@ function EditUserModal({ open, onClose, user, onSuccess }) {
     firstName: z.string().min(2, 'Mínimo 2 caracteres'),
     lastName: z.string().min(2, 'Mínimo 2 caracteres'),
     phone: z.string().optional(),
-    role: z.enum(['manager', 'user'])
+    role: z.enum(['admin', 'manager', 'user'])
   });
 
   const { 
@@ -553,6 +712,7 @@ function EditUserModal({ open, onClose, user, onSuccess }) {
             >
               <option value="user">Usuario</option>
               <option value="manager">Manager</option>
+              <option value="admin">Administrador</option>
             </select>
           </div>
         </ModalContent>

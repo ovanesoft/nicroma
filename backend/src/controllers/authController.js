@@ -804,7 +804,7 @@ const getCurrentUser = async (req, res) => {
     const result = await query(
       `SELECT u.id, u.email, u.first_name, u.last_name, u.phone, u.avatar_url,
               u.role, u.tenant_id, u.auth_provider, u.email_verified,
-              u.last_login, u.created_at,
+              u.last_login, u.created_at, u.permissions,
               t.name as tenant_name, t.slug as tenant_slug
        FROM users u
        LEFT JOIN tenants t ON u.tenant_id = t.id
@@ -813,6 +813,11 @@ const getCurrentUser = async (req, res) => {
     );
 
     const user = result.rows[0];
+
+    // Admin y root tienen acceso a todo, no necesitan módulos explícitos
+    const modules = (user.role === 'admin' || user.role === 'root')
+      ? null // null = acceso total
+      : (user.permissions || []);
 
     res.json({
       success: true,
@@ -831,7 +836,8 @@ const getCurrentUser = async (req, res) => {
           authProvider: user.auth_provider,
           emailVerified: user.email_verified,
           lastLogin: user.last_login,
-          createdAt: user.created_at
+          createdAt: user.created_at,
+          modules,
         }
       }
     });

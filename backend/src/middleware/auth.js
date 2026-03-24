@@ -29,7 +29,7 @@ const authenticateToken = async (req, res, next) => {
     // Buscar usuario en la base de datos
     const result = await query(
       `SELECT u.id, u.email, u.first_name, u.last_name, u.role, 
-              u.tenant_id, u.is_active, u.email_verified,
+              u.tenant_id, u.is_active, u.email_verified, u.permissions,
               t.name as tenant_name, t.slug as tenant_slug, t.is_active as tenant_active
        FROM users u
        LEFT JOIN tenants t ON u.tenant_id = t.id

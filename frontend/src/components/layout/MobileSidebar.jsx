@@ -12,7 +12,7 @@ function MobileSidebar() {
   const { sidebarMobileOpen, closeMobileSidebar } = useUIStore();
   const [expandedItems, setExpandedItems] = useState({});
   
-  const navigation = getNavigation(user?.role);
+  const navigation = getNavigation(user?.role, user?.modules);
 
   const toggleExpanded = (name) => {
     setExpandedItems(prev => ({

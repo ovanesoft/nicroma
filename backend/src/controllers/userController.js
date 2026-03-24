@@ -160,7 +160,7 @@ const updateUser = async (req, res) => {
   try {
     const { id } = req.params;
     const user = req.user;
-    const { firstName, lastName, phone, role, isActive } = req.body;
+    const { firstName, lastName, phone, role, isActive, permissions } = req.body;
 
     // Verificar permisos
     if (user.role !== 'root') {
@@ -193,20 +193,20 @@ const updateUser = async (req, res) => {
         });
       }
 
-      // No puede modificar a usuarios con rol superior o igual
-      const roleHierarchy = { root: 4, admin: 3, manager: 2, user: 1 };
-      if (roleHierarchy[target.role] >= roleHierarchy[user.role]) {
+      // Admin puede modificar a cualquiera de su tenant excepto a sí mismo (para cambiar rol)
+      // No puede modificar a root
+      if (target.role === 'root') {
         return res.status(403).json({
           success: false,
-          message: 'No puede modificar usuarios con rol igual o superior'
+          message: 'No puede modificar usuarios root'
         });
       }
 
-      // No puede asignar rol superior al propio
-      if (role && roleHierarchy[role] >= roleHierarchy[user.role]) {
+      // No puede asignar rol root
+      if (role === 'root') {
         return res.status(403).json({
           success: false,
-          message: 'No puede asignar un rol igual o superior al propio'
+          message: 'No puede asignar rol root'
         });
       }
     }
@@ -234,6 +234,10 @@ const updateUser = async (req, res) => {
     if (isActive !== undefined) {
       updates.push(`is_active = $${paramCount++}`);
       values.push(isActive);
+    }
+    if (permissions !== undefined) {
+      updates.push(`permissions = $${paramCount++}`);
+      values.push(JSON.stringify(permissions));
     }
 
     if (updates.length === 0) {
@@ -300,11 +304,11 @@ const createUser = async (req, res) => {
       });
     }
 
-    // No puede crear usuarios con rol superior o igual (excepto root)
-    if (adminUser.role !== 'root' && roleHierarchy[role] >= roleHierarchy[adminUser.role]) {
+    // Admin puede crear otros admin; no puede crear root
+    if (role === 'root' && adminUser.role !== 'root') {
       return res.status(403).json({
         success: false,
-        message: 'No puede crear usuarios con rol igual o superior al propio'
+        message: 'No puede crear usuarios root'
       });
     }
 
