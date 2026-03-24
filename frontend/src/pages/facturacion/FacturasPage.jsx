@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
-  Search, Receipt, MoreVertical, Eye, XCircle, DollarSign, Calendar
+  Search, Receipt, MoreVertical, Eye, XCircle, DollarSign, Calendar, Plus
 } from 'lucide-react';
 import Layout from '../../components/layout/Layout';
 import { 
@@ -83,6 +83,10 @@ function FacturasPage() {
     <Layout title="Facturas" subtitle="Gestión de facturas">
       {/* Actions */}
       <div className="flex flex-col sm:flex-row gap-4 mb-6">
+        <Button onClick={() => navigate('/facturas/nueva')}>
+          <Plus className="w-4 h-4" />
+          Nueva Factura
+        </Button>
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
           <input

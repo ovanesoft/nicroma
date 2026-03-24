@@ -51,6 +51,7 @@ import PredespachoForm from './pages/predespachos/PredespachoForm';
 import PrefacturasPage from './pages/facturacion/PrefacturasPage';
 import PrefacturaDetalle from './pages/facturacion/PrefacturaDetalle';
 import FacturasPage from './pages/facturacion/FacturasPage';
+import FacturaForm from './pages/facturacion/FacturaForm';
 import FacturaDetalle from './pages/facturacion/FacturaDetalle';
 
 // Pages - Estadísticas
@@ -342,6 +343,11 @@ function AppRoutes() {
       <Route path="/facturas" element={
         <ProtectedRoute allowedRoles={['admin', 'manager']}>
           <FacturasPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/facturas/nueva" element={
+        <ProtectedRoute allowedRoles={['admin', 'manager']}>
+          <FacturaForm />
         </ProtectedRoute>
       } />
       <Route path="/facturas/:id" element={
