@@ -70,6 +70,11 @@ const migrations = [
   `ALTER TABLE mercancias ADD COLUMN IF NOT EXISTS largo DOUBLE PRECISION`,
   `ALTER TABLE mercancias ADD COLUMN IF NOT EXISTS ancho DOUBLE PRECISION`,
   `ALTER TABLE mercancias ADD COLUMN IF NOT EXISTS alto DOUBLE PRECISION`,
+
+  // ============ SCHEMA: Items presupuesto - categoría IVA y rangos ============
+  `ALTER TABLE items_presupuesto ADD COLUMN IF NOT EXISTS categoria_iva VARCHAR(20) DEFAULT 'GRAVADO'`,
+  `ALTER TABLE items_presupuesto ADD COLUMN IF NOT EXISTS importe_minimo DOUBLE PRECISION`,
+  `ALTER TABLE items_presupuesto ADD COLUMN IF NOT EXISTS importe_maximo DOUBLE PRECISION`,
 ];
 
 async function runMigrations() {

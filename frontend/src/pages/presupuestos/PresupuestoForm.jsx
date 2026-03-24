@@ -1,9 +1,9 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { 
   ArrowLeft, Save, Send, CheckCircle, XCircle, FolderOpen,
   Plus, Trash2, Search, MessageSquare, User, Building2, Clock, Loader2, FileDown,
-  Ship, Package, FileText, Users, X, Calculator
+  Ship, Package, FileText, Users, X, Calculator, Pencil, ChevronDown, ChevronUp
 } from 'lucide-react';
 import api from '../../api/axios';
 import Layout from '../../components/layout/Layout';
@@ -113,6 +113,7 @@ function PresupuestoForm() {
   const [downloadingPDF, setDownloadingPDF] = useState(false);
 
   const [items, setItems] = useState([]);
+  const [expandedItems, setExpandedItems] = useState({});
 
   const { data: presupuestoData, isLoading } = usePresupuesto(id);
   const isActorCliente = ['cliente', 'shipper', 'consignee'].includes(actorRol);
@@ -325,6 +326,10 @@ function PresupuestoForm() {
     }
   };
 
+  const toggleItemDetail = (index) => {
+    setExpandedItems(prev => ({ ...prev, [index]: !prev[index] }));
+  };
+
   // Items handlers
   const addItem = () => {
     setItems([...items, {
@@ -335,7 +340,11 @@ function PresupuestoForm() {
       montoVenta: 0,
       montoCosto: 0,
       base: 'IMPORTE_FIJO',
-      cantidad: 1
+      cantidad: 1,
+      categoriaIVA: 'GRAVADO',
+      porcentajeIVA: 21,
+      importeMinimo: null,
+      importeMaximo: null
     }]);
     if (isEditing) {
       setHasChanges(true);
@@ -345,10 +354,15 @@ function PresupuestoForm() {
 
   const updateItem = (index, field, value) => {
     const updated = [...items];
-    if (['montoVenta', 'montoCosto', 'cantidad'].includes(field)) {
-      updated[index][field] = parseFloat(value) || 0;
+    if (['montoVenta', 'montoCosto', 'cantidad', 'porcentajeIVA', 'importeMinimo', 'importeMaximo'].includes(field)) {
+      updated[index][field] = value === '' ? null : parseFloat(value) || 0;
     } else {
       updated[index][field] = value;
+    }
+    if (field === 'categoriaIVA') {
+      updated[index].gravado = value === 'GRAVADO';
+      if (value !== 'GRAVADO') updated[index].porcentajeIVA = 0;
+      else if (!updated[index].porcentajeIVA) updated[index].porcentajeIVA = 21;
     }
     setItems(updated);
     if (isEditing) {
@@ -556,9 +570,22 @@ function PresupuestoForm() {
   };
 
   // Calcular totales
-  const totalVenta = items.reduce((sum, i) => sum + (i.montoVenta || 0) * (i.cantidad || 1), 0);
-  const totalCosto = items.reduce((sum, i) => sum + (i.montoCosto || 0) * (i.cantidad || 1), 0);
+  const totalVenta = items.reduce((sum, i) => sum + (parseFloat(i.montoVenta) || 0), 0);
+  const totalCosto = items.reduce((sum, i) => sum + (parseFloat(i.montoCosto) || 0), 0);
   const margen = totalVenta - totalCosto;
+
+  const CATEGORIAS_IVA = [
+    { value: 'GRAVADO', label: 'Gravado' },
+    { value: 'NO_GRAVADO', label: 'No Gravado' },
+    { value: 'EXENTO', label: 'Exento' },
+  ];
+  const ALICUOTAS_IVA = [
+    { value: 21, label: '21%' },
+    { value: 10.5, label: '10.5%' },
+    { value: 27, label: '27%' },
+    { value: 5, label: '5%' },
+    { value: 2.5, label: '2.5%' },
+  ];
 
   if (isLoading && isEditing) {
     return (
@@ -1581,118 +1608,192 @@ function PresupuestoForm() {
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[800px]">
+                <table className="w-full min-w-[700px]">
                   <thead>
                     <tr className="text-xs text-slate-500 border-b bg-slate-50">
                       <th className="py-3 px-2 text-left font-medium">Concepto</th>
                       <th className="py-3 px-2 text-center font-medium w-16">P/C</th>
                       <th className="py-3 px-2 text-center font-medium w-20">Divisa</th>
-                      <th className="py-3 px-2 text-right font-medium w-24">Venta</th>
-                      <th className="py-3 px-2 text-right font-medium w-24">Costo</th>
-                      <th className="py-3 px-2 text-center font-medium w-32">Base</th>
-                      <th className="py-3 px-2 text-right font-medium w-20">Cant</th>
-                      <th className="py-3 px-2 text-right font-medium w-24">Total</th>
-                      <th className="py-3 px-2 w-12"></th>
+                      <th className="py-3 px-2 text-right font-medium w-28">Costo</th>
+                      <th className="py-3 px-2 text-right font-medium w-28">Venta</th>
+                      <th className="py-3 px-2 text-center font-medium w-24">IVA</th>
+                      <th className="py-3 px-2 w-20"></th>
                     </tr>
                   </thead>
                   <tbody>
-                    {items.map((item, index) => (
-                      <tr key={index} className="border-b border-slate-100">
-                        <td className="py-2 px-2">
-                          <input
-                            type="text"
-                            value={item.concepto || ''}
-                            onChange={(e) => updateItem(index, 'concepto', e.target.value)}
-                            placeholder="FLETE MARITIMO"
-                            className="w-full px-2 py-1.5 text-sm rounded border border-slate-300"
-                          />
-                        </td>
-                        <td className="py-2 px-2">
-                          <select
-                            value={item.prepaidCollect || 'P'}
-                            onChange={(e) => updateItem(index, 'prepaidCollect', e.target.value)}
-                            className="w-full px-1 py-1.5 text-sm rounded border border-slate-300 bg-white text-center"
-                          >
-                            <option value="P">P</option>
-                            <option value="C">C</option>
-                          </select>
-                        </td>
-                        <td className="py-2 px-2">
-                          <select
-                            value={item.divisa || 'USD'}
-                            onChange={(e) => updateItem(index, 'divisa', e.target.value)}
-                            className="w-full px-1 py-1.5 text-sm rounded border border-slate-300 bg-white"
-                          >
-                            <option value="USD">USD</option>
-                            <option value="EUR">EUR</option>
-                            <option value="ARS">ARS</option>
-                          </select>
-                        </td>
-                        <td className="py-2 px-2">
-                          <input
-                            type="number"
-                            step="0.01"
-                            value={item.montoVenta || ''}
-                            onChange={(e) => updateItem(index, 'montoVenta', e.target.value)}
-                            className="w-full px-2 py-1.5 text-sm rounded border border-slate-300 text-right"
-                          />
-                        </td>
-                        <td className="py-2 px-2">
-                          <input
-                            type="number"
-                            step="0.01"
-                            value={item.montoCosto || ''}
-                            onChange={(e) => updateItem(index, 'montoCosto', e.target.value)}
-                            className="w-full px-2 py-1.5 text-sm rounded border border-slate-300 text-right"
-                          />
-                        </td>
-                        <td className="py-2 px-2">
-                          <select
-                            value={item.base || 'IMPORTE_FIJO'}
-                            onChange={(e) => updateItem(index, 'base', e.target.value)}
-                            className="w-full px-1 py-1.5 text-sm rounded border border-slate-300 bg-white"
-                          >
-                            {BASES_ITEM.map(b => (
-                              <option key={b.value} value={b.value}>{b.label}</option>
-                            ))}
-                          </select>
-                        </td>
-                        <td className="py-2 px-2">
-                          <input
-                            type="number"
-                            value={item.cantidad || 1}
-                            onChange={(e) => updateItem(index, 'cantidad', e.target.value)}
-                            className="w-full px-2 py-1.5 text-sm rounded border border-slate-300 text-right"
-                          />
-                        </td>
-                        <td className="py-2 px-2 text-right">
-                          <span className="text-sm font-medium text-green-600">
-                            {((item.montoVenta || 0) * (item.cantidad || 1)).toFixed(2)}
-                          </span>
-                        </td>
-                        <td className="py-2 px-2">
-                          <button
-                            type="button"
-                            onClick={() => removeItem(index)}
-                            className="p-1.5 text-red-500 hover:bg-red-50 rounded"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
+                    {items.map((item, index) => {
+                      const isExpanded = expandedItems[index];
+                      const catLabel = CATEGORIAS_IVA.find(c => c.value === item.categoriaIVA)?.label || 'Gravado';
+                      const ivaLabel = item.categoriaIVA === 'GRAVADO' ? `${item.porcentajeIVA || 21}%` : catLabel;
+                      return (
+                        <React.Fragment key={index}>
+                          <tr className={cn('border-b border-slate-100', isExpanded && 'bg-blue-50/30')}>
+                            <td className="py-2 px-2">
+                              <input
+                                type="text"
+                                value={item.concepto || ''}
+                                onChange={(e) => updateItem(index, 'concepto', e.target.value)}
+                                placeholder="FLETE MARITIMO"
+                                className="w-full px-2 py-1.5 text-sm rounded border border-slate-300"
+                              />
+                            </td>
+                            <td className="py-2 px-2">
+                              <select
+                                value={item.prepaidCollect || 'P'}
+                                onChange={(e) => updateItem(index, 'prepaidCollect', e.target.value)}
+                                className="w-full px-1 py-1.5 text-sm rounded border border-slate-300 bg-white text-center"
+                              >
+                                <option value="P">P</option>
+                                <option value="C">C</option>
+                              </select>
+                            </td>
+                            <td className="py-2 px-2">
+                              <select
+                                value={item.divisa || 'USD'}
+                                onChange={(e) => updateItem(index, 'divisa', e.target.value)}
+                                className="w-full px-1 py-1.5 text-sm rounded border border-slate-300 bg-white"
+                              >
+                                <option value="USD">USD</option>
+                                <option value="EUR">EUR</option>
+                                <option value="ARS">ARS</option>
+                              </select>
+                            </td>
+                            <td className="py-2 px-2">
+                              <input
+                                type="number"
+                                step="0.01"
+                                value={item.montoCosto || ''}
+                                onChange={(e) => updateItem(index, 'montoCosto', e.target.value)}
+                                placeholder="0.00"
+                                className="w-full px-2 py-1.5 text-sm rounded border border-slate-300 text-right"
+                              />
+                            </td>
+                            <td className="py-2 px-2">
+                              <input
+                                type="number"
+                                step="0.01"
+                                value={item.montoVenta || ''}
+                                onChange={(e) => updateItem(index, 'montoVenta', e.target.value)}
+                                placeholder="0.00"
+                                className="w-full px-2 py-1.5 text-sm rounded border border-slate-300 text-right"
+                              />
+                            </td>
+                            <td className="py-2 px-2 text-center">
+                              <span className={cn(
+                                'inline-block px-2 py-0.5 rounded-full text-xs font-medium',
+                                item.categoriaIVA === 'GRAVADO' ? 'bg-green-100 text-green-700' :
+                                item.categoriaIVA === 'EXENTO' ? 'bg-amber-100 text-amber-700' :
+                                'bg-slate-100 text-slate-600'
+                              )}>
+                                {ivaLabel}
+                              </span>
+                            </td>
+                            <td className="py-2 px-2">
+                              <div className="flex items-center gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => toggleItemDetail(index)}
+                                  className={cn(
+                                    'p-1.5 rounded transition-colors',
+                                    isExpanded ? 'text-blue-600 bg-blue-100' : 'text-slate-400 hover:text-blue-600 hover:bg-blue-50'
+                                  )}
+                                  title="Editar detalle"
+                                >
+                                  <Pencil className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => removeItem(index)}
+                                  className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                          {isExpanded && (
+                            <tr className="bg-blue-50/50 border-b border-blue-100">
+                              <td colSpan={7} className="px-4 py-3">
+                                <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                                  <div>
+                                    <label className="block text-xs font-medium text-slate-600 mb-1">Categoría IVA</label>
+                                    <select
+                                      value={item.categoriaIVA || 'GRAVADO'}
+                                      onChange={(e) => updateItem(index, 'categoriaIVA', e.target.value)}
+                                      className="w-full px-2 py-1.5 text-sm rounded border border-slate-300 bg-white"
+                                    >
+                                      {CATEGORIAS_IVA.map(c => (
+                                        <option key={c.value} value={c.value}>{c.label}</option>
+                                      ))}
+                                    </select>
+                                  </div>
+                                  {item.categoriaIVA === 'GRAVADO' && (
+                                    <div>
+                                      <label className="block text-xs font-medium text-slate-600 mb-1">Alícuota IVA</label>
+                                      <select
+                                        value={item.porcentajeIVA || 21}
+                                        onChange={(e) => updateItem(index, 'porcentajeIVA', e.target.value)}
+                                        className="w-full px-2 py-1.5 text-sm rounded border border-slate-300 bg-white"
+                                      >
+                                        {ALICUOTAS_IVA.map(a => (
+                                          <option key={a.value} value={a.value}>{a.label}</option>
+                                        ))}
+                                      </select>
+                                    </div>
+                                  )}
+                                  <div>
+                                    <label className="block text-xs font-medium text-slate-600 mb-1">Base</label>
+                                    <select
+                                      value={item.base || 'IMPORTE_FIJO'}
+                                      onChange={(e) => updateItem(index, 'base', e.target.value)}
+                                      className="w-full px-2 py-1.5 text-sm rounded border border-slate-300 bg-white"
+                                    >
+                                      {BASES_ITEM.map(b => (
+                                        <option key={b.value} value={b.value}>{b.label}</option>
+                                      ))}
+                                    </select>
+                                  </div>
+                                  <div>
+                                    <label className="block text-xs font-medium text-slate-600 mb-1">Importe Mínimo</label>
+                                    <input
+                                      type="number"
+                                      step="0.01"
+                                      value={item.importeMinimo ?? ''}
+                                      onChange={(e) => updateItem(index, 'importeMinimo', e.target.value)}
+                                      placeholder="—"
+                                      className="w-full px-2 py-1.5 text-sm rounded border border-slate-300 text-right"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-xs font-medium text-slate-600 mb-1">Importe Máximo</label>
+                                    <input
+                                      type="number"
+                                      step="0.01"
+                                      value={item.importeMaximo ?? ''}
+                                      onChange={(e) => updateItem(index, 'importeMaximo', e.target.value)}
+                                      placeholder="—"
+                                      className="w-full px-2 py-1.5 text-sm rounded border border-slate-300 text-right"
+                                    />
+                                  </div>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </React.Fragment>
+                      );
+                    })}
                   </tbody>
                 </table>
 
                 {/* Totales */}
                 <div className="mt-6 pt-4 border-t flex justify-end gap-8">
                   <div className="text-right">
-                    <p className="text-xs text-slate-500">Total Venta</p>
-                    <p className="text-lg font-bold text-green-600">{formData.moneda} {totalVenta.toFixed(2)}</p>
-                  </div>
-                  <div className="text-right">
                     <p className="text-xs text-slate-500">Total Costo</p>
                     <p className="text-lg font-bold text-red-600">{formData.moneda} {totalCosto.toFixed(2)}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-slate-500">Total Venta</p>
+                    <p className="text-lg font-bold text-green-600">{formData.moneda} {totalVenta.toFixed(2)}</p>
                   </div>
                   <div className="text-right">
                     <p className="text-xs text-slate-500">Margen</p>

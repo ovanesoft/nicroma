@@ -1590,7 +1590,7 @@ model ItemPresupuesto {
   id              String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
   presupuestoId   String   @map("presupuesto_id") @db.Uuid
   presupuesto     Presupuesto @relation(fields: [presupuestoId], references: [id], onDelete: Cascade)
-  
+
   concepto        String   @db.VarChar(255)
   descripcion     String?
   prepaidCollect  String   @default("P") @map("prepaid_collect") @db.VarChar(10)
@@ -1603,7 +1603,10 @@ model ItemPresupuesto {
   totalCosto      Float    @map("total_costo")
   gravado         Boolean  @default(true)
   porcentajeIVA   Float    @default(21) @map("porcentaje_iva")
-  
+  categoriaIVA    String   @default("GRAVADO") @map("categoria_iva") @db.VarChar(20)
+  importeMinimo   Float?   @map("importe_minimo")
+  importeMaximo   Float?   @map("importe_maximo")
+
   createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 

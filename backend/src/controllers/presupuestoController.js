@@ -275,8 +275,13 @@ const crearPresupuesto = async (req, res) => {
           montoCosto: parseFloat(i.montoCosto) || 0,
           base: i.base,
           cantidad: parseFloat(i.cantidad) || 1,
-          totalVenta: (parseFloat(i.montoVenta) || 0) * (parseFloat(i.cantidad) || 1),
-          totalCosto: (parseFloat(i.montoCosto) || 0) * (parseFloat(i.cantidad) || 1)
+          totalVenta: parseFloat(i.montoVenta) || 0,
+          totalCosto: parseFloat(i.montoCosto) || 0,
+          categoriaIVA: i.categoriaIVA || 'GRAVADO',
+          porcentajeIVA: parseFloat(i.porcentajeIVA) || 21,
+          gravado: (i.categoriaIVA || 'GRAVADO') === 'GRAVADO',
+          importeMinimo: i.importeMinimo != null ? parseFloat(i.importeMinimo) || null : null,
+          importeMaximo: i.importeMaximo != null ? parseFloat(i.importeMaximo) || null : null,
         }))
       });
     }
@@ -528,10 +533,13 @@ const actualizarPresupuesto = async (req, res) => {
               montoCosto: parseFloat(i.montoCosto) || 0,
               base: i.base || null,
               cantidad: parseFloat(i.cantidad) || 1,
-              totalVenta: (parseFloat(i.montoVenta) || 0) * (parseFloat(i.cantidad) || 1),
-              totalCosto: (parseFloat(i.montoCosto) || 0) * (parseFloat(i.cantidad) || 1),
-              gravado: i.gravado !== false,
-              porcentajeIVA: parseFloat(i.porcentajeIVA) || 21
+              totalVenta: parseFloat(i.montoVenta) || 0,
+              totalCosto: parseFloat(i.montoCosto) || 0,
+              categoriaIVA: i.categoriaIVA || 'GRAVADO',
+              porcentajeIVA: parseFloat(i.porcentajeIVA) || 21,
+              gravado: (i.categoriaIVA || 'GRAVADO') === 'GRAVADO',
+              importeMinimo: i.importeMinimo != null ? parseFloat(i.importeMinimo) || null : null,
+              importeMaximo: i.importeMaximo != null ? parseFloat(i.importeMaximo) || null : null,
             }))
           });
         }
@@ -795,8 +803,8 @@ const convertirACarpeta = async (req, res) => {
               cantidad: item.cantidad,
               totalVenta: item.totalVenta,
               totalCosto: item.totalCosto,
-              gravado: true,
-              porcentajeIVA: 21
+              gravado: item.gravado ?? true,
+              porcentajeIVA: item.porcentajeIVA ?? 21
             }))
           }
         },
