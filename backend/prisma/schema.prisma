@@ -887,6 +887,28 @@ model Contenedor {
   @@map("contenedores")
 }
 
+// CATÁLOGO DE CONCEPTOS DE GASTO (Tarifario)
+model ConceptoGasto {
+  id              String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenantId        String   @map("tenant_id") @db.Uuid
+
+  nombre          String   @db.VarChar(255)
+  categoriaIVA    String   @default("GRAVADO") @map("categoria_iva") @db.VarChar(20)
+  porcentajeIVA   Float    @default(21) @map("porcentaje_iva")
+  divisa          String   @default("USD") @db.VarChar(10)
+  base            String?  @db.VarChar(50)
+  prepaidCollect  String   @default("P") @map("prepaid_collect") @db.VarChar(10)
+  activo          Boolean  @default(true)
+
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([tenantId, nombre])
+  @@index([tenantId])
+  @@index([nombre])
+  @@map("conceptos_gasto")
+}
+
 // TARIFAS POR CONTENEDOR
 model TarifaContenedor {
   id              String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid

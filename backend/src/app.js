@@ -162,6 +162,7 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/conversations', conversationRoutes);
 app.use('/api/predespachos', predespachoRoutes);
 app.use('/api/terminales', require('./routes/terminales'));
+app.use('/api/conceptos-gasto', require('./routes/conceptosGasto'));
 
 // ===========================================
 // Ruta raíz

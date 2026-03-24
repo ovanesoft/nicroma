@@ -25,6 +25,7 @@ const userSchema = z.object({
 
 const ALL_MODULES = [
   { id: 'presupuestos', label: 'Presupuestos' },
+  { id: 'tarifario', label: 'Tarifario' },
   { id: 'predespachos', label: 'Predespacho' },
   { id: 'carpetas', label: 'Carpetas' },
   { id: 'clientes', label: 'Clientes' },

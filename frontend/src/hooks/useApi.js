@@ -351,6 +351,37 @@ export function useCancelarPrefactura() {
 }
 
 // ============================================
+// HOOKS PARA CATÁLOGO DE GASTOS (TARIFARIO)
+// ============================================
+
+export function useConceptosGasto(search = '') {
+  const qs = search ? `?search=${encodeURIComponent(search)}` : '';
+  return useApiQuery(['conceptos-gasto', search], `/conceptos-gasto${qs}`);
+}
+
+export function useCreateConceptoGasto() {
+  return useApiMutation('post', '/conceptos-gasto', { invalidateKeys: ['conceptos-gasto'] });
+}
+
+export function useUpdateConceptoGasto(id) {
+  return useApiMutation('put', `/conceptos-gasto/${id}`, { invalidateKeys: ['conceptos-gasto'] });
+}
+
+export function useDeleteConceptoGasto() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id) => {
+      const response = await api.delete(`/conceptos-gasto/${id}`);
+      return response.data;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['conceptos-gasto'] }),
+  });
+}
+
+export function useSeedConceptosGasto() {
+  return useApiMutation('post', '/conceptos-gasto/seed', { invalidateKeys: ['conceptos-gasto'] });
+}
+
 // HOOKS PARA FACTURAS
 // ============================================
 

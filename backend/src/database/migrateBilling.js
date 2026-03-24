@@ -75,6 +75,24 @@ const migrations = [
   `ALTER TABLE items_presupuesto ADD COLUMN IF NOT EXISTS categoria_iva VARCHAR(20) DEFAULT 'GRAVADO'`,
   `ALTER TABLE items_presupuesto ADD COLUMN IF NOT EXISTS importe_minimo DOUBLE PRECISION`,
   `ALTER TABLE items_presupuesto ADD COLUMN IF NOT EXISTS importe_maximo DOUBLE PRECISION`,
+
+  // ============ SCHEMA: Catálogo de conceptos de gasto (Tarifario) ============
+  `CREATE TABLE IF NOT EXISTS conceptos_gasto (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    tenant_id UUID NOT NULL,
+    nombre VARCHAR(255) NOT NULL,
+    categoria_iva VARCHAR(20) DEFAULT 'GRAVADO',
+    porcentaje_iva DOUBLE PRECISION DEFAULT 21,
+    divisa VARCHAR(10) DEFAULT 'USD',
+    base VARCHAR(50),
+    prepaid_collect VARCHAR(10) DEFAULT 'P',
+    activo BOOLEAN DEFAULT true,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(tenant_id, nombre)
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_conceptos_gasto_tenant ON conceptos_gasto(tenant_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_conceptos_gasto_nombre ON conceptos_gasto(nombre)`,
 ];
 
 async function runMigrations() {

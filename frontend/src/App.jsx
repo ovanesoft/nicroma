@@ -49,6 +49,7 @@ import PredespachoForm from './pages/predespachos/PredespachoForm';
 
 // Pages - Facturación
 import PrefacturasPage from './pages/facturacion/PrefacturasPage';
+import CatalogoGastosPage from './pages/tarifario/CatalogoGastosPage';
 import PrefacturaDetalle from './pages/facturacion/PrefacturaDetalle';
 import FacturasPage from './pages/facturacion/FacturasPage';
 import FacturaForm from './pages/facturacion/FacturaForm';
@@ -129,6 +130,7 @@ const ROUTE_MODULE_MAP = {
   '/schedules': 'integraciones',
   '/estadisticas': 'estadisticas',
   '/messages': 'mensajes',
+  '/tarifario': 'tarifario',
 };
 
 const ProtectedRoute = ({ children, allowedRoles = null }) => {
@@ -353,6 +355,13 @@ function AppRoutes() {
       <Route path="/proveedores" element={
         <ProtectedRoute allowedRoles={['admin', 'manager', 'user']}>
           <ProveedoresPage />
+        </ProtectedRoute>
+      } />
+
+      {/* ==================== TARIFARIO ==================== */}
+      <Route path="/tarifario" element={
+        <ProtectedRoute allowedRoles={['admin', 'manager']}>
+          <CatalogoGastosPage />
         </ProtectedRoute>
       } />
 

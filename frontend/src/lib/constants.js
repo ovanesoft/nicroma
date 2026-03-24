@@ -22,7 +22,8 @@ import {
   Sparkles,
   Bell,
   Megaphone,
-  FileCheck
+  FileCheck,
+  BookOpen
 } from 'lucide-react';
 
 // Mapeo de rutas a módulos para filtrar permisos
@@ -40,6 +41,7 @@ const ROUTE_MODULE_MAP = {
   '/schedules': 'integraciones',
   '/estadisticas': 'estadisticas',
   '/messages': 'mensajes',
+  '/tarifario': 'tarifario',
 };
 
 // Navegación según rol
@@ -91,13 +93,14 @@ export const getNavigation = (role, modules = null) => {
       icon: Ship,
       children: [
         { name: 'Presupuestos', href: '/presupuestos', icon: Calculator },
+        { name: 'Tarifario', href: '/tarifario', icon: BookOpen },
         { name: 'Predespacho', href: '/predespachos', icon: FileCheck },
         { name: 'Carpetas', href: '/carpetas', icon: FileText },
         { name: 'Clientes', href: '/clientes', icon: Users },
         { name: 'Proveedores', href: '/proveedores', icon: Package },
       ]
     },
-    { 
+    {
       name: 'Facturación',
       icon: Wallet,
       children: [
@@ -134,6 +137,7 @@ export const getNavigation = (role, modules = null) => {
       icon: Ship,
       children: [
         { name: 'Presupuestos', href: '/presupuestos', icon: Calculator },
+        { name: 'Tarifario', href: '/tarifario', icon: BookOpen },
         { name: 'Predespacho', href: '/predespachos', icon: FileCheck },
         { name: 'Carpetas', href: '/carpetas', icon: FileText },
         { name: 'Clientes', href: '/clientes', icon: Users },

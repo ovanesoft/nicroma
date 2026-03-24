@@ -15,7 +15,7 @@ import {
   usePresupuesto, useCreatePresupuesto, useUpdatePresupuesto,
   useBuscarClientes, useBuscarProveedores, useCambiarEstadoPresupuesto, useConvertirPresupuesto,
   useMensajesPresupuesto, useAgregarMensaje, useMarcarMensajesLeidos,
-  useMarcarPresupuestoVisto, useCuentasBancarias
+  useMarcarPresupuestoVisto, useCuentasBancarias, useConceptosGasto, useCreateConceptoGasto
 } from '../../hooks/useApi';
 import { useAuth } from '../../context/AuthContext';
 import toast from 'react-hot-toast';
@@ -129,6 +129,11 @@ function PresupuestoForm() {
   const { data: mensajesData, refetch: refetchMensajes } = useMensajesPresupuesto(id);
   const { data: cuentasBancarias = [] } = useCuentasBancarias();
   
+  const { data: conceptosData } = useConceptosGasto();
+  const conceptosCatalogo = conceptosData?.data?.conceptos || [];
+  const createConceptoGasto = useCreateConceptoGasto();
+  const [conceptoDropdown, setConceptoDropdown] = useState({ index: null, results: [] });
+
   const createPresupuesto = useCreatePresupuesto();
   const updatePresupuesto = useUpdatePresupuesto(id);
   const cambiarEstado = useCambiarEstadoPresupuesto();
@@ -377,6 +382,44 @@ function PresupuestoForm() {
       setHasChanges(true);
       debouncedAutoSave();
     }
+  };
+
+  const handleConceptoSearch = (index, value) => {
+    updateItem(index, 'concepto', value);
+    if (value.length >= 1) {
+      const results = conceptosCatalogo.filter(c =>
+        c.nombre.toLowerCase().includes(value.toLowerCase()) && c.activo
+      ).slice(0, 8);
+      setConceptoDropdown({ index, results });
+    } else {
+      setConceptoDropdown({ index: null, results: [] });
+    }
+  };
+
+  const selectConcepto = (index, concepto) => {
+    const updated = [...items];
+    updated[index] = {
+      ...updated[index],
+      concepto: concepto.nombre,
+      categoriaIVA: concepto.categoriaIVA || 'GRAVADO',
+      porcentajeIVA: concepto.porcentajeIVA || 21,
+      divisa: concepto.divisa || 'USD',
+      base: concepto.base || 'IMPORTE_FIJO',
+      prepaidCollect: concepto.prepaidCollect || 'P',
+      gravado: (concepto.categoriaIVA || 'GRAVADO') === 'GRAVADO',
+    };
+    setItems(updated);
+    setConceptoDropdown({ index: null, results: [] });
+    if (isEditing) {
+      setHasChanges(true);
+      debouncedAutoSave();
+    }
+  };
+
+  const saveNewConcepto = async (nombre) => {
+    try {
+      await createConceptoGasto.mutateAsync({ nombre: nombre.trim().toUpperCase() });
+    } catch (_) {}
   };
 
   // Contenedores y Mercancías handlers
@@ -1628,14 +1671,45 @@ function PresupuestoForm() {
                       return (
                         <React.Fragment key={index}>
                           <tr className={cn('border-b border-slate-100', isExpanded && 'bg-blue-50/30')}>
-                            <td className="py-2 px-2">
+                            <td className="py-2 px-2 relative">
                               <input
                                 type="text"
                                 value={item.concepto || ''}
-                                onChange={(e) => updateItem(index, 'concepto', e.target.value)}
-                                placeholder="FLETE MARITIMO"
+                                onChange={(e) => handleConceptoSearch(index, e.target.value)}
+                                onFocus={() => {
+                                  if (item.concepto) handleConceptoSearch(index, item.concepto);
+                                }}
+                                onBlur={() => {
+                                  setTimeout(() => {
+                                    if (conceptoDropdown.index === index) {
+                                      setConceptoDropdown({ index: null, results: [] });
+                                      if (item.concepto?.trim() && !conceptosCatalogo.some(c => c.nombre === item.concepto.trim().toUpperCase())) {
+                                        saveNewConcepto(item.concepto);
+                                      }
+                                    }
+                                  }, 200);
+                                }}
+                                placeholder="Buscar o escribir concepto..."
                                 className="w-full px-2 py-1.5 text-sm rounded border border-slate-300"
                               />
+                              {conceptoDropdown.index === index && conceptoDropdown.results.length > 0 && (
+                                <div className="absolute left-2 right-2 top-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg z-50 max-h-48 overflow-y-auto">
+                                  {conceptoDropdown.results.map(c => (
+                                    <button
+                                      key={c.id}
+                                      type="button"
+                                      onMouseDown={(e) => e.preventDefault()}
+                                      onClick={() => selectConcepto(index, c)}
+                                      className="w-full px-3 py-2 text-left hover:bg-slate-50 text-sm border-b last:border-0 flex items-center justify-between"
+                                    >
+                                      <span className="font-medium">{c.nombre}</span>
+                                      <span className="text-xs text-slate-400">
+                                        {c.divisa} · {c.categoriaIVA === 'GRAVADO' ? `${c.porcentajeIVA}%` : c.categoriaIVA === 'EXENTO' ? 'Exento' : 'N/G'}
+                                      </span>
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
                             </td>
                             <td className="py-2 px-2">
                               <select
