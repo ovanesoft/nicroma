@@ -423,21 +423,21 @@ const acceptInvitation = async (req, res) => {
     let userId;
 
     if (existingUser.rows.length > 0) {
-      // Usuario existe, actualizar su tenant
       const existingUserData = existingUser.rows[0];
-      
-      if (existingUserData.tenant_id) {
-        await client.query('ROLLBACK');
-        return res.status(409).json({
-          success: false,
-          message: 'Ya perteneces a una organización'
-        });
-      }
 
-      await client.query(
-        `UPDATE users SET tenant_id = $1, role = $2 WHERE id = $3`,
-        [invitation.tenant_id, invitation.role, existingUserData.id]
-      );
+      // Si ya pertenece al mismo tenant, solo actualizar rol
+      if (existingUserData.tenant_id === invitation.tenant_id) {
+        await client.query(
+          `UPDATE users SET role = $2 WHERE id = $1`,
+          [existingUserData.id, invitation.role]
+        );
+      } else {
+        // Reasignar al nuevo tenant (el usuario acepta unirse a otra organización)
+        await client.query(
+          `UPDATE users SET tenant_id = $1, role = $2 WHERE id = $3`,
+          [invitation.tenant_id, invitation.role, existingUserData.id]
+        );
+      }
 
       userId = existingUserData.id;
     } else {
