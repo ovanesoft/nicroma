@@ -3,14 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import { 
   Plus, Search, Filter, FileText, Clock, CheckCircle, 
   XCircle, ArrowRight, MessageSquare, DollarSign, Calendar,
-  MoreVertical, Send, FolderOpen
+  MoreVertical, Send, FolderOpen, Sparkles
 } from 'lucide-react';
 import Layout from '../../components/layout/Layout';
 import { 
   Card, CardContent, Button, Input, Badge,
   Table, TableHeader, TableBody, TableRow, TableHead, TableCell
 } from '../../components/ui';
-import { usePresupuestos, useCambiarEstadoPresupuesto, useConvertirPresupuesto } from '../../hooks/useApi';
+import { usePresupuestos, useCambiarEstadoPresupuesto, useConvertirPresupuesto, useAceptarPresupuesto } from '../../hooks/useApi';
 import { formatDate, formatCurrency, cn } from '../../lib/utils';
 import toast from 'react-hot-toast';
 
@@ -37,6 +37,7 @@ function PresupuestosPage() {
   const { data, isLoading, refetch } = usePresupuestos(filters);
   const cambiarEstado = useCambiarEstadoPresupuesto();
   const convertir = useConvertirPresupuesto();
+  const aceptar = useAceptarPresupuesto();
 
   const presupuestos = data?.data?.presupuestos || [];
   const pagination = data?.data?.pagination || {};
@@ -67,6 +68,18 @@ function PresupuestosPage() {
       navigate(`/carpetas/${result.data.carpeta.id}`);
     } catch (error) {
       toast.error(error.response?.data?.message || 'Error al convertir');
+    }
+  };
+
+  const handleAceptar = async (id) => {
+    if (!confirm('¿Aceptar este presupuesto/tarifa y generar la carpeta de operación?')) return;
+    try {
+      const result = await aceptar.mutateAsync(id);
+      toast.success(`Carpeta ${result.data.carpeta.numero} creada`);
+      setActiveMenu(null);
+      navigate(`/carpetas/${result.data.carpeta.id}`);
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Error al aceptar presupuesto');
     }
   };
 
@@ -252,6 +265,16 @@ function PresupuestosPage() {
                                   </button>
                                 )}
                                 
+                                {!pres.carpetaId && !['CONVERTIDO', 'RECHAZADO'].includes(pres.estado) && (
+                                  <button
+                                    onClick={() => handleAceptar(pres.id)}
+                                    className="w-full px-4 py-2 text-left text-sm hover:bg-slate-50 flex items-center gap-2 text-amber-700 font-medium border-t border-slate-100"
+                                  >
+                                    <Sparkles className="w-4 h-4" />
+                                    Aceptar presupuesto o tarifa
+                                  </button>
+                                )}
+
                                 {pres.estado === 'APROBADO' && !pres.carpetaId && (
                                   <button
                                     onClick={() => handleConvertir(pres.id)}

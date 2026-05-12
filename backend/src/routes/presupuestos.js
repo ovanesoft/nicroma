@@ -24,6 +24,7 @@ router.put('/:id', requireRole('admin', 'manager'), presupuestoController.actual
 // Acciones especiales
 router.post('/:id/estado', presupuestoController.cambiarEstado);
 router.post('/:id/convertir', requireRole('admin', 'manager'), presupuestoController.convertirACarpeta);
+router.post('/:id/aceptar', requireRole('admin', 'manager'), presupuestoController.aceptarPresupuesto);
 
 // Mensajes/Chat
 router.get('/:id/mensajes', presupuestoController.obtenerMensajes);

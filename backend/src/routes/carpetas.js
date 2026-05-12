@@ -18,5 +18,9 @@ router.post('/:id/duplicar', carpetaController.duplicarCarpeta);
 
 // Generación de PDFs
 router.get('/:id/pdf/aviso-arribo', carpetaController.generarPDFAvisoArribo);
+router.get('/:id/pdf/bill-of-lading', carpetaController.generarPDFBillOfLading);
+router.get('/:id/pdf/air-waybill', carpetaController.generarPDFAirWaybill);
+router.get('/:id/pdf/cert-flete', carpetaController.generarPDFCertificacionFlete);
+router.get('/:id/pdf/cert-gastos', carpetaController.generarPDFCertificacionGastos);
 
 module.exports = router;

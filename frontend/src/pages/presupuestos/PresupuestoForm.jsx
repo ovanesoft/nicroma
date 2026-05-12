@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { 
   ArrowLeft, Save, Send, CheckCircle, XCircle, FolderOpen,
   Plus, Trash2, Search, MessageSquare, User, Building2, Clock, Loader2, FileDown,
-  Ship, Package, FileText, Users, X, Calculator, Pencil, ChevronDown, ChevronUp
+  Ship, Package, FileText, Users, X, Calculator, Pencil, ChevronDown, ChevronUp, Sparkles
 } from 'lucide-react';
 import api from '../../api/axios';
 import Layout from '../../components/layout/Layout';
@@ -13,7 +13,7 @@ import {
 import TerminalSelector from '../../components/ui/TerminalSelector';
 import { 
   usePresupuesto, useCreatePresupuesto, useUpdatePresupuesto,
-  useBuscarClientes, useBuscarProveedores, useCambiarEstadoPresupuesto, useConvertirPresupuesto,
+  useBuscarClientes, useBuscarProveedores, useCambiarEstadoPresupuesto, useConvertirPresupuesto, useAceptarPresupuesto,
   useMensajesPresupuesto, useAgregarMensaje, useMarcarMensajesLeidos,
   useMarcarPresupuestoVisto, useCuentasBancarias, useConceptosGasto, useCreateConceptoGasto
 } from '../../hooks/useApi';
@@ -50,6 +50,52 @@ const BASES_ITEM = [
   { value: 'VOLUMEN', label: 'Volumen' }
 ];
 
+// Calcula el multiplicador a aplicar al monto del item según la base seleccionada
+// y los datos de mercancías/contenedores cargados. Si la base requiere datos que
+// no hay disponibles, devuelve 1 para que el item al menos refleje el monto unitario.
+export function calcularMultiplicadorBase(base, mercancias = [], contenedores = []) {
+  const safe = (v) => (Number.isFinite(parseFloat(v)) ? parseFloat(v) : 0);
+
+  const totalPeso = mercancias.reduce((acc, m) => acc + safe(m.peso) * (safe(m.bultos) || 1), 0);
+  const totalVolumen = mercancias.reduce((acc, m) => acc + safe(m.volumen), 0);
+  const totalContenedores = contenedores.reduce((acc, c) => acc + (parseInt(c.cantidad) || 1), 0);
+
+  switch (base) {
+    case 'KILOS':
+      return totalPeso > 0 ? totalPeso : 1;
+    case 'TONELADA':
+      return totalPeso > 0 ? totalPeso / 1000 : 1;
+    case 'VOLUMEN':
+      return totalVolumen > 0 ? totalVolumen : 1;
+    case 'CANT_CONTENEDORES':
+    case 'POR_CONTENEDOR':
+      return totalContenedores > 0 ? totalContenedores : 1;
+    case 'IMPORTE_FIJO':
+    default:
+      return 1;
+  }
+}
+
+// Calcula los totales (costo / venta) de un item aplicando base + cantidad + min/max
+export function calcularTotalesItem(item, mercancias = [], contenedores = []) {
+  const safe = (v) => (Number.isFinite(parseFloat(v)) ? parseFloat(v) : 0);
+  const cantidad = safe(item.cantidad) || 1;
+  const multiplicador = calcularMultiplicadorBase(item.base, mercancias, contenedores);
+
+  let totalVenta = safe(item.montoVenta) * multiplicador * cantidad;
+  let totalCosto = safe(item.montoCosto) * multiplicador * cantidad;
+
+  // Aplicar importe mínimo / máximo si están definidos
+  const min = item.importeMinimo != null ? safe(item.importeMinimo) : null;
+  const max = item.importeMaximo != null ? safe(item.importeMaximo) : null;
+  if (min != null && totalVenta > 0 && totalVenta < min) totalVenta = min;
+  if (max != null && totalVenta > max) totalVenta = max;
+  if (min != null && totalCosto > 0 && totalCosto < min) totalCosto = min;
+  if (max != null && totalCosto > max) totalCosto = max;
+
+  return { totalVenta, totalCosto, multiplicador };
+}
+
 const ESTADOS = {
   PENDIENTE: { label: 'Pendiente', color: 'bg-amber-100 text-amber-800' },
   EN_PROCESO: { label: 'En Proceso', color: 'bg-blue-100 text-blue-800' },
@@ -58,6 +104,90 @@ const ESTADOS = {
   RECHAZADO: { label: 'Rechazado', color: 'bg-red-100 text-red-800' },
   CONVERTIDO: { label: 'Convertido', color: 'bg-emerald-100 text-emerald-800' }
 };
+
+// Selector inline de proveedor para items (autocompleta desde maestro de Proveedores
+// y permite también texto libre — modo híbrido)
+function ItemProveedorPicker({ value, onChange }) {
+  const [query, setQuery] = useState(value?.nombre || '');
+  const [open, setOpen] = useState(false);
+  const { data: provData } = useBuscarProveedores(query);
+  const resultados = provData?.data?.proveedores || [];
+
+  useEffect(() => {
+    setQuery(value?.nombre || '');
+  }, [value?.nombre, value?.id]);
+
+  const seleccionar = (prov) => {
+    onChange({ id: prov.id, nombre: prov.razonSocial });
+    setQuery(prov.razonSocial);
+    setOpen(false);
+  };
+
+  const limpiar = () => {
+    onChange({ id: null, nombre: '' });
+    setQuery('');
+    setOpen(false);
+  };
+
+  return (
+    <div className="relative">
+      <div className="flex items-center gap-1">
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => { setQuery(e.target.value); setOpen(true); }}
+          onFocus={() => setOpen(true)}
+          onBlur={() => {
+            setTimeout(() => {
+              setOpen(false);
+              // Si se escribió texto libre y no coincide con un proveedor seleccionado,
+              // guardar el texto como proveedorNombre
+              if (query && query !== value?.nombre) {
+                onChange({ id: null, nombre: query });
+              } else if (!query && (value?.id || value?.nombre)) {
+                limpiar();
+              }
+            }, 200);
+          }}
+          placeholder="Ej: MAERSK, Marcelo..."
+          className={cn(
+            'w-full px-2 py-1.5 text-sm rounded border border-slate-300',
+            value?.id && 'border-orange-300 bg-orange-50/30'
+          )}
+        />
+        {(value?.id || value?.nombre) && (
+          <button
+            type="button"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={limpiar}
+            className="p-1 text-slate-400 hover:text-red-500"
+            title="Quitar proveedor"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        )}
+      </div>
+      {open && resultados.length > 0 && (
+        <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg z-50 max-h-48 overflow-y-auto">
+          {resultados.slice(0, 8).map(p => (
+            <button
+              key={p.id}
+              type="button"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => seleccionar(p)}
+              className="w-full px-3 py-1.5 text-left hover:bg-slate-50 text-sm border-b last:border-0"
+            >
+              <div className="font-medium truncate">{p.razonSocial}</div>
+              {p.tipoProveedor && (
+                <div className="text-[10px] text-slate-400">{p.tipoProveedor}</div>
+              )}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function PresupuestoForm() {
   const navigate = useNavigate();
@@ -138,6 +268,7 @@ function PresupuestoForm() {
   const updatePresupuesto = useUpdatePresupuesto(id);
   const cambiarEstado = useCambiarEstadoPresupuesto();
   const convertir = useConvertirPresupuesto();
+  const aceptar = useAceptarPresupuesto();
   const agregarMensaje = useAgregarMensaje();
   const marcarLeidos = useMarcarMensajesLeidos();
   const marcarVisto = useMarcarPresupuestoVisto();
@@ -247,7 +378,10 @@ function PresupuestoForm() {
     shipperId: selectedShipper?.id || null,
     consigneeId: selectedConsignee?.id || null,
     proveedorId: selectedProveedor?.id || null,
-    items: items.filter(i => i.concepto),
+    items: items.filter(i => i.concepto).map(i => {
+      const { totalVenta, totalCosto } = calcularTotalesItem(i, mercancias, contenedores);
+      return { ...i, totalVenta, totalCosto };
+    }),
     mercancias: mercancias.filter(m => m.descripcion),
     contenedores: contenedores.filter(c => c.tipo),
     bancoPdfId: bancoPdfId || null
@@ -349,7 +483,9 @@ function PresupuestoForm() {
       categoriaIVA: 'GRAVADO',
       porcentajeIVA: 21,
       importeMinimo: null,
-      importeMaximo: null
+      importeMaximo: null,
+      proveedorId: null,
+      proveedorNombre: ''
     }]);
     if (isEditing) {
       setHasChanges(true);
@@ -596,6 +732,17 @@ function PresupuestoForm() {
     }
   };
 
+  const handleAceptar = async () => {
+    if (!confirm('¿Aceptar este presupuesto o tarifa y generar la carpeta de operación?')) return;
+    try {
+      const result = await aceptar.mutateAsync(id);
+      toast.success(`Carpeta ${result.data.carpeta.numero} creada`);
+      navigate(`/carpetas/${result.data.carpeta.id}`);
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Error al aceptar');
+    }
+  };
+
   const handleEnviarMensaje = async (e) => {
     e.preventDefault();
     if (!nuevoMensaje.trim()) return;
@@ -612,9 +759,14 @@ function PresupuestoForm() {
     }
   };
 
-  // Calcular totales
-  const totalVenta = items.reduce((sum, i) => sum + (parseFloat(i.montoVenta) || 0), 0);
-  const totalCosto = items.reduce((sum, i) => sum + (parseFloat(i.montoCosto) || 0), 0);
+  // Calcular totales por item (aplica base + cantidad + min/max)
+  const itemsConTotales = items.map(item => {
+    const { totalVenta: tv, totalCosto: tc, multiplicador } = calcularTotalesItem(item, mercancias, contenedores);
+    return { ...item, _totalVenta: tv, _totalCosto: tc, _multiplicador: multiplicador };
+  });
+
+  const totalVenta = itemsConTotales.reduce((sum, i) => sum + (i._totalVenta || 0), 0);
+  const totalCosto = itemsConTotales.reduce((sum, i) => sum + (i._totalCosto || 0), 0);
   const margen = totalVenta - totalCosto;
 
   const CATEGORIAS_IVA = [
@@ -677,6 +829,12 @@ function PresupuestoForm() {
             <Button variant="secondary" onClick={() => handleCambiarEstado('ENVIADO')}>
               <Send className="w-4 h-4" />
               Enviar al cliente
+            </Button>
+          )}
+          {isEditing && presupuesto && !presupuesto.carpetaId && !['CONVERTIDO', 'RECHAZADO'].includes(presupuesto.estado) && (
+            <Button onClick={handleAceptar} loading={aceptar.isPending} className="bg-amber-500 hover:bg-amber-600 text-white">
+              <Sparkles className="w-4 h-4" />
+              Aceptar Presupuesto
             </Button>
           )}
           {isEditing && presupuesto?.estado === 'APROBADO' && !presupuesto?.carpetaId && (
@@ -1651,15 +1809,18 @@ function PresupuestoForm() {
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[700px]">
+                <table className="w-full min-w-[1000px]">
                   <thead>
                     <tr className="text-xs text-slate-500 border-b bg-slate-50">
                       <th className="py-3 px-2 text-left font-medium">Concepto</th>
-                      <th className="py-3 px-2 text-center font-medium w-16">P/C</th>
+                      <th className="py-3 px-2 text-left font-medium w-44">Proveedor</th>
+                      <th className="py-3 px-2 text-center font-medium w-14">P/C</th>
                       <th className="py-3 px-2 text-center font-medium w-20">Divisa</th>
-                      <th className="py-3 px-2 text-right font-medium w-28">Costo</th>
-                      <th className="py-3 px-2 text-right font-medium w-28">Venta</th>
-                      <th className="py-3 px-2 text-center font-medium w-24">IVA</th>
+                      <th className="py-3 px-2 text-right font-medium w-24">Costo</th>
+                      <th className="py-3 px-2 text-right font-medium w-24">Venta</th>
+                      <th className="py-3 px-2 text-right font-medium w-28 bg-red-50/40">Costo Total</th>
+                      <th className="py-3 px-2 text-right font-medium w-28 bg-green-50/40">Venta Total</th>
+                      <th className="py-3 px-2 text-center font-medium w-20">IVA</th>
                       <th className="py-3 px-2 w-20"></th>
                     </tr>
                   </thead>
@@ -1668,6 +1829,8 @@ function PresupuestoForm() {
                       const isExpanded = expandedItems[index];
                       const catLabel = CATEGORIAS_IVA.find(c => c.value === item.categoriaIVA)?.label || 'Gravado';
                       const ivaLabel = item.categoriaIVA === 'GRAVADO' ? `${item.porcentajeIVA || 21}%` : catLabel;
+                      const { totalVenta: rowVenta, totalCosto: rowCosto, multiplicador: rowMult } =
+                        calcularTotalesItem(item, mercancias, contenedores);
                       return (
                         <React.Fragment key={index}>
                           <tr className={cn('border-b border-slate-100', isExpanded && 'bg-blue-50/30')}>
@@ -1712,6 +1875,15 @@ function PresupuestoForm() {
                               )}
                             </td>
                             <td className="py-2 px-2">
+                              <ItemProveedorPicker
+                                value={{ id: item.proveedorId, nombre: item.proveedorNombre }}
+                                onChange={(prov) => {
+                                  updateItem(index, 'proveedorId', prov?.id || null);
+                                  updateItem(index, 'proveedorNombre', prov?.nombre || '');
+                                }}
+                              />
+                            </td>
+                            <td className="py-2 px-2">
                               <select
                                 value={item.prepaidCollect || 'P'}
                                 onChange={(e) => updateItem(index, 'prepaidCollect', e.target.value)}
@@ -1752,6 +1924,22 @@ function PresupuestoForm() {
                                 className="w-full px-2 py-1.5 text-sm rounded border border-slate-300 text-right"
                               />
                             </td>
+                            <td className="py-2 px-2 text-right bg-red-50/40">
+                              <div className="text-sm font-medium text-red-700">
+                                {(rowCosto || 0).toFixed(2)}
+                              </div>
+                              {rowMult !== 1 && (
+                                <div className="text-[10px] text-slate-400">×{rowMult.toFixed(2)}</div>
+                              )}
+                            </td>
+                            <td className="py-2 px-2 text-right bg-green-50/40">
+                              <div className="text-sm font-medium text-green-700">
+                                {(rowVenta || 0).toFixed(2)}
+                              </div>
+                              {rowMult !== 1 && (
+                                <div className="text-[10px] text-slate-400">×{rowMult.toFixed(2)}</div>
+                              )}
+                            </td>
                             <td className="py-2 px-2 text-center">
                               <span className={cn(
                                 'inline-block px-2 py-0.5 rounded-full text-xs font-medium',
@@ -1787,7 +1975,7 @@ function PresupuestoForm() {
                           </tr>
                           {isExpanded && (
                             <tr className="bg-blue-50/50 border-b border-blue-100">
-                              <td colSpan={7} className="px-4 py-3">
+                              <td colSpan={10} className="px-4 py-3">
                                 <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                                   <div>
                                     <label className="block text-xs font-medium text-slate-600 mb-1">Categoría IVA</label>

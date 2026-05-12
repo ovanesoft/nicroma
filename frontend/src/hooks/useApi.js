@@ -194,6 +194,30 @@ export function useDuplicarCarpeta(id) {
   });
 }
 
+// Helper: descarga un PDF de carpeta (BL/AWB/Cert. Flete/Cert. Gastos/Aviso de Arribo)
+// y dispara la descarga en el navegador. Devuelve una función `download` que se
+// puede invocar desde el componente.
+//
+// Documento puede ser: 'aviso-arribo', 'bill-of-lading', 'air-waybill', 'cert-flete', 'cert-gastos'
+export function useDescargarCarpetaPDF() {
+  return useMutation({
+    mutationFn: async ({ carpetaId, documento, filename }) => {
+      const response = await api.get(`/carpetas/${carpetaId}/pdf/${documento}`, {
+        responseType: 'blob'
+      });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', filename || `${documento}_${carpetaId}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      return true;
+    }
+  });
+}
+
 // ============================================
 // HOOKS PARA CLIENTES
 // ============================================
@@ -1022,6 +1046,22 @@ export function useConvertirPresupuesto() {
   return useMutation({
     mutationFn: async (id) => {
       const response = await api.post(`/presupuestos/${id}/convertir`);
+      return response.data;
+    },
+    onSuccess: (_, id) => {
+      queryClient.invalidateQueries({ queryKey: ['presupuestos'] });
+      queryClient.invalidateQueries({ queryKey: ['presupuesto', id] });
+      queryClient.invalidateQueries({ queryKey: ['carpetas'] });
+    }
+  });
+}
+
+// Aceptar presupuesto: aprueba (si hace falta) y convierte a carpeta en una sola acción
+export function useAceptarPresupuesto() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id) => {
+      const response = await api.post(`/presupuestos/${id}/aceptar`);
       return response.data;
     },
     onSuccess: (_, id) => {

@@ -5,7 +5,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { 
   ArrowLeft, Save, Ship, Package, DollarSign, FileText,
-  Plus, Trash2, Search, Receipt, MapPin, RefreshCw, MessageSquare, FileDown, Calculator
+  Plus, Trash2, Search, Receipt, MapPin, RefreshCw, MessageSquare, FileDown, Calculator,
+  ChevronDown, Plane, Award, FileCheck
 } from 'lucide-react';
 import api from '../../api/axios';
 import Layout from '../../components/layout/Layout';
@@ -15,7 +16,8 @@ import {
 import TerminalSelector from '../../components/ui/TerminalSelector';
 import { 
   useCarpeta, useCreateCarpeta, useUpdateCarpeta, useBuscarClientes,
-  useCreatePrefacturaDesdeCarpeta, useTrack, useIntegrations, useCuentasBancarias
+  useCreatePrefacturaDesdeCarpeta, useTrack, useIntegrations, useCuentasBancarias,
+  useDescargarCarpetaPDF
 } from '../../hooks/useApi';
 import toast from 'react-hot-toast';
 import { AREAS, SECTORES, TIPOS_OPERACION, TIPOS_OPERACION_AEREA, CARPETA_ESTADOS, INCOTERMS, TIPOS_CONTENEDOR } from '../../lib/constants';
@@ -119,7 +121,13 @@ function CarpetaForm() {
   };
 
   const [downloadingPDF, setDownloadingPDF] = useState(false);
-  
+  const [showPDFMenu, setShowPDFMenu] = useState(false);
+  const descargarPDF = useDescargarCarpetaPDF();
+
+  const carpetaActual = carpetaData?.data?.carpeta;
+  const carpetaArea = carpetaActual?.area;
+  const houseBL = carpetaActual?.houseBL || carpetaActual?.numero;
+
   const handleDescargarAvisoArribo = async () => {
     if (!id) return;
     setDownloadingPDF(true);
@@ -127,24 +135,38 @@ function CarpetaForm() {
       const response = await api.get(`/carpetas/${id}/pdf/aviso-arribo`, {
         responseType: 'blob'
       });
-      
-      // Crear URL y descargar
+
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
-      const houseBL = carpetaData?.data?.carpeta?.houseBL || carpetaData?.data?.carpeta?.numero;
       link.setAttribute('download', `Aviso_Arribo_${houseBL}.pdf`);
       document.body.appendChild(link);
       link.click();
       link.remove();
       window.URL.revokeObjectURL(url);
-      
+
       toast.success('PDF descargado');
     } catch (error) {
       console.error('Error descargando PDF:', error);
       toast.error('Error al descargar el PDF');
     } finally {
       setDownloadingPDF(false);
+    }
+  };
+
+  const descargarDocumentoCarpeta = async (documento, prefijo) => {
+    if (!id) return;
+    try {
+      await descargarPDF.mutateAsync({
+        carpetaId: id,
+        documento,
+        filename: `${prefijo}_${houseBL}.pdf`
+      });
+      toast.success('PDF descargado');
+      setShowPDFMenu(false);
+    } catch (error) {
+      console.error('Error descargando PDF:', error);
+      toast.error(error.response?.data?.message || 'Error al descargar el PDF');
     }
   };
 
@@ -392,15 +414,92 @@ function CarpetaForm() {
         </Button>
         <div className="flex gap-2">
           {isEditing && (
-            <Button 
-              type="button"
-              variant="outline" 
-              onClick={handleDescargarAvisoArribo}
-              loading={downloadingPDF}
-            >
-              <FileDown className="w-4 h-4" />
-              Aviso de Arribo
-            </Button>
+            <div className="relative">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowPDFMenu(!showPDFMenu)}
+                loading={downloadingPDF || descargarPDF.isPending}
+              >
+                <FileDown className="w-4 h-4" />
+                Generar Documento
+                <ChevronDown className="w-4 h-4 ml-1" />
+              </Button>
+              {showPDFMenu && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setShowPDFMenu(false)} />
+                  <div className="absolute right-0 top-full mt-1 w-64 bg-white rounded-lg shadow-xl border border-slate-200 py-1 z-50">
+                    <button
+                      type="button"
+                      onClick={() => { setShowPDFMenu(false); handleDescargarAvisoArribo(); }}
+                      className="w-full px-4 py-2 text-left text-sm hover:bg-slate-50 flex items-center gap-2"
+                    >
+                      <FileDown className="w-4 h-4 text-blue-600" />
+                      <div>
+                        <div className="font-medium">Aviso de Arribo</div>
+                        <div className="text-xs text-slate-400">Notificación al cliente</div>
+                      </div>
+                    </button>
+
+                    <div className="border-t border-slate-100 my-1" />
+
+                    {carpetaArea === 'Marítimo' && (
+                      <button
+                        type="button"
+                        onClick={() => descargarDocumentoCarpeta('bill-of-lading', 'BL')}
+                        className="w-full px-4 py-2 text-left text-sm hover:bg-slate-50 flex items-center gap-2"
+                      >
+                        <Ship className="w-4 h-4 text-cyan-600" />
+                        <div>
+                          <div className="font-medium">Bill of Lading (BL)</div>
+                          <div className="text-xs text-slate-400">Conocimiento de embarque</div>
+                        </div>
+                      </button>
+                    )}
+
+                    {carpetaArea === 'Aéreo' && (
+                      <button
+                        type="button"
+                        onClick={() => descargarDocumentoCarpeta('air-waybill', 'AWB')}
+                        className="w-full px-4 py-2 text-left text-sm hover:bg-slate-50 flex items-center gap-2"
+                      >
+                        <Plane className="w-4 h-4 text-orange-600" />
+                        <div>
+                          <div className="font-medium">Air Waybill (AWB)</div>
+                          <div className="text-xs text-slate-400">Guía aérea</div>
+                        </div>
+                      </button>
+                    )}
+
+                    <div className="border-t border-slate-100 my-1" />
+
+                    <button
+                      type="button"
+                      onClick={() => descargarDocumentoCarpeta('cert-flete', 'Cert_Flete')}
+                      className="w-full px-4 py-2 text-left text-sm hover:bg-slate-50 flex items-center gap-2"
+                    >
+                      <Award className="w-4 h-4 text-teal-600" />
+                      <div>
+                        <div className="font-medium">Certificación de Flete</div>
+                        <div className="text-xs text-slate-400">Detalle de costos de flete</div>
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => descargarDocumentoCarpeta('cert-gastos', 'Cert_Gastos')}
+                      className="w-full px-4 py-2 text-left text-sm hover:bg-slate-50 flex items-center gap-2"
+                    >
+                      <FileCheck className="w-4 h-4 text-violet-600" />
+                      <div>
+                        <div className="font-medium">Certificación de Gastos</div>
+                        <div className="text-xs text-slate-400">Gastos por proveedor</div>
+                      </div>
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
           )}
           {isEditing && gastos.length > 0 && (
             <Button 

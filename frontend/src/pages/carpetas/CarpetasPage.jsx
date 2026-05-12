@@ -2,14 +2,15 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Plus, Search, Ship, MoreVertical, Eye, Edit, Copy, Trash2,
-  Filter, Download, Calendar
+  Filter, Download, Calendar, FileDown, Plane, Award, FileCheck
 } from 'lucide-react';
 import Layout from '../../components/layout/Layout';
 import { 
   Card, CardContent, Button, Badge,
   Table, TableHeader, TableBody, TableRow, TableHead, TableCell, TableEmpty
 } from '../../components/ui';
-import { useCarpetas, useDeleteCarpeta, useDuplicarCarpeta } from '../../hooks/useApi';
+import { useCarpetas, useDeleteCarpeta, useDuplicarCarpeta, useDescargarCarpetaPDF } from '../../hooks/useApi';
+import toast from 'react-hot-toast';
 import { formatDate, cn } from '../../lib/utils';
 import { CARPETA_ESTADOS, AREAS, SECTORES, TIPOS_OPERACION } from '../../lib/constants';
 
@@ -29,6 +30,22 @@ function CarpetasPage() {
   const { data, isLoading, refetch } = useCarpetas(filters);
   const deleteCarpeta = useDeleteCarpeta();
   const duplicarCarpeta = useDuplicarCarpeta();
+  const descargarPDF = useDescargarCarpetaPDF();
+
+  const handleDescargarPDF = async (carpeta, documento, prefijo) => {
+    try {
+      const houseBL = carpeta.houseBL || carpeta.numero;
+      await descargarPDF.mutateAsync({
+        carpetaId: carpeta.id,
+        documento,
+        filename: `${prefijo}_${houseBL}.pdf`
+      });
+      toast.success('PDF descargado');
+      setActiveMenu(null);
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Error al descargar el PDF');
+    }
+  };
 
   const carpetas = data?.data?.carpetas || [];
   const pagination = data?.data?.pagination || {};
@@ -263,7 +280,7 @@ function CarpetasPage() {
                               className="fixed inset-0 z-40" 
                               onClick={() => setActiveMenu(null)}
                             />
-                            <div className="absolute right-0 top-full mt-1 w-40 bg-white rounded-lg shadow-xl border border-slate-200 py-1 z-50">
+                            <div className="absolute right-0 top-full mt-1 w-56 bg-white rounded-lg shadow-xl border border-slate-200 py-1 z-50">
                               <button
                                 onClick={() => {
                                   setActiveMenu(null);
@@ -294,6 +311,56 @@ function CarpetasPage() {
                                 <Copy className="w-4 h-4" />
                                 Duplicar
                               </button>
+
+                              <hr className="my-1" />
+                              <div className="px-3 py-1 text-[10px] uppercase tracking-wide text-slate-400 font-semibold">
+                                Documentos
+                              </div>
+
+                              <button
+                                onClick={() => handleDescargarPDF(carpeta, 'aviso-arribo', 'Aviso_Arribo')}
+                                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                              >
+                                <FileDown className="w-4 h-4 text-blue-600" />
+                                Aviso de Arribo
+                              </button>
+
+                              {carpeta.area === 'Marítimo' && (
+                                <button
+                                  onClick={() => handleDescargarPDF(carpeta, 'bill-of-lading', 'BL')}
+                                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                                >
+                                  <Ship className="w-4 h-4 text-cyan-600" />
+                                  Bill of Lading (BL)
+                                </button>
+                              )}
+
+                              {carpeta.area === 'Aéreo' && (
+                                <button
+                                  onClick={() => handleDescargarPDF(carpeta, 'air-waybill', 'AWB')}
+                                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                                >
+                                  <Plane className="w-4 h-4 text-orange-600" />
+                                  Air Waybill (AWB)
+                                </button>
+                              )}
+
+                              <button
+                                onClick={() => handleDescargarPDF(carpeta, 'cert-flete', 'Cert_Flete')}
+                                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                              >
+                                <Award className="w-4 h-4 text-teal-600" />
+                                Cert. de Flete
+                              </button>
+
+                              <button
+                                onClick={() => handleDescargarPDF(carpeta, 'cert-gastos', 'Cert_Gastos')}
+                                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                              >
+                                <FileCheck className="w-4 h-4 text-violet-600" />
+                                Cert. de Gastos
+                              </button>
+
                               <hr className="my-1" />
                               <button
                                 onClick={() => {

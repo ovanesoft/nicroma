@@ -1,5 +1,9 @@
 const prisma = require('../services/prisma');
 const { generarAvisoArribo } = require('../services/pdf/avisoArribo');
+const { generarBillOfLading } = require('../services/pdf/billOfLading');
+const { generarAirWaybill } = require('../services/pdf/airWaybill');
+const { generarCertificacionFlete } = require('../services/pdf/certificacionFlete');
+const { generarCertificacionGastos } = require('../services/pdf/certificacionGastos');
 
 // Generar número de carpeta
 const generarNumeroCarpeta = async (tenantId, area, sector) => {
@@ -319,10 +323,12 @@ const crearCarpeta = async (req, res) => {
             montoCosto: g.montoCosto,
             base: g.base,
             cantidad: g.cantidad || 1,
-            totalVenta: (g.montoVenta || 0) * (g.cantidad || 1),
-            totalCosto: (g.montoCosto || 0) * (g.cantidad || 1),
+            totalVenta: g.totalVenta != null ? g.totalVenta : (g.montoVenta || 0) * (g.cantidad || 1),
+            totalCosto: g.totalCosto != null ? g.totalCosto : (g.montoCosto || 0) * (g.cantidad || 1),
             gravado: g.gravado !== false,
-            porcentajeIVA: g.porcentajeIVA || 21
+            porcentajeIVA: g.porcentajeIVA || 21,
+            proveedorId: g.proveedorId || null,
+            proveedorNombre: g.proveedorNombre || null
           }))
         } : undefined
       },
@@ -465,7 +471,7 @@ const actualizarCarpeta = async (req, res) => {
       // 4. Actualizar gastos (eliminar existentes y crear nuevos)
       if (gastos !== undefined) {
         await tx.gasto.deleteMany({ where: { carpetaId: id } });
-        
+
         if (gastos && gastos.length > 0) {
           await tx.gasto.createMany({
             data: gastos.filter(g => g.concepto).map(g => ({
@@ -477,10 +483,16 @@ const actualizarCarpeta = async (req, res) => {
               montoCosto: parseFloat(g.montoCosto) || 0,
               base: g.base || null,
               cantidad: parseFloat(g.cantidad) || 1,
-              totalVenta: (parseFloat(g.montoVenta) || 0) * (parseFloat(g.cantidad) || 1),
-              totalCosto: (parseFloat(g.montoCosto) || 0) * (parseFloat(g.cantidad) || 1),
+              totalVenta: g.totalVenta != null
+                ? parseFloat(g.totalVenta) || 0
+                : (parseFloat(g.montoVenta) || 0) * (parseFloat(g.cantidad) || 1),
+              totalCosto: g.totalCosto != null
+                ? parseFloat(g.totalCosto) || 0
+                : (parseFloat(g.montoCosto) || 0) * (parseFloat(g.cantidad) || 1),
               gravado: g.gravado !== false,
-              porcentajeIVA: parseFloat(g.porcentajeIVA) || 21
+              porcentajeIVA: parseFloat(g.porcentajeIVA) || 21,
+              proveedorId: g.proveedorId || null,
+              proveedorNombre: g.proveedorNombre || null
             }))
           });
         }
@@ -648,76 +660,157 @@ const duplicarCarpeta = async (req, res) => {
   }
 };
 
+// ---------------------------------------------------------------------------
+// Helper: obtiene carpeta + tenant + bancoSeleccionado para generadores PDF.
+// Acepta un campo `gastosInclude` opcional para hacer el include de proveedor
+// (necesario cuando el PDF muestra nombre del proveedor).
+// ---------------------------------------------------------------------------
+async function _cargarCarpetaParaPDF(tenantId, carpetaId, { conProveedorEnGastos = false } = {}) {
+  const carpeta = await prisma.carpeta.findFirst({
+    where: { id: carpetaId, tenantId },
+    include: {
+      cliente: true,
+      shipper: true,
+      consignee: true,
+      mercancias: true,
+      contenedores: true,
+      gastos: conProveedorEnGastos
+        ? { include: { proveedor: true }, orderBy: { createdAt: 'asc' } }
+        : { orderBy: { createdAt: 'asc' } },
+    }
+  });
+
+  if (!carpeta) return { carpeta: null };
+
+  const tenant = await prisma.tenant.findUnique({
+    where: { id: tenantId },
+    select: {
+      id: true,
+      name: true,
+      cuentasBancarias: true,
+      companyAddress: true,
+      companyPhone: true,
+      companyEmail: true
+    }
+  });
+
+  let bancoSeleccionado = null;
+  const cuentasBancarias = tenant?.cuentasBancarias || [];
+  if (cuentasBancarias.length > 0) {
+    if (carpeta.bancoPdfId) {
+      bancoSeleccionado = cuentasBancarias.find(c => c.id === carpeta.bancoPdfId);
+    }
+    if (!bancoSeleccionado) {
+      bancoSeleccionado = cuentasBancarias.find(c => c.esPrincipal) || cuentasBancarias[0];
+    }
+  }
+
+  return { carpeta, tenant, bancoSeleccionado };
+}
+
+function _enviarPDF(res, doc, filename) {
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+  doc.pipe(res);
+  doc.end();
+}
+
 // Generar PDF de Aviso de Arribo
 const generarPDFAvisoArribo = async (req, res) => {
   try {
     const tenantId = req.user.tenant_id;
     const { id } = req.params;
 
-    // Obtener carpeta con todas las relaciones necesarias
-    const carpeta = await prisma.carpeta.findFirst({
-      where: { id, tenantId },
-      include: {
-        cliente: true,
-        shipper: true,
-        consignee: true,
-        mercancias: true,
-        contenedores: true,
-        gastos: true
-      }
-    });
+    const { carpeta, tenant, bancoSeleccionado } = await _cargarCarpetaParaPDF(tenantId, id);
+    if (!carpeta) return res.status(404).json({ success: false, message: 'Carpeta no encontrada' });
 
-    if (!carpeta) {
-      return res.status(404).json({
+    const doc = generarAvisoArribo(carpeta, tenant, bancoSeleccionado);
+    _enviarPDF(res, doc, `Aviso_Arribo_${carpeta.houseBL || carpeta.numero}.pdf`);
+  } catch (error) {
+    console.error('Error generando PDF de aviso de arribo:', error);
+    res.status(500).json({ success: false, message: 'Error al generar el PDF' });
+  }
+};
+
+// Generar PDF de Bill of Lading (carpetas marítimas)
+const generarPDFBillOfLading = async (req, res) => {
+  try {
+    const tenantId = req.user.tenant_id;
+    const { id } = req.params;
+
+    const { carpeta, tenant } = await _cargarCarpetaParaPDF(tenantId, id);
+    if (!carpeta) return res.status(404).json({ success: false, message: 'Carpeta no encontrada' });
+
+    if (carpeta.area !== 'Marítimo') {
+      return res.status(400).json({
         success: false,
-        message: 'Carpeta no encontrada'
+        message: 'El BL solo se genera para carpetas marítimas. Usá AWB para carpetas aéreas.'
       });
     }
 
-    // Obtener datos del tenant para incluir datos bancarios
-    const tenant = await prisma.tenant.findUnique({
-      where: { id: tenantId },
-      select: {
-        id: true,
-        name: true,
-        cuentasBancarias: true,
-        companyAddress: true,
-        companyPhone: true,
-        companyEmail: true
-      }
-    });
+    const doc = generarBillOfLading(carpeta, tenant);
+    _enviarPDF(res, doc, `BL_${carpeta.houseBL || carpeta.numero}.pdf`);
+  } catch (error) {
+    console.error('Error generando PDF de Bill of Lading:', error);
+    res.status(500).json({ success: false, message: 'Error al generar el PDF' });
+  }
+};
 
-    // Obtener banco seleccionado o el principal
-    let bancoSeleccionado = null;
-    const cuentasBancarias = tenant?.cuentasBancarias || [];
-    if (cuentasBancarias.length > 0) {
-      if (carpeta.bancoPdfId) {
-        bancoSeleccionado = cuentasBancarias.find(c => c.id === carpeta.bancoPdfId);
-      }
-      // Si no hay seleccionado o no se encontró, usar el principal
-      if (!bancoSeleccionado) {
-        bancoSeleccionado = cuentasBancarias.find(c => c.esPrincipal) || cuentasBancarias[0];
-      }
+// Generar PDF de Air Waybill (carpetas aéreas)
+const generarPDFAirWaybill = async (req, res) => {
+  try {
+    const tenantId = req.user.tenant_id;
+    const { id } = req.params;
+
+    const { carpeta, tenant } = await _cargarCarpetaParaPDF(tenantId, id);
+    if (!carpeta) return res.status(404).json({ success: false, message: 'Carpeta no encontrada' });
+
+    if (carpeta.area !== 'Aéreo') {
+      return res.status(400).json({
+        success: false,
+        message: 'El AWB solo se genera para carpetas aéreas. Usá BL para carpetas marítimas.'
+      });
     }
 
-    // Generar el PDF
-    const doc = generarAvisoArribo(carpeta, tenant, bancoSeleccionado);
-
-    // Configurar headers para descarga
-    const filename = `Aviso_Arribo_${carpeta.houseBL || carpeta.numero}.pdf`;
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-
-    // Enviar el PDF como stream
-    doc.pipe(res);
-    doc.end();
-
+    const doc = generarAirWaybill(carpeta, tenant);
+    _enviarPDF(res, doc, `AWB_${carpeta.houseBL || carpeta.numero}.pdf`);
   } catch (error) {
-    console.error('Error generando PDF de aviso de arribo:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error al generar el PDF'
-    });
+    console.error('Error generando PDF de Air Waybill:', error);
+    res.status(500).json({ success: false, message: 'Error al generar el PDF' });
+  }
+};
+
+// Generar PDF de Certificación de Flete (ambas modalidades)
+const generarPDFCertificacionFlete = async (req, res) => {
+  try {
+    const tenantId = req.user.tenant_id;
+    const { id } = req.params;
+
+    const { carpeta, tenant, bancoSeleccionado } = await _cargarCarpetaParaPDF(tenantId, id, { conProveedorEnGastos: true });
+    if (!carpeta) return res.status(404).json({ success: false, message: 'Carpeta no encontrada' });
+
+    const doc = generarCertificacionFlete(carpeta, tenant, bancoSeleccionado);
+    _enviarPDF(res, doc, `Cert_Flete_${carpeta.houseBL || carpeta.numero}.pdf`);
+  } catch (error) {
+    console.error('Error generando Certificación de Flete:', error);
+    res.status(500).json({ success: false, message: 'Error al generar el PDF' });
+  }
+};
+
+// Generar PDF de Certificación de Gastos (ambas modalidades)
+const generarPDFCertificacionGastos = async (req, res) => {
+  try {
+    const tenantId = req.user.tenant_id;
+    const { id } = req.params;
+
+    const { carpeta, tenant, bancoSeleccionado } = await _cargarCarpetaParaPDF(tenantId, id, { conProveedorEnGastos: true });
+    if (!carpeta) return res.status(404).json({ success: false, message: 'Carpeta no encontrada' });
+
+    const doc = generarCertificacionGastos(carpeta, tenant, bancoSeleccionado);
+    _enviarPDF(res, doc, `Cert_Gastos_${carpeta.houseBL || carpeta.numero}.pdf`);
+  } catch (error) {
+    console.error('Error generando Certificación de Gastos:', error);
+    res.status(500).json({ success: false, message: 'Error al generar el PDF' });
   }
 };
 
@@ -729,5 +822,9 @@ module.exports = {
   eliminarCarpeta,
   siguienteNumero,
   duplicarCarpeta,
-  generarPDFAvisoArribo
+  generarPDFAvisoArribo,
+  generarPDFBillOfLading,
+  generarPDFAirWaybill,
+  generarPDFCertificacionFlete,
+  generarPDFCertificacionGastos
 };

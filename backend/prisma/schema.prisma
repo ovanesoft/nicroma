@@ -8,58 +8,58 @@ datasource db {
 }
 
 model Tenant {
-  id                   String                @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  name                 String                @db.VarChar(255)
-  slug                 String                @unique @db.VarChar(100)
-  domain               String?               @db.VarChar(255)
-  logoUrl              String?               @map("logo_url")
-  settings             Json?                 @default("{}")
-  plan                 String?               @default("free") @db.VarChar(50)
-  isActive             Boolean?              @default(true) @map("is_active")
-  createdAt            DateTime?             @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt            DateTime?             @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
-  createdBy            String?               @map("created_by") @db.Uuid
-  
+  id        String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  name      String    @db.VarChar(255)
+  slug      String    @unique @db.VarChar(100)
+  domain    String?   @db.VarChar(255)
+  logoUrl   String?   @map("logo_url")
+  settings  Json?     @default("{}")
+  plan      String?   @default("free") @db.VarChar(50)
+  isActive  Boolean?  @default(true) @map("is_active")
+  createdAt DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime? @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy String?   @map("created_by") @db.Uuid
+
   // Portal de clientes
-  portalEnabled        Boolean?              @default(false) @map("portal_enabled")
-  portalSlug           String?               @unique @map("portal_slug") @db.VarChar(100)
-  portalWelcomeMessage String?               @map("portal_welcome_message")
-  portalPrimaryColor   String?               @default("#6366f1") @map("portal_primary_color") @db.VarChar(20)
-  
+  portalEnabled        Boolean? @default(false) @map("portal_enabled")
+  portalSlug           String?  @unique @map("portal_slug") @db.VarChar(100)
+  portalWelcomeMessage String?  @map("portal_welcome_message")
+  portalPrimaryColor   String?  @default("#6366f1") @map("portal_primary_color") @db.VarChar(20)
+
   // Datos de la empresa
-  companyEmail         String?               @map("company_email") @db.VarChar(255)
-  companyPhone         String?               @map("company_phone") @db.VarChar(50)
-  companyAddress       String?               @map("company_address")
-  companyCity          String?               @map("company_city") @db.VarChar(100)
-  companyCountry       String?               @map("company_country") @db.VarChar(100)
-  companyWebsite       String?               @map("company_website") @db.VarChar(255)
-  
+  companyEmail   String? @map("company_email") @db.VarChar(255)
+  companyPhone   String? @map("company_phone") @db.VarChar(50)
+  companyAddress String? @map("company_address")
+  companyCity    String? @map("company_city") @db.VarChar(100)
+  companyCountry String? @map("company_country") @db.VarChar(100)
+  companyWebsite String? @map("company_website") @db.VarChar(255)
+
   // Medios de pago para clientes
-  paymentBankName      String?               @map("payment_bank_name") @db.VarChar(255)
-  paymentBankAccount   String?               @map("payment_bank_account") @db.VarChar(100)
-  paymentBankCbu       String?               @map("payment_bank_cbu") @db.VarChar(30)
-  paymentBankAlias     String?               @map("payment_bank_alias") @db.VarChar(100)
-  paymentBankCuit      String?               @map("payment_bank_cuit") @db.VarChar(20)
-  paymentBankHolder    String?               @map("payment_bank_holder") @db.VarChar(255)
-  paymentMercadoPago   String?               @map("payment_mercado_pago") @db.VarChar(255)
-  paymentPaypal        String?               @map("payment_paypal") @db.VarChar(255)
-  paymentChequeOrder   String?               @map("payment_cheque_order") @db.VarChar(255)
-  paymentOtherMethods  String?               @map("payment_other_methods")
-  paymentNotes         String?               @map("payment_notes")
-  
+  paymentBankName     String? @map("payment_bank_name") @db.VarChar(255)
+  paymentBankAccount  String? @map("payment_bank_account") @db.VarChar(100)
+  paymentBankCbu      String? @map("payment_bank_cbu") @db.VarChar(30)
+  paymentBankAlias    String? @map("payment_bank_alias") @db.VarChar(100)
+  paymentBankCuit     String? @map("payment_bank_cuit") @db.VarChar(20)
+  paymentBankHolder   String? @map("payment_bank_holder") @db.VarChar(255)
+  paymentMercadoPago  String? @map("payment_mercado_pago") @db.VarChar(255)
+  paymentPaypal       String? @map("payment_paypal") @db.VarChar(255)
+  paymentChequeOrder  String? @map("payment_cheque_order") @db.VarChar(255)
+  paymentOtherMethods String? @map("payment_other_methods")
+  paymentNotes        String? @map("payment_notes")
+
   // Múltiples cuentas bancarias (JSON)
   // Formato: [{ id, banco, cuenta, cbu, alias, titular, moneda, cuit, esPrincipal }]
-  cuentasBancarias     Json?                 @default("[]") @map("cuentas_bancarias")
-  
-  audit_logs           AuditLog[]
-  payments             payments[]
-  promotion_uses       promotion_uses[]
-  system_logs          system_logs[]
-  tenant_subscriptions tenant_subscriptions?
-  user_invitations     UserInvitation[]
-  users                User[]
-  conversationsCreated Conversation[]        @relation("ConversationsCreatedByTenant")
-  conversationsAsTarget Conversation[]       @relation("ConversationsTargetTenant")
+  cuentasBancarias Json? @default("[]") @map("cuentas_bancarias")
+
+  audit_logs            AuditLog[]
+  payments              payments[]
+  promotion_uses        promotion_uses[]
+  system_logs           system_logs[]
+  tenant_subscriptions  tenant_subscriptions?
+  user_invitations      UserInvitation[]
+  users                 User[]
+  conversationsCreated  Conversation[]        @relation("ConversationsCreatedByTenant")
+  conversationsAsTarget Conversation[]        @relation("ConversationsTargetTenant")
 
   @@index([isActive], map: "idx_tenants_is_active")
   @@index([slug], map: "idx_tenants_slug")
@@ -183,33 +183,33 @@ model Session {
 }
 
 model SubscriptionPlan {
-  id                   String                 @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  name                 String                 @db.VarChar(100)
-  slug                 String                 @unique @db.VarChar(50)
-  description          String?
-  priceMonthly         Decimal?               @default(0) @map("price_monthly") @db.Decimal(10, 2)
-  priceYearly          Decimal?               @default(0) @map("price_yearly") @db.Decimal(10, 2)
-  currency             String?                @default("ARS") @db.VarChar(3)
-  features             Json?                  @default("[]")
-  
+  id           String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  name         String   @db.VarChar(100)
+  slug         String   @unique @db.VarChar(50)
+  description  String?
+  priceMonthly Decimal? @default(0) @map("price_monthly") @db.Decimal(10, 2)
+  priceYearly  Decimal? @default(0) @map("price_yearly") @db.Decimal(10, 2)
+  currency     String?  @default("ARS") @db.VarChar(3)
+  features     Json?    @default("[]")
+
   // Límites del plan
-  maxUsers             Int?                   @default(2) @map("max_users")
-  maxCarpetasPerMonth  Int?                   @map("max_carpetas_per_month") // null = ilimitadas
-  maxClientes          Int?                   @map("max_clientes") // null = ilimitados
-  
+  maxUsers            Int? @default(2) @map("max_users")
+  maxCarpetasPerMonth Int? @map("max_carpetas_per_month") // null = ilimitadas
+  maxClientes         Int? @map("max_clientes") // null = ilimitados
+
   // Features booleanas
-  hasPortalClientes    Boolean?               @default(true) @map("has_portal_clientes")
-  hasTrackingNavieras  Boolean?               @default(false) @map("has_tracking_navieras")
-  trackingNavierasLimit Int?                  @map("tracking_navieras_limit") // null = todas, 0 = ninguna
-  hasFacturacionAfip   Boolean?               @default(false) @map("has_facturacion_afip")
-  hasReportesAvanzados Boolean?               @default(false) @map("has_reportes_avanzados")
-  
+  hasPortalClientes     Boolean? @default(true) @map("has_portal_clientes")
+  hasTrackingNavieras   Boolean? @default(false) @map("has_tracking_navieras")
+  trackingNavierasLimit Int?     @map("tracking_navieras_limit") // null = todas, 0 = ninguna
+  hasFacturacionAfip    Boolean? @default(false) @map("has_facturacion_afip")
+  hasReportesAvanzados  Boolean? @default(false) @map("has_reportes_avanzados")
+
   // Soporte
-  supportLevel         String?                @default("email") @map("support_level") @db.VarChar(50) // email, email_chat, priority, dedicated
-  
+  supportLevel String? @default("email") @map("support_level") @db.VarChar(50) // email, email_chat, priority, dedicated
+
   // Tipo de plan
-  isContactSales       Boolean?               @default(false) @map("is_contact_sales") // Para Enterprise
-  
+  isContactSales Boolean? @default(false) @map("is_contact_sales") // Para Enterprise
+
   isActive             Boolean?               @default(true) @map("is_active")
   sortOrder            Int?                   @default(0) @map("sort_order")
   createdAt            DateTime?              @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -282,7 +282,7 @@ model promotions {
   currency            String?          @default("ARS") @db.VarChar(3)
   applicable_plans    Json?            @default("[]") // Array de slugs de planes, vacío = todos
   min_billing_cycle   String?          @db.VarChar(20)
-  max_uses            Int?             // null = ilimitado
+  max_uses            Int? // null = ilimitado
   uses_count          Int?             @default(0)
   max_uses_per_tenant Int?             @default(1)
   duration_months     Int?             @map("duration_months") // null = siempre, 1 = primer mes, 3 = primeros 3 meses
@@ -330,25 +330,25 @@ model system_logs {
 // Tipos de notificación
 enum NotificationType {
   // Comunicaciones del root
-  ANNOUNCEMENT      // Anuncio general
-  MAINTENANCE       // Mantenimiento programado
-  NEW_FEATURE       // Nueva funcionalidad
-  
+  ANNOUNCEMENT // Anuncio general
+  MAINTENANCE // Mantenimiento programado
+  NEW_FEATURE // Nueva funcionalidad
+
   // Alertas de billing
-  PAYMENT_FAILED    // Pago fallido
-  PAYMENT_SUCCESS   // Pago exitoso
-  SUBSCRIPTION_EXPIRING  // Suscripción por vencer
-  TRIAL_EXPIRING    // Trial por vencer
+  PAYMENT_FAILED // Pago fallido
+  PAYMENT_SUCCESS // Pago exitoso
+  SUBSCRIPTION_EXPIRING // Suscripción por vencer
+  TRIAL_EXPIRING // Trial por vencer
   PLAN_LIMIT_WARNING // Límite del plan cerca
-  
+
   // Alertas operativas
-  QUOTE_RECEIVED    // Presupuesto recibido (para tenant)
-  QUOTE_RESPONSE    // Respuesta de presupuesto (para cliente)
-  MESSAGE_RECEIVED  // Mensaje recibido
-  
+  QUOTE_RECEIVED // Presupuesto recibido (para tenant)
+  QUOTE_RESPONSE // Respuesta de presupuesto (para cliente)
+  MESSAGE_RECEIVED // Mensaje recibido
+
   // Sistema
-  WELCOME           // Bienvenida
-  SYSTEM_ALERT      // Alerta del sistema
+  WELCOME // Bienvenida
+  SYSTEM_ALERT // Alerta del sistema
 }
 
 // Prioridad de notificación
@@ -361,40 +361,40 @@ enum NotificationPriority {
 
 // Notificaciones del sistema
 model SystemNotification {
-  id              String               @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  
+  id String @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+
   // Tipo y prioridad
-  type            NotificationType
-  priority        NotificationPriority @default(NORMAL)
-  
+  type     NotificationType
+  priority NotificationPriority @default(NORMAL)
+
   // Contenido
-  title           String               @db.VarChar(255)
-  message         String
-  actionUrl       String?              @map("action_url") @db.VarChar(500)
-  actionLabel     String?              @map("action_label") @db.VarChar(100)
-  
+  title       String  @db.VarChar(255)
+  message     String
+  actionUrl   String? @map("action_url") @db.VarChar(500)
+  actionLabel String? @map("action_label") @db.VarChar(100)
+
   // Metadata adicional
-  metadata        Json?                @default("{}")
-  
+  metadata Json? @default("{}")
+
   // Destinatario (null = broadcast a todos)
-  tenantId        String?              @map("tenant_id") @db.Uuid
-  userId          String?              @map("user_id") @db.Uuid
-  
+  tenantId String? @map("tenant_id") @db.Uuid
+  userId   String? @map("user_id") @db.Uuid
+
   // Solo para roles específicos (null = todos)
-  targetRoles     Json?                @default("[]") @map("target_roles") // ["admin", "manager"]
-  
+  targetRoles Json? @default("[]") @map("target_roles") // ["admin", "manager"]
+
   // Creador (root para comunicaciones)
-  createdBy       String?              @map("created_by") @db.Uuid
-  
+  createdBy String? @map("created_by") @db.Uuid
+
   // Fechas
-  createdAt       DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
-  expiresAt       DateTime?            @map("expires_at") @db.Timestamptz(6)
-  
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  expiresAt DateTime? @map("expires_at") @db.Timestamptz(6)
+
   // Estado
-  isActive        Boolean              @default(true) @map("is_active")
-  
+  isActive Boolean @default(true) @map("is_active")
+
   // Lecturas de esta notificación
-  reads           NotificationRead[]
+  reads NotificationRead[]
 
   @@index([tenantId], map: "idx_system_notifications_tenant_id")
   @@index([userId], map: "idx_system_notifications_user_id")
@@ -406,12 +406,12 @@ model SystemNotification {
 
 // Registro de lecturas de notificaciones
 model NotificationRead {
-  id              String             @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  notificationId  String             @map("notification_id") @db.Uuid
-  notification    SystemNotification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
-  userId          String             @map("user_id") @db.Uuid
-  readAt          DateTime           @default(now()) @map("read_at") @db.Timestamptz(6)
-  
+  id             String             @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  notificationId String             @map("notification_id") @db.Uuid
+  notification   SystemNotification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  userId         String             @map("user_id") @db.Uuid
+  readAt         DateTime           @default(now()) @map("read_at") @db.Timestamptz(6)
+
   @@unique([notificationId, userId])
   @@index([userId], map: "idx_notification_reads_user_id")
   @@map("notification_reads")
@@ -423,64 +423,64 @@ model NotificationRead {
 
 // Tipo de conversación
 enum ConversationType {
-  SUPPORT       // Soporte técnico (usuario → root)
-  BILLING       // Consultas de facturación (tenant → root)
-  GENERAL       // Consulta general
+  SUPPORT // Soporte técnico (usuario → root)
+  BILLING // Consultas de facturación (tenant → root)
+  GENERAL // Consulta general
   CLIENT_TENANT // Comunicación cliente ↔ tenant
 }
 
 // Estado de la conversación
 enum ConversationStatus {
   OPEN
-  PENDING     // Esperando respuesta
+  PENDING // Esperando respuesta
   RESOLVED
   CLOSED
 }
 
 // Conversaciones
 model Conversation {
-  id              String             @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  
+  id String @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+
   // Tipo y estado
-  type            ConversationType   @default(GENERAL)
-  status          ConversationStatus @default(OPEN)
-  
+  type   ConversationType   @default(GENERAL)
+  status ConversationStatus @default(OPEN)
+
   // Asunto
-  subject         String             @db.VarChar(255)
-  
+  subject String @db.VarChar(255)
+
   // Participantes
   // Iniciador de la conversación
-  createdByUserId String             @map("created_by_user_id") @db.Uuid
-  createdByTenantId String?          @map("created_by_tenant_id") @db.Uuid
-  
+  createdByUserId   String  @map("created_by_user_id") @db.Uuid
+  createdByTenantId String? @map("created_by_tenant_id") @db.Uuid
+
   // Destinatario (puede ser null si es al root/soporte)
   // Para CLIENT_TENANT: el tenant del cliente
-  targetTenantId  String?            @map("target_tenant_id") @db.Uuid
+  targetTenantId     String? @map("target_tenant_id") @db.Uuid
   // Para soporte específico a un usuario
-  targetUserId    String?            @map("target_user_id") @db.Uuid
+  targetUserId       String? @map("target_user_id") @db.Uuid
   // Si es true, el root/admin puede ver esta conversación
-  isRootConversation Boolean         @default(false) @map("is_root_conversation")
-  
+  isRootConversation Boolean @default(false) @map("is_root_conversation")
+
   // Asignación (para soporte)
-  assignedToUserId String?           @map("assigned_to_user_id") @db.Uuid
-  
+  assignedToUserId String? @map("assigned_to_user_id") @db.Uuid
+
   // Metadata
-  priority        NotificationPriority @default(NORMAL)
-  tags            Json?              @default("[]")
-  
+  priority NotificationPriority @default(NORMAL)
+  tags     Json?                @default("[]")
+
   // Fechas
-  createdAt       DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt       DateTime           @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
-  lastMessageAt   DateTime?          @map("last_message_at") @db.Timestamptz(6)
-  resolvedAt      DateTime?          @map("resolved_at") @db.Timestamptz(6)
-  
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  lastMessageAt DateTime? @map("last_message_at") @db.Timestamptz(6)
+  resolvedAt    DateTime? @map("resolved_at") @db.Timestamptz(6)
+
   // Relaciones
   messages        ConversationMessage[]
   participants    ConversationParticipant[]
-  createdByUser   User?               @relation("ConversationsCreatedByUser", fields: [createdByUserId], references: [id], onDelete: SetNull)
-  targetUser      User?               @relation("ConversationsTargetUser", fields: [targetUserId], references: [id], onDelete: SetNull)
-  createdByTenant Tenant?             @relation("ConversationsCreatedByTenant", fields: [createdByTenantId], references: [id], onDelete: SetNull)
-  targetTenant    Tenant?             @relation("ConversationsTargetTenant", fields: [targetTenantId], references: [id], onDelete: SetNull)
+  createdByUser   User?                     @relation("ConversationsCreatedByUser", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  targetUser      User?                     @relation("ConversationsTargetUser", fields: [targetUserId], references: [id], onDelete: SetNull)
+  createdByTenant Tenant?                   @relation("ConversationsCreatedByTenant", fields: [createdByTenantId], references: [id], onDelete: SetNull)
+  targetTenant    Tenant?                   @relation("ConversationsTargetTenant", fields: [targetTenantId], references: [id], onDelete: SetNull)
 
   @@index([createdByUserId], map: "idx_conversations_created_by")
   @@index([targetTenantId], map: "idx_conversations_target_tenant")
@@ -492,30 +492,30 @@ model Conversation {
 
 // Mensajes de conversación
 model ConversationMessage {
-  id              String       @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  conversationId  String       @map("conversation_id") @db.Uuid
-  conversation    Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  
+  id             String       @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  conversationId String       @map("conversation_id") @db.Uuid
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
   // Autor
-  authorUserId    String       @map("author_user_id") @db.Uuid
-  authorName      String       @map("author_name") @db.VarChar(255)
-  authorRole      String       @map("author_role") @db.VarChar(50) // root, admin, manager, user, client
-  
+  authorUserId String @map("author_user_id") @db.Uuid
+  authorName   String @map("author_name") @db.VarChar(255)
+  authorRole   String @map("author_role") @db.VarChar(50) // root, admin, manager, user, client
+
   // Contenido
-  content         String
-  
+  content String
+
   // Adjuntos (URLs)
-  attachments     Json?        @default("[]")
-  
+  attachments Json? @default("[]")
+
   // Sistema (mensajes automáticos)
-  isSystemMessage Boolean      @default(false) @map("is_system_message")
-  
+  isSystemMessage Boolean @default(false) @map("is_system_message")
+
   // Fechas
-  createdAt       DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
-  editedAt        DateTime?    @map("edited_at") @db.Timestamptz(6)
-  
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  editedAt  DateTime? @map("edited_at") @db.Timestamptz(6)
+
   // Lecturas
-  reads           MessageRead[]
+  reads MessageRead[]
 
   @@index([conversationId], map: "idx_conversation_messages_conversation")
   @@index([createdAt], map: "idx_conversation_messages_created")
@@ -524,23 +524,23 @@ model ConversationMessage {
 
 // Participantes de conversación (para tracking de lecturas y notificaciones)
 model ConversationParticipant {
-  id              String       @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  conversationId  String       @map("conversation_id") @db.Uuid
-  conversation    Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  userId          String       @map("user_id") @db.Uuid
-  
+  id             String       @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  conversationId String       @map("conversation_id") @db.Uuid
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  userId         String       @map("user_id") @db.Uuid
+
   // Rol en la conversación
-  role            String       @default("participant") @db.VarChar(50) // creator, participant, assigned
-  
+  role String @default("participant") @db.VarChar(50) // creator, participant, assigned
+
   // Notificaciones
   notificationsEnabled Boolean @default(true) @map("notifications_enabled")
-  
+
   // Última lectura
-  lastReadAt      DateTime?    @map("last_read_at") @db.Timestamptz(6)
-  
+  lastReadAt DateTime? @map("last_read_at") @db.Timestamptz(6)
+
   // Fechas
-  joinedAt        DateTime     @default(now()) @map("joined_at") @db.Timestamptz(6)
-  leftAt          DateTime?    @map("left_at") @db.Timestamptz(6)
+  joinedAt DateTime  @default(now()) @map("joined_at") @db.Timestamptz(6)
+  leftAt   DateTime? @map("left_at") @db.Timestamptz(6)
 
   @@unique([conversationId, userId])
   @@index([userId], map: "idx_conversation_participants_user")
@@ -549,11 +549,11 @@ model ConversationParticipant {
 
 // Lecturas de mensajes
 model MessageRead {
-  id              String              @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  messageId       String              @map("message_id") @db.Uuid
-  message         ConversationMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
-  userId          String              @map("user_id") @db.Uuid
-  readAt          DateTime            @default(now()) @map("read_at") @db.Timestamptz(6)
+  id        String              @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  messageId String              @map("message_id") @db.Uuid
+  message   ConversationMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  userId    String              @map("user_id") @db.Uuid
+  readAt    DateTime            @default(now()) @map("read_at") @db.Timestamptz(6)
 
   @@unique([messageId, userId])
   @@index([userId], map: "idx_message_reads_user")
@@ -562,60 +562,60 @@ model MessageRead {
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model tenant_subscriptions {
-  id                   String            @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  tenant_id            String            @unique(map: "unique_active_subscription") @db.Uuid
-  plan_id              String?           @db.Uuid
-  status               String?           @default("trialing") @db.VarChar(50) // trialing, active, past_due, cancelled, suspended
-  billing_cycle        String?           @default("monthly") @db.VarChar(20)
-  amount               Decimal?          @default(0) @db.Decimal(10, 2)
-  currency             String?           @default("ARS") @db.VarChar(3)
-  
+  id            String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenant_id     String   @unique(map: "unique_active_subscription") @db.Uuid
+  plan_id       String?  @db.Uuid
+  status        String?  @default("trialing") @db.VarChar(50) // trialing, active, past_due, cancelled, suspended
+  billing_cycle String?  @default("monthly") @db.VarChar(20)
+  amount        Decimal? @default(0) @db.Decimal(10, 2)
+  currency      String?  @default("ARS") @db.VarChar(3)
+
   // Trial
-  trial_started_at     DateTime?         @map("trial_started_at") @db.Timestamptz(6)
-  trial_ends_at        DateTime?         @db.Timestamptz(6)
-  trial_extensions     Int?              @default(0) @map("trial_extensions") // 0, 1, o 2
-  trial_plan_id        String?           @map("trial_plan_id") @db.Uuid // Plan durante el trial (Profesional)
-  
+  trial_started_at DateTime? @map("trial_started_at") @db.Timestamptz(6)
+  trial_ends_at    DateTime? @db.Timestamptz(6)
+  trial_extensions Int?      @default(0) @map("trial_extensions") // 0, 1, o 2
+  trial_plan_id    String?   @map("trial_plan_id") @db.Uuid // Plan durante el trial (Profesional)
+
   // Oferta de acompañamiento
-  has_accompaniment_offer Boolean?       @default(false) @map("has_accompaniment_offer")
-  accompaniment_months_used Int?         @default(0) @map("accompaniment_months_used") // 0, 1, o 2
-  accompaniment_price   Decimal?         @map("accompaniment_price") @db.Decimal(10, 2) // $10.000
-  
+  has_accompaniment_offer   Boolean? @default(false) @map("has_accompaniment_offer")
+  accompaniment_months_used Int?     @default(0) @map("accompaniment_months_used") // 0, 1, o 2
+  accompaniment_price       Decimal? @map("accompaniment_price") @db.Decimal(10, 2) // $10.000
+
   // MercadoPago
-  mp_subscription_id   String?           @map("mp_subscription_id") @db.VarChar(255)
-  mp_payer_id          String?           @map("mp_payer_id") @db.VarChar(255)
-  mp_preapproval_id    String?           @map("mp_preapproval_id") @db.VarChar(255)
-  
+  mp_subscription_id String? @map("mp_subscription_id") @db.VarChar(255)
+  mp_payer_id        String? @map("mp_payer_id") @db.VarChar(255)
+  mp_preapproval_id  String? @map("mp_preapproval_id") @db.VarChar(255)
+
   // Períodos de facturación
-  current_period_start DateTime?         @default(now()) @db.Timestamptz(6)
-  current_period_end   DateTime?         @db.Timestamptz(6)
-  
+  current_period_start DateTime? @default(now()) @db.Timestamptz(6)
+  current_period_end   DateTime? @db.Timestamptz(6)
+
   // Cambios de plan pendientes
-  pending_plan_id      String?           @map("pending_plan_id") @db.Uuid // Plan al que cambiará en próximo ciclo (downgrade)
-  pending_plan_change_at DateTime?       @map("pending_plan_change_at") @db.Timestamptz(6)
-  
+  pending_plan_id        String?   @map("pending_plan_id") @db.Uuid // Plan al que cambiará en próximo ciclo (downgrade)
+  pending_plan_change_at DateTime? @map("pending_plan_change_at") @db.Timestamptz(6)
+
   // Promoción aplicada
-  applied_promotion_id String?           @map("applied_promotion_id") @db.Uuid
-  
+  applied_promotion_id String? @map("applied_promotion_id") @db.Uuid
+
   // Cancelación
-  cancelled_at         DateTime?         @db.Timestamptz(6)
-  cancel_reason        String?           @map("cancel_reason")
-  cancel_at_period_end Boolean?          @default(false) @map("cancel_at_period_end")
-  
+  cancelled_at         DateTime? @db.Timestamptz(6)
+  cancel_reason        String?   @map("cancel_reason")
+  cancel_at_period_end Boolean?  @default(false) @map("cancel_at_period_end")
+
   // Suspensión (por pago fallido, pero manejada manualmente)
-  suspended_at         DateTime?         @db.Timestamptz(6)
-  suspension_reason    String?
-  
+  suspended_at      DateTime? @db.Timestamptz(6)
+  suspension_reason String?
+
   // Notas internas (para root)
-  internal_notes       String?           @map("internal_notes")
-  
-  created_at           DateTime?         @default(now()) @db.Timestamptz(6)
-  updated_at           DateTime?         @default(now()) @db.Timestamptz(6)
-  
-  payments             payments[]
-  promotion_uses       promotion_uses[]
-  subscription_plans   SubscriptionPlan? @relation(fields: [plan_id], references: [id], onUpdate: NoAction)
-  tenants              Tenant            @relation(fields: [tenant_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  internal_notes String? @map("internal_notes")
+
+  created_at DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at DateTime? @default(now()) @db.Timestamptz(6)
+
+  payments           payments[]
+  promotion_uses     promotion_uses[]
+  subscription_plans SubscriptionPlan? @relation(fields: [plan_id], references: [id], onUpdate: NoAction)
+  tenants            Tenant            @relation(fields: [tenant_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([current_period_end], map: "idx_tenant_subscriptions_period_end")
   @@index([status], map: "idx_tenant_subscriptions_status")
@@ -628,45 +628,45 @@ model tenant_subscriptions {
 
 // CLIENTES Y PROVEEDORES
 model Cliente {
-  id              String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  tenantId        String   @map("tenant_id") @db.Uuid
-  
-  razonSocial     String   @map("razon_social") @db.VarChar(255)
-  nombreFantasia  String?  @map("nombre_fantasia") @db.VarChar(255)
-  tipoDocumento   String   @map("tipo_documento") @db.VarChar(50)
-  numeroDocumento String   @map("numero_documento") @db.VarChar(50)
-  condicionFiscal String?  @map("condicion_fiscal") @db.VarChar(100)
-  
-  email           String?  @db.VarChar(255)
-  telefono        String?  @db.VarChar(50)
-  direccion       String?
-  ciudad          String?  @db.VarChar(100)
-  provincia       String?  @db.VarChar(100)
-  pais            String   @default("Argentina") @db.VarChar(100)
-  codigoPostal    String?  @map("codigo_postal") @db.VarChar(20)
-  
-  esCliente       Boolean  @default(true) @map("es_cliente")
-  esProveedor     Boolean  @default(false) @map("es_proveedor")
-  esConsignee     Boolean  @default(false) @map("es_consignee")
-  esShipper       Boolean  @default(false) @map("es_shipper")
-  
-  activo          Boolean  @default(true)
-  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
-  createdBy       String?  @map("created_by") @db.Uuid
-  
+  id       String @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+
+  razonSocial     String  @map("razon_social") @db.VarChar(255)
+  nombreFantasia  String? @map("nombre_fantasia") @db.VarChar(255)
+  tipoDocumento   String  @map("tipo_documento") @db.VarChar(50)
+  numeroDocumento String  @map("numero_documento") @db.VarChar(50)
+  condicionFiscal String? @map("condicion_fiscal") @db.VarChar(100)
+
+  email        String? @db.VarChar(255)
+  telefono     String? @db.VarChar(50)
+  direccion    String?
+  ciudad       String? @db.VarChar(100)
+  provincia    String? @db.VarChar(100)
+  pais         String  @default("Argentina") @db.VarChar(100)
+  codigoPostal String? @map("codigo_postal") @db.VarChar(20)
+
+  esCliente   Boolean @default(true) @map("es_cliente")
+  esProveedor Boolean @default(false) @map("es_proveedor")
+  esConsignee Boolean @default(false) @map("es_consignee")
+  esShipper   Boolean @default(false) @map("es_shipper")
+
+  activo    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy String?  @map("created_by") @db.Uuid
+
   // Vinculación con usuario del portal
-  userId          String?  @unique @map("user_id") @db.Uuid
-  
-  carpetasCliente    Carpeta[] @relation("CarpetaCliente")
-  carpetasConsignee  Carpeta[] @relation("CarpetaConsignee")
-  carpetasShipper    Carpeta[] @relation("CarpetaShipper")
-  facturas           Factura[]
-  prefacturas        Prefactura[]
-  presupuestos       Presupuesto[]
-  presupuestosShipper    Presupuesto[] @relation("PresupuestoShipper")
-  presupuestosConsignee  Presupuesto[] @relation("PresupuestoConsignee")
-  predespachos       Predespacho[]
+  userId String? @unique @map("user_id") @db.Uuid
+
+  carpetasCliente       Carpeta[]     @relation("CarpetaCliente")
+  carpetasConsignee     Carpeta[]     @relation("CarpetaConsignee")
+  carpetasShipper       Carpeta[]     @relation("CarpetaShipper")
+  facturas              Factura[]
+  prefacturas           Prefactura[]
+  presupuestos          Presupuesto[]
+  presupuestosShipper   Presupuesto[] @relation("PresupuestoShipper")
+  presupuestosConsignee Presupuesto[] @relation("PresupuestoConsignee")
+  predespachos          Predespacho[]
 
   @@unique([tenantId, numeroDocumento])
   @@index([tenantId])
@@ -677,53 +677,55 @@ model Cliente {
 
 // PROVEEDORES
 model Proveedor {
-  id              String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  tenantId        String   @map("tenant_id") @db.Uuid
-  
+  id       String @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+
   // Datos básicos
-  razonSocial     String   @map("razon_social") @db.VarChar(255)
-  nombreFantasia  String?  @map("nombre_fantasia") @db.VarChar(255)
-  tipoDocumento   String   @map("tipo_documento") @db.VarChar(50)
-  numeroDocumento String   @map("numero_documento") @db.VarChar(50)
-  condicionFiscal String?  @map("condicion_fiscal") @db.VarChar(100)
-  
+  razonSocial     String  @map("razon_social") @db.VarChar(255)
+  nombreFantasia  String? @map("nombre_fantasia") @db.VarChar(255)
+  tipoDocumento   String  @map("tipo_documento") @db.VarChar(50)
+  numeroDocumento String  @map("numero_documento") @db.VarChar(50)
+  condicionFiscal String? @map("condicion_fiscal") @db.VarChar(100)
+
   // Tipo de proveedor
-  tipoProveedor   String   @map("tipo_proveedor") @db.VarChar(100)
+  tipoProveedor String @map("tipo_proveedor") @db.VarChar(100)
   // Naviera, Aerolínea, Transportista, Agente, Despachante, Terminal, Depósito, Aseguradora, Otros
-  
+
   // Contacto
-  email           String?  @db.VarChar(255)
-  telefono        String?  @db.VarChar(50)
-  whatsapp        String?  @db.VarChar(50)
-  website         String?  @db.VarChar(255)
-  
+  email    String? @db.VarChar(255)
+  telefono String? @db.VarChar(50)
+  whatsapp String? @db.VarChar(50)
+  website  String? @db.VarChar(255)
+
   // Dirección
-  direccion       String?
-  ciudad          String?  @db.VarChar(100)
-  provincia       String?  @db.VarChar(100)
-  pais            String   @default("Argentina") @db.VarChar(100)
-  codigoPostal    String?  @map("codigo_postal") @db.VarChar(20)
-  
+  direccion    String?
+  ciudad       String? @db.VarChar(100)
+  provincia    String? @db.VarChar(100)
+  pais         String  @default("Argentina") @db.VarChar(100)
+  codigoPostal String? @map("codigo_postal") @db.VarChar(20)
+
   // Contacto principal
-  contactoNombre  String?  @map("contacto_nombre") @db.VarChar(255)
-  contactoEmail   String?  @map("contacto_email") @db.VarChar(255)
+  contactoNombre   String? @map("contacto_nombre") @db.VarChar(255)
+  contactoEmail    String? @map("contacto_email") @db.VarChar(255)
   contactoTelefono String? @map("contacto_telefono") @db.VarChar(50)
-  contactoCargo   String?  @map("contacto_cargo") @db.VarChar(100)
-  
+  contactoCargo    String? @map("contacto_cargo") @db.VarChar(100)
+
   // Datos bancarios (múltiples cuentas como JSON)
   // Formato: [{ id, banco, cuenta, cbu, alias, titular, moneda, esPrincipal }]
-  cuentasBancarias Json?   @default("[]") @map("cuentas_bancarias")
-  
-  // Servicios y notas
-  servicios       String?  // Descripción de servicios que ofrece
-  notas           String?  // Notas internas
-  
-  activo          Boolean  @default(true)
-  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
-  createdBy       String?  @map("created_by") @db.Uuid
+  cuentasBancarias Json? @default("[]") @map("cuentas_bancarias")
 
-  presupuestos    Presupuesto[] @relation("PresupuestoProveedor")
+  // Servicios y notas
+  servicios String? // Descripción de servicios que ofrece
+  notas     String? // Notas internas
+
+  activo    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy String?  @map("created_by") @db.Uuid
+
+  presupuestos     Presupuesto[]     @relation("PresupuestoProveedor")
+  itemsPresupuesto ItemPresupuesto[] @relation("ItemPresupuestoProveedor")
+  gastos           Gasto[]           @relation("GastoProveedor")
 
   @@unique([tenantId, numeroDocumento])
   @@index([tenantId])
@@ -734,93 +736,93 @@ model Proveedor {
 
 // CARPETAS DE EMBARQUE (CORE)
 model Carpeta {
-  id              String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  tenantId        String   @map("tenant_id") @db.Uuid
-  numero          String   @db.VarChar(50)
-  
-  estado          String   @default("HOUSE") @db.VarChar(50)
-  area            String   @db.VarChar(50)
-  sector          String   @db.VarChar(50)
-  tipoOperacion   String   @map("tipo_operacion") @db.VarChar(50)
+  id       String @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+  numero   String @db.VarChar(50)
+
+  estado             String  @default("HOUSE") @db.VarChar(50)
+  area               String  @db.VarChar(50)
+  sector             String  @db.VarChar(50)
+  tipoOperacion      String  @map("tipo_operacion") @db.VarChar(50)
   tipoOperacionAerea String? @map("tipo_operacion_aerea") @db.VarChar(50)
-  categoriaEmbarque String? @map("categoria_embarque") @db.VarChar(100)
-  consolidado     Boolean  @default(false)
-  
-  fechaEmision         DateTime  @default(now()) @map("fecha_emision") @db.Timestamptz(6)
-  fechaSalidaEstimada  DateTime? @map("etd") @db.Timestamptz(6)
-  fechaSalidaConfirmada DateTime? @map("atd") @db.Timestamptz(6)
-  fechaLlegadaEstimada DateTime? @map("eta") @db.Timestamptz(6)
+  categoriaEmbarque  String? @map("categoria_embarque") @db.VarChar(100)
+  consolidado        Boolean @default(false)
+
+  fechaEmision           DateTime  @default(now()) @map("fecha_emision") @db.Timestamptz(6)
+  fechaSalidaEstimada    DateTime? @map("etd") @db.Timestamptz(6)
+  fechaSalidaConfirmada  DateTime? @map("atd") @db.Timestamptz(6)
+  fechaLlegadaEstimada   DateTime? @map("eta") @db.Timestamptz(6)
   fechaLlegadaConfirmada DateTime? @map("ata") @db.Timestamptz(6)
-  fechaCarga           DateTime? @map("fecha_carga") @db.Timestamptz(6)
-  fechaDescarga        DateTime? @map("fecha_descarga") @db.Timestamptz(6)
-  
-  puertoOrigen    String?  @map("puerto_origen") @db.VarChar(100)
-  lugarCarga      String?  @map("lugar_carga") @db.VarChar(255)
-  puertoDestino   String?  @map("puerto_destino") @db.VarChar(100)
-  lugarDescarga   String?  @map("lugar_descarga") @db.VarChar(255)
+  fechaCarga             DateTime? @map("fecha_carga") @db.Timestamptz(6)
+  fechaDescarga          DateTime? @map("fecha_descarga") @db.Timestamptz(6)
+
+  puertoOrigen     String? @map("puerto_origen") @db.VarChar(100)
+  lugarCarga       String? @map("lugar_carga") @db.VarChar(255)
+  puertoDestino    String? @map("puerto_destino") @db.VarChar(100)
+  lugarDescarga    String? @map("lugar_descarga") @db.VarChar(255)
   puertoTransbordo String? @map("puerto_transbordo") @db.VarChar(100)
-  
-  clienteId       String   @map("cliente_id") @db.Uuid
-  cliente         Cliente  @relation("CarpetaCliente", fields: [clienteId], references: [id])
-  consigneeId     String?  @map("consignee_id") @db.Uuid
-  consignee       Cliente? @relation("CarpetaConsignee", fields: [consigneeId], references: [id])
-  shipperId       String?  @map("shipper_id") @db.Uuid
-  shipper         Cliente? @relation("CarpetaShipper", fields: [shipperId], references: [id])
-  
-  transportista   String?  @db.VarChar(255)
-  notify          String?
-  agente          String?  @db.VarChar(255)
-  agente2         String?  @db.VarChar(255)
-  agenteAduanal   String?  @map("agente_aduanal") @db.VarChar(255)
+
+  clienteId   String   @map("cliente_id") @db.Uuid
+  cliente     Cliente  @relation("CarpetaCliente", fields: [clienteId], references: [id])
+  consigneeId String?  @map("consignee_id") @db.Uuid
+  consignee   Cliente? @relation("CarpetaConsignee", fields: [consigneeId], references: [id])
+  shipperId   String?  @map("shipper_id") @db.Uuid
+  shipper     Cliente? @relation("CarpetaShipper", fields: [shipperId], references: [id])
+
+  transportista      String? @db.VarChar(255)
+  notify             String?
+  agente             String? @db.VarChar(255)
+  agente2            String? @db.VarChar(255)
+  agenteAduanal      String? @map("agente_aduanal") @db.VarChar(255)
   empresaFacturacion String? @map("empresa_facturacion") @db.VarChar(255)
-  clienteFinal    String?  @map("cliente_final") @db.VarChar(255)
-  trader          String?  @db.VarChar(255)
-  
-  referenciaInterna String?  @map("referencia_interna") @db.VarChar(100)
-  referenciaExterna String?  @map("referencia_externa") @db.VarChar(100)
-  referenciaCliente String?  @map("referencia_cliente") @db.VarChar(100)
-  booking           String?  @db.VarChar(100)
-  documentador      String?  @db.VarChar(100)
-  mane              String?  @db.VarChar(100)
-  
-  buque           String?  @db.VarChar(100)
-  viaje           String?  @db.VarChar(50)
+  clienteFinal       String? @map("cliente_final") @db.VarChar(255)
+  trader             String? @db.VarChar(255)
+
+  referenciaInterna String? @map("referencia_interna") @db.VarChar(100)
+  referenciaExterna String? @map("referencia_externa") @db.VarChar(100)
+  referenciaCliente String? @map("referencia_cliente") @db.VarChar(100)
+  booking           String? @db.VarChar(100)
+  documentador      String? @db.VarChar(100)
+  mane              String? @db.VarChar(100)
+
+  buque             String? @db.VarChar(100)
+  viaje             String? @db.VarChar(50)
   terminalPortuaria String? @map("terminal_portuaria") @db.VarChar(100)
-  depositoFiscal  String?  @map("deposito_fiscal") @db.VarChar(100)
-  
-  frecuencia      String?  @db.VarChar(50)
-  transito        Int?
-  incoterm        String?  @db.VarChar(10)
-  ciudadInc       String?  @map("ciudad_inc") @db.VarChar(100)
-  
-  cutOffDoc       DateTime? @map("cut_off_doc") @db.Timestamptz(6)
-  cutOffFisico    DateTime? @map("cut_off_fisico") @db.Timestamptz(6)
-  cutOffIMO       DateTime? @map("cut_off_imo") @db.Timestamptz(6)
-  cutOffVGM       DateTime? @map("cut_off_vgm") @db.Timestamptz(6)
-  
-  moneda          String   @default("USD") @db.VarChar(10)
-  prepaidCollect  String   @default("Prepaid") @map("prepaid_collect") @db.VarChar(20)
-  
-  masterBL        String?  @map("master_bl") @db.VarChar(100)
-  houseBL         String?  @map("house_bl") @db.VarChar(100)
-  
-  observaciones   String?
-  notasInternas   String?  @map("notas_internas")
-  
+  depositoFiscal    String? @map("deposito_fiscal") @db.VarChar(100)
+
+  frecuencia String? @db.VarChar(50)
+  transito   Int?
+  incoterm   String? @db.VarChar(10)
+  ciudadInc  String? @map("ciudad_inc") @db.VarChar(100)
+
+  cutOffDoc    DateTime? @map("cut_off_doc") @db.Timestamptz(6)
+  cutOffFisico DateTime? @map("cut_off_fisico") @db.Timestamptz(6)
+  cutOffIMO    DateTime? @map("cut_off_imo") @db.Timestamptz(6)
+  cutOffVGM    DateTime? @map("cut_off_vgm") @db.Timestamptz(6)
+
+  moneda         String @default("USD") @db.VarChar(10)
+  prepaidCollect String @default("Prepaid") @map("prepaid_collect") @db.VarChar(20)
+
+  masterBL String? @map("master_bl") @db.VarChar(100)
+  houseBL  String? @map("house_bl") @db.VarChar(100)
+
+  observaciones String?
+  notasInternas String? @map("notas_internas")
+
   // Banco seleccionado para PDF (ID de la cuenta bancaria del tenant)
-  bancoPdfId      String?  @map("banco_pdf_id") @db.VarChar(50)
-  
-  usuarioId       String   @map("usuario_id") @db.Uuid
-  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
-  
-  mercancias      Mercancia[]
-  contenedores    Contenedor[]
-  gastos          Gasto[]
+  bancoPdfId String? @map("banco_pdf_id") @db.VarChar(50)
+
+  usuarioId String   @map("usuario_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  mercancias        Mercancia[]
+  contenedores      Contenedor[]
+  gastos            Gasto[]
   tarifasContenedor TarifaContenedor[]
-  prefacturas     Prefactura[]
-  facturas        Factura[]
-  presupuesto     Presupuesto?
+  prefacturas       Prefactura[]
+  facturas          Factura[]
+  presupuesto       Presupuesto?
 
   @@unique([tenantId, numero])
   @@index([tenantId])
@@ -832,29 +834,29 @@ model Carpeta {
 
 // MERCANCÍAS
 model Mercancia {
-  id              String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  carpetaId       String   @map("carpeta_id") @db.Uuid
-  carpeta         Carpeta  @relation(fields: [carpetaId], references: [id], onDelete: Cascade)
-  
+  id        String  @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  carpetaId String  @map("carpeta_id") @db.Uuid
+  carpeta   Carpeta @relation(fields: [carpetaId], references: [id], onDelete: Cascade)
+
   // Relación opcional con contenedor (una mercancía puede estar en un contenedor)
-  contenedorId    String?  @map("contenedor_id") @db.Uuid
-  contenedor      Contenedor? @relation(fields: [contenedorId], references: [id], onDelete: SetNull)
-  
+  contenedorId String?     @map("contenedor_id") @db.Uuid
+  contenedor   Contenedor? @relation(fields: [contenedorId], references: [id], onDelete: SetNull)
+
   descripcion     String
-  embalaje        String?  @db.VarChar(100)
-  marcas          String?  @db.VarChar(255)
+  embalaje        String? @db.VarChar(100)
+  marcas          String? @db.VarChar(255)
   bultos          Int?
   largo           Float?
   ancho           Float?
   alto            Float?
   volumen         Float?
   peso            Float?
-  valorMercaderia Float?   @map("valor_mercaderia")
-  valorCIF        Float?   @map("valor_cif")
-  hsCode          String?  @map("hs_code") @db.VarChar(20)
+  valorMercaderia Float?  @map("valor_mercaderia")
+  valorCIF        Float?  @map("valor_cif")
+  hsCode          String? @map("hs_code") @db.VarChar(20)
 
-  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@index([carpetaId])
   @@index([contenedorId])
@@ -863,24 +865,24 @@ model Mercancia {
 
 // CONTENEDORES
 model Contenedor {
-  id              String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  carpetaId       String   @map("carpeta_id") @db.Uuid
-  carpeta         Carpeta  @relation(fields: [carpetaId], references: [id], onDelete: Cascade)
-  
+  id        String  @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  carpetaId String  @map("carpeta_id") @db.Uuid
+  carpeta   Carpeta @relation(fields: [carpetaId], references: [id], onDelete: Cascade)
+
   // Mercancías dentro de este contenedor
-  mercancias      Mercancia[]
-  
-  tipo            String   @db.VarChar(20)
-  numero          String?  @db.VarChar(20)
-  blContenedor    String?  @map("bl_contenedor") @db.VarChar(50)
-  condicion       String?  @db.VarChar(50)
-  precinto        String?  @db.VarChar(50)
-  cantidad        Int      @default(1)
-  tara            Float?
-  pesoMaximo      Float?   @map("peso_maximo")
-  
-  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  mercancias Mercancia[]
+
+  tipo         String  @db.VarChar(20)
+  numero       String? @db.VarChar(20)
+  blContenedor String? @map("bl_contenedor") @db.VarChar(50)
+  condicion    String? @db.VarChar(50)
+  precinto     String? @db.VarChar(50)
+  cantidad     Int     @default(1)
+  tara         Float?
+  pesoMaximo   Float?  @map("peso_maximo")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@index([carpetaId])
   @@index([numero])
@@ -889,19 +891,19 @@ model Contenedor {
 
 // CATÁLOGO DE CONCEPTOS DE GASTO (Tarifario)
 model ConceptoGasto {
-  id              String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  tenantId        String   @map("tenant_id") @db.Uuid
+  id       String @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
 
-  nombre          String   @db.VarChar(255)
-  categoriaIVA    String   @default("GRAVADO") @map("categoria_iva") @db.VarChar(20)
-  porcentajeIVA   Float    @default(21) @map("porcentaje_iva")
-  divisa          String   @default("USD") @db.VarChar(10)
-  base            String?  @db.VarChar(50)
-  prepaidCollect  String   @default("P") @map("prepaid_collect") @db.VarChar(10)
-  activo          Boolean  @default(true)
+  nombre         String  @db.VarChar(255)
+  categoriaIVA   String  @default("GRAVADO") @map("categoria_iva") @db.VarChar(20)
+  porcentajeIVA  Float   @default(21) @map("porcentaje_iva")
+  divisa         String  @default("USD") @db.VarChar(10)
+  base           String? @db.VarChar(50)
+  prepaidCollect String  @default("P") @map("prepaid_collect") @db.VarChar(10)
+  activo         Boolean @default(true)
 
-  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@unique([tenantId, nombre])
   @@index([tenantId])
@@ -911,18 +913,18 @@ model ConceptoGasto {
 
 // TARIFAS POR CONTENEDOR
 model TarifaContenedor {
-  id              String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  carpetaId       String   @map("carpeta_id") @db.Uuid
-  carpeta         Carpeta  @relation(fields: [carpetaId], references: [id], onDelete: Cascade)
-  
-  tipoContenedor  String   @map("tipo_contenedor") @db.VarChar(20)
-  cantidad        Int
-  tarifaVenta     Float    @map("tarifa_venta")
-  tarifaCosto     Float    @map("tarifa_costo")
-  moneda          String   @default("USD") @db.VarChar(10)
-  
-  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id        String  @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  carpetaId String  @map("carpeta_id") @db.Uuid
+  carpeta   Carpeta @relation(fields: [carpetaId], references: [id], onDelete: Cascade)
+
+  tipoContenedor String @map("tipo_contenedor") @db.VarChar(20)
+  cantidad       Int
+  tarifaVenta    Float  @map("tarifa_venta")
+  tarifaCosto    Float  @map("tarifa_costo")
+  moneda         String @default("USD") @db.VarChar(10)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@index([carpetaId])
   @@map("tarifas_contenedor")
@@ -930,54 +932,60 @@ model TarifaContenedor {
 
 // GASTOS
 model Gasto {
-  id              String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  carpetaId       String   @map("carpeta_id") @db.Uuid
-  carpeta         Carpeta  @relation(fields: [carpetaId], references: [id], onDelete: Cascade)
-  
-  concepto        String   @db.VarChar(255)
-  prepaidCollect  String   @default("Prepaid") @map("prepaid_collect") @db.VarChar(20)
-  divisa          String   @default("USD") @db.VarChar(10)
-  montoVenta      Float    @map("monto_venta")
-  montoCosto      Float    @map("monto_costo")
-  base            String?  @db.VarChar(100)
-  cantidad        Float    @default(1)
-  totalVenta      Float    @map("total_venta")
-  totalCosto      Float    @map("total_costo")
-  gravado         Boolean  @default(true)
-  porcentajeIVA   Float    @default(21) @map("porcentaje_iva")
-  
-  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id        String  @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  carpetaId String  @map("carpeta_id") @db.Uuid
+  carpeta   Carpeta @relation(fields: [carpetaId], references: [id], onDelete: Cascade)
+
+  concepto       String  @db.VarChar(255)
+  prepaidCollect String  @default("Prepaid") @map("prepaid_collect") @db.VarChar(20)
+  divisa         String  @default("USD") @db.VarChar(10)
+  montoVenta     Float   @map("monto_venta")
+  montoCosto     Float   @map("monto_costo")
+  base           String? @db.VarChar(100)
+  cantidad       Float   @default(1)
+  totalVenta     Float   @map("total_venta")
+  totalCosto     Float   @map("total_costo")
+  gravado        Boolean @default(true)
+  porcentajeIVA  Float   @default(21) @map("porcentaje_iva")
+
+  // Proveedor responsable del gasto (FK opcional + texto libre como fallback)
+  proveedorId     String?    @map("proveedor_id") @db.Uuid
+  proveedor       Proveedor? @relation("GastoProveedor", fields: [proveedorId], references: [id])
+  proveedorNombre String?    @map("proveedor_nombre") @db.VarChar(255)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@index([carpetaId])
+  @@index([proveedorId])
   @@map("gastos")
 }
 
 // PREFACTURAS
 model Prefactura {
-  id              String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  tenantId        String   @map("tenant_id") @db.Uuid
-  numero          String   @db.VarChar(50)
-  
-  carpetaId       String?  @map("carpeta_id") @db.Uuid
-  carpeta         Carpeta? @relation(fields: [carpetaId], references: [id])
-  clienteId       String   @map("cliente_id") @db.Uuid
-  cliente         Cliente  @relation(fields: [clienteId], references: [id])
-  
-  fecha           DateTime @default(now()) @db.Timestamptz(6)
-  moneda          String   @default("USD") @db.VarChar(10)
-  subtotal        Float
-  iva             Float
-  total           Float
-  estado          String   @default("BORRADOR") @db.VarChar(50)
-  observaciones   String?
-  
-  usuarioId       String   @map("usuario_id") @db.Uuid
-  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
-  
-  items           ItemPrefactura[]
-  factura         Factura?
+  id       String @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+  numero   String @db.VarChar(50)
+
+  carpetaId String?  @map("carpeta_id") @db.Uuid
+  carpeta   Carpeta? @relation(fields: [carpetaId], references: [id])
+  clienteId String   @map("cliente_id") @db.Uuid
+  cliente   Cliente  @relation(fields: [clienteId], references: [id])
+
+  fecha         DateTime @default(now()) @db.Timestamptz(6)
+  moneda        String   @default("USD") @db.VarChar(10)
+  subtotal      Float
+  iva           Float
+  total         Float
+  estado        String   @default("BORRADOR") @db.VarChar(50)
+  observaciones String?
+
+  usuarioId String   @map("usuario_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  items   ItemPrefactura[]
+  factura Factura?
 
   @@unique([tenantId, numero])
   @@index([tenantId])
@@ -987,20 +995,20 @@ model Prefactura {
 
 // ITEMS PREFACTURA
 model ItemPrefactura {
-  id              String     @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  prefacturaId    String     @map("prefactura_id") @db.Uuid
-  prefactura      Prefactura @relation(fields: [prefacturaId], references: [id], onDelete: Cascade)
-  
-  descripcion     String
-  cantidad        Float      @default(1)
-  precioUnitario  Float      @map("precio_unitario")
-  subtotal        Float
-  alicuotaIVA     Float      @default(21) @map("alicuota_iva")
-  iva             Float
-  total           Float
-  
-  createdAt       DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt       DateTime   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id           String     @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  prefacturaId String     @map("prefactura_id") @db.Uuid
+  prefactura   Prefactura @relation(fields: [prefacturaId], references: [id], onDelete: Cascade)
+
+  descripcion    String
+  cantidad       Float  @default(1)
+  precioUnitario Float  @map("precio_unitario")
+  subtotal       Float
+  alicuotaIVA    Float  @default(21) @map("alicuota_iva")
+  iva            Float
+  total          Float
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@index([prefacturaId])
   @@map("items_prefactura")
@@ -1008,41 +1016,41 @@ model ItemPrefactura {
 
 // FACTURAS
 model Factura {
-  id              String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  tenantId        String   @map("tenant_id") @db.Uuid
-  numero          String   @db.VarChar(50)
-  tipoComprobante String   @map("tipo_comprobante") @db.VarChar(5)
-  puntoVenta      Int      @map("punto_venta")
-  numeroCompleto  String   @map("numero_completo") @db.VarChar(20)
-  
-  prefacturaId    String?  @unique @map("prefactura_id") @db.Uuid
-  prefactura      Prefactura? @relation(fields: [prefacturaId], references: [id])
-  carpetaId       String?  @map("carpeta_id") @db.Uuid
-  carpeta         Carpeta? @relation(fields: [carpetaId], references: [id])
-  clienteId       String   @map("cliente_id") @db.Uuid
-  cliente         Cliente  @relation(fields: [clienteId], references: [id])
-  
-  fecha           DateTime @default(now()) @db.Timestamptz(6)
+  id              String @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenantId        String @map("tenant_id") @db.Uuid
+  numero          String @db.VarChar(50)
+  tipoComprobante String @map("tipo_comprobante") @db.VarChar(5)
+  puntoVenta      Int    @map("punto_venta")
+  numeroCompleto  String @map("numero_completo") @db.VarChar(20)
+
+  prefacturaId String?     @unique @map("prefactura_id") @db.Uuid
+  prefactura   Prefactura? @relation(fields: [prefacturaId], references: [id])
+  carpetaId    String?     @map("carpeta_id") @db.Uuid
+  carpeta      Carpeta?    @relation(fields: [carpetaId], references: [id])
+  clienteId    String      @map("cliente_id") @db.Uuid
+  cliente      Cliente     @relation(fields: [clienteId], references: [id])
+
+  fecha            DateTime  @default(now()) @db.Timestamptz(6)
   fechaVencimiento DateTime? @map("fecha_vencimiento") @db.Timestamptz(6)
-  moneda          String   @default("USD") @db.VarChar(10)
-  cotizacion      Float    @default(1)
-  subtotal        Float
-  iva             Float
-  percepcionIVA   Float    @default(0) @map("percepcion_iva")
-  percepcionIIBB  Float    @default(0) @map("percepcion_iibb")
-  total           Float
-  estado          String   @default("PENDIENTE") @db.VarChar(50)
-  
-  cae             String?  @db.VarChar(20)
-  vencimientoCAE  DateTime? @map("vencimiento_cae") @db.Timestamptz(6)
-  
-  observaciones   String?
-  usuarioId       String   @map("usuario_id") @db.Uuid
-  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
-  
-  items           ItemFactura[]
-  cobranzas       Cobranza[]
+  moneda           String    @default("USD") @db.VarChar(10)
+  cotizacion       Float     @default(1)
+  subtotal         Float
+  iva              Float
+  percepcionIVA    Float     @default(0) @map("percepcion_iva")
+  percepcionIIBB   Float     @default(0) @map("percepcion_iibb")
+  total            Float
+  estado           String    @default("PENDIENTE") @db.VarChar(50)
+
+  cae            String?   @db.VarChar(20)
+  vencimientoCAE DateTime? @map("vencimiento_cae") @db.Timestamptz(6)
+
+  observaciones String?
+  usuarioId     String   @map("usuario_id") @db.Uuid
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  items     ItemFactura[]
+  cobranzas Cobranza[]
 
   @@unique([tenantId, numero])
   @@unique([tenantId, puntoVenta, tipoComprobante, numeroCompleto])
@@ -1054,20 +1062,20 @@ model Factura {
 
 // ITEMS FACTURA
 model ItemFactura {
-  id              String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  facturaId       String   @map("factura_id") @db.Uuid
-  factura         Factura  @relation(fields: [facturaId], references: [id], onDelete: Cascade)
-  
-  descripcion     String
-  cantidad        Float    @default(1)
-  precioUnitario  Float    @map("precio_unitario")
-  subtotal        Float
-  alicuotaIVA     Float    @default(21) @map("alicuota_iva")
-  iva             Float
-  total           Float
-  
-  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id        String  @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  facturaId String  @map("factura_id") @db.Uuid
+  factura   Factura @relation(fields: [facturaId], references: [id], onDelete: Cascade)
+
+  descripcion    String
+  cantidad       Float  @default(1)
+  precioUnitario Float  @map("precio_unitario")
+  subtotal       Float
+  alicuotaIVA    Float  @default(21) @map("alicuota_iva")
+  iva            Float
+  total          Float
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@index([facturaId])
   @@map("items_factura")
@@ -1075,22 +1083,22 @@ model ItemFactura {
 
 // COBRANZAS
 model Cobranza {
-  id              String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  tenantId        String   @map("tenant_id") @db.Uuid
-  numero          String   @db.VarChar(50)
-  
-  facturaId       String   @map("factura_id") @db.Uuid
-  factura         Factura  @relation(fields: [facturaId], references: [id])
-  
-  fecha           DateTime @default(now()) @db.Timestamptz(6)
-  monto           Float
-  moneda          String   @default("USD") @db.VarChar(10)
-  medioPago       String   @map("medio_pago") @db.VarChar(50)
-  referencia      String?  @db.VarChar(100)
-  observaciones   String?
-  
-  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id       String @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+  numero   String @db.VarChar(50)
+
+  facturaId String  @map("factura_id") @db.Uuid
+  factura   Factura @relation(fields: [facturaId], references: [id])
+
+  fecha         DateTime @default(now()) @db.Timestamptz(6)
+  monto         Float
+  moneda        String   @default("USD") @db.VarChar(10)
+  medioPago     String   @map("medio_pago") @db.VarChar(50)
+  referencia    String?  @db.VarChar(100)
+  observaciones String?
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@unique([tenantId, numero])
   @@index([tenantId])
@@ -1100,56 +1108,43 @@ model Cobranza {
 
 // TABLAS MAESTRAS
 model Puerto {
-  id              String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  codigo          String   @unique @db.VarChar(10)
-  nombre          String   @db.VarChar(100)
-  pais            String   @db.VarChar(100)
-  activo          Boolean  @default(true)
-  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  id        String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  codigo    String   @unique @db.VarChar(10)
+  nombre    String   @db.VarChar(100)
+  pais      String   @db.VarChar(100)
+  activo    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@map("puertos")
 }
 
 model TipoContenedorMaestro {
-  id              String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  codigo          String   @unique @db.VarChar(10)
-  descripcion     String   @db.VarChar(100)
-  teu             Float    @default(1)
-  activo          Boolean  @default(true)
-  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  id          String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  codigo      String   @unique @db.VarChar(10)
+  descripcion String   @db.VarChar(100)
+  teu         Float    @default(1)
+  activo      Boolean  @default(true)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@map("tipos_contenedor")
 }
 
 model IncotermMaestro {
-  id              String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  codigo          String   @unique @db.VarChar(10)
-  descripcion     String   @db.VarChar(255)
-  activo          Boolean  @default(true)
-  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  id          String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  codigo      String   @unique @db.VarChar(10)
+  descripcion String   @db.VarChar(255)
+  activo      Boolean  @default(true)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@map("incoterms")
 }
 
-model ConceptoGasto {
-  id              String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  tenantId        String?  @map("tenant_id") @db.Uuid
-  codigo          String   @db.VarChar(50)
-  descripcion     String   @db.VarChar(255)
-  categoria       String?  @db.VarChar(100)
-  activo          Boolean  @default(true)
-  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-
-  @@unique([tenantId, codigo])
-  @@map("conceptos_gasto")
-}
-
 model Naviera {
-  id              String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  codigo          String   @unique @db.VarChar(20)
-  nombre          String   @db.VarChar(100)
-  activo          Boolean  @default(true)
-  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  id        String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  codigo    String   @unique @db.VarChar(20)
+  nombre    String   @db.VarChar(100)
+  activo    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@map("navieras")
 }
@@ -1177,37 +1172,37 @@ enum IntegrationStatus {
 
 // Configuración de integración por tenant
 model CarrierIntegration {
-  id              String            @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  tenantId        String            @map("tenant_id") @db.Uuid
-  provider        CarrierProvider
-  
+  id       String          @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenantId String          @map("tenant_id") @db.Uuid
+  provider CarrierProvider
+
   // Credenciales (encriptadas)
-  clientId        String?           @map("client_id") @db.VarChar(500)
-  clientSecret    String?           @map("client_secret") @db.VarChar(500)
-  apiKey          String?           @map("api_key") @db.VarChar(500)
-  username        String?           @db.VarChar(255)
-  password        String?           @db.VarChar(500)
-  
+  clientId     String? @map("client_id") @db.VarChar(500)
+  clientSecret String? @map("client_secret") @db.VarChar(500)
+  apiKey       String? @map("api_key") @db.VarChar(500)
+  username     String? @db.VarChar(255)
+  password     String? @db.VarChar(500)
+
   // Tokens de acceso (almacenados temporalmente)
-  accessToken     String?           @map("access_token")
-  tokenExpiresAt  DateTime?         @map("token_expires_at") @db.Timestamptz(6)
-  refreshToken    String?           @map("refresh_token")
-  
+  accessToken    String?   @map("access_token")
+  tokenExpiresAt DateTime? @map("token_expires_at") @db.Timestamptz(6)
+  refreshToken   String?   @map("refresh_token")
+
   // Estado y configuración
-  status          IntegrationStatus @default(PENDING_VERIFICATION)
-  lastTestedAt    DateTime?         @map("last_tested_at") @db.Timestamptz(6)
-  lastError       String?           @map("last_error")
-  settings        Json?             @default("{}")
-  
+  status       IntegrationStatus @default(PENDING_VERIFICATION)
+  lastTestedAt DateTime?         @map("last_tested_at") @db.Timestamptz(6)
+  lastError    String?           @map("last_error")
+  settings     Json?             @default("{}")
+
   // Límites y uso
-  apiCallsToday   Int               @default(0) @map("api_calls_today")
-  apiCallsMonth   Int               @default(0) @map("api_calls_month")
-  lastApiCall     DateTime?         @map("last_api_call") @db.Timestamptz(6)
-  
-  createdAt       DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt       DateTime          @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
-  createdBy       String?           @map("created_by") @db.Uuid
-  
+  apiCallsToday Int       @default(0) @map("api_calls_today")
+  apiCallsMonth Int       @default(0) @map("api_calls_month")
+  lastApiCall   DateTime? @map("last_api_call") @db.Timestamptz(6)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy String?  @map("created_by") @db.Uuid
+
   trackingSubscriptions TrackingSubscription[]
 
   @@unique([tenantId, provider])
@@ -1218,39 +1213,39 @@ model CarrierIntegration {
 
 // Suscripción de tracking para un contenedor/BL
 model TrackingSubscription {
-  id                  String             @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  tenantId            String             @map("tenant_id") @db.Uuid
-  integrationId       String             @map("integration_id") @db.Uuid
-  integration         CarrierIntegration @relation(fields: [integrationId], references: [id], onDelete: Cascade)
-  
+  id            String             @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenantId      String             @map("tenant_id") @db.Uuid
+  integrationId String             @map("integration_id") @db.Uuid
+  integration   CarrierIntegration @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+
   // Referencia a rastrear
-  trackingType        String             @map("tracking_type") @db.VarChar(50) // CONTAINER, BL, BOOKING
-  trackingNumber      String             @map("tracking_number") @db.VarChar(100)
-  
+  trackingType   String @map("tracking_type") @db.VarChar(50) // CONTAINER, BL, BOOKING
+  trackingNumber String @map("tracking_number") @db.VarChar(100)
+
   // Asociación opcional con carpeta
-  carpetaId           String?            @map("carpeta_id") @db.Uuid
-  contenedorId        String?            @map("contenedor_id") @db.Uuid
-  
+  carpetaId    String? @map("carpeta_id") @db.Uuid
+  contenedorId String? @map("contenedor_id") @db.Uuid
+
   // Estado
-  isActive            Boolean            @default(true) @map("is_active")
-  lastCheckedAt       DateTime?          @map("last_checked_at") @db.Timestamptz(6)
-  lastEventAt         DateTime?          @map("last_event_at") @db.Timestamptz(6)
-  checkIntervalMinutes Int               @default(60) @map("check_interval_minutes")
-  
+  isActive             Boolean   @default(true) @map("is_active")
+  lastCheckedAt        DateTime? @map("last_checked_at") @db.Timestamptz(6)
+  lastEventAt          DateTime? @map("last_event_at") @db.Timestamptz(6)
+  checkIntervalMinutes Int       @default(60) @map("check_interval_minutes")
+
   // Datos del tracking actual
-  currentStatus       String?            @map("current_status") @db.VarChar(100)
-  currentLocation     String?            @map("current_location") @db.VarChar(255)
-  vessel              String?            @db.VarChar(100)
-  voyage              String?            @db.VarChar(50)
-  eta                 DateTime?          @db.Timestamptz(6)
-  ata                 DateTime?          @db.Timestamptz(6)
-  pod                 String?            @db.VarChar(100) // Port of Discharge
-  pol                 String?            @db.VarChar(100) // Port of Loading
-  
-  createdAt           DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt           DateTime           @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
-  
-  events              TrackingEvent[]
+  currentStatus   String?   @map("current_status") @db.VarChar(100)
+  currentLocation String?   @map("current_location") @db.VarChar(255)
+  vessel          String?   @db.VarChar(100)
+  voyage          String?   @db.VarChar(50)
+  eta             DateTime? @db.Timestamptz(6)
+  ata             DateTime? @db.Timestamptz(6)
+  pod             String?   @db.VarChar(100) // Port of Discharge
+  pol             String?   @db.VarChar(100) // Port of Loading
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  events TrackingEvent[]
 
   @@unique([tenantId, trackingNumber, integrationId])
   @@index([tenantId])
@@ -1261,26 +1256,26 @@ model TrackingSubscription {
 
 // Eventos de tracking históricos
 model TrackingEvent {
-  id                  String               @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  subscriptionId      String               @map("subscription_id") @db.Uuid
-  subscription        TrackingSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
-  
-  eventType           String               @map("event_type") @db.VarChar(100)
-  eventCode           String?              @map("event_code") @db.VarChar(50)
-  eventDescription    String?              @map("event_description")
-  eventDateTime       DateTime             @map("event_date_time") @db.Timestamptz(6)
-  
-  location            String?              @db.VarChar(255)
-  locationCode        String?              @map("location_code") @db.VarChar(20)
-  facility            String?              @db.VarChar(255)
-  
-  vessel              String?              @db.VarChar(100)
-  voyage              String?              @db.VarChar(50)
-  
+  id             String               @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  subscriptionId String               @map("subscription_id") @db.Uuid
+  subscription   TrackingSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  eventType        String   @map("event_type") @db.VarChar(100)
+  eventCode        String?  @map("event_code") @db.VarChar(50)
+  eventDescription String?  @map("event_description")
+  eventDateTime    DateTime @map("event_date_time") @db.Timestamptz(6)
+
+  location     String? @db.VarChar(255)
+  locationCode String? @map("location_code") @db.VarChar(20)
+  facility     String? @db.VarChar(255)
+
+  vessel String? @db.VarChar(100)
+  voyage String? @db.VarChar(50)
+
   // Datos originales de la API
-  rawData             Json?                @map("raw_data")
-  
-  createdAt           DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  rawData Json? @map("raw_data")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@index([subscriptionId])
   @@index([eventDateTime])
@@ -1289,27 +1284,27 @@ model TrackingEvent {
 
 // Cache de schedules/itinerarios
 model VesselSchedule {
-  id              String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  provider        CarrierProvider
-  
-  vesselName      String   @map("vessel_name") @db.VarChar(100)
-  vesselImo       String?  @map("vessel_imo") @db.VarChar(20)
-  voyage          String   @db.VarChar(50)
-  service         String?  @db.VarChar(100)
-  
-  portCode        String   @map("port_code") @db.VarChar(20)
-  portName        String   @map("port_name") @db.VarChar(100)
-  
-  eta             DateTime? @db.Timestamptz(6)
-  etd             DateTime? @db.Timestamptz(6)
-  ata             DateTime? @db.Timestamptz(6)
-  atd             DateTime? @db.Timestamptz(6)
-  
-  terminalName    String?  @map("terminal_name") @db.VarChar(100)
-  
-  rawData         Json?    @map("raw_data")
-  fetchedAt       DateTime @default(now()) @map("fetched_at") @db.Timestamptz(6)
-  expiresAt       DateTime @map("expires_at") @db.Timestamptz(6)
+  id       String          @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  provider CarrierProvider
+
+  vesselName String  @map("vessel_name") @db.VarChar(100)
+  vesselImo  String? @map("vessel_imo") @db.VarChar(20)
+  voyage     String  @db.VarChar(50)
+  service    String? @db.VarChar(100)
+
+  portCode String @map("port_code") @db.VarChar(20)
+  portName String @map("port_name") @db.VarChar(100)
+
+  eta DateTime? @db.Timestamptz(6)
+  etd DateTime? @db.Timestamptz(6)
+  ata DateTime? @db.Timestamptz(6)
+  atd DateTime? @db.Timestamptz(6)
+
+  terminalName String? @map("terminal_name") @db.VarChar(100)
+
+  rawData   Json?    @map("raw_data")
+  fetchedAt DateTime @default(now()) @map("fetched_at") @db.Timestamptz(6)
+  expiresAt DateTime @map("expires_at") @db.Timestamptz(6)
 
   @@index([provider])
   @@index([vesselName, voyage])
@@ -1323,14 +1318,14 @@ model VesselSchedule {
 
 // Países soportados para facturación electrónica
 enum FiscalCountry {
-  AR  // Argentina - ARCA/AFIP
-  CL  // Chile - SII
-  MX  // México - SAT
-  CO  // Colombia - DIAN
-  PE  // Perú - SUNAT
-  UY  // Uruguay - DGI
-  BR  // Brasil - SEFAZ
-  ES  // España - AEAT
+  AR // Argentina - ARCA/AFIP
+  CL // Chile - SII
+  MX // México - SAT
+  CO // Colombia - DIAN
+  PE // Perú - SUNAT
+  UY // Uruguay - DGI
+  BR // Brasil - SEFAZ
+  ES // España - AEAT
 }
 
 // Ambiente fiscal
@@ -1349,42 +1344,42 @@ enum FiscalConfigStatus {
 
 // Configuración fiscal por tenant
 model FiscalConfig {
-  id                  String             @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  tenantId            String             @unique @map("tenant_id") @db.Uuid
-  
+  id       String @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenantId String @unique @map("tenant_id") @db.Uuid
+
   // País y ambiente
-  country             FiscalCountry      @default(AR)
-  environment         FiscalEnvironment  @default(TESTING)
-  status              FiscalConfigStatus @default(PENDING_SETUP)
-  
+  country     FiscalCountry      @default(AR)
+  environment FiscalEnvironment  @default(TESTING)
+  status      FiscalConfigStatus @default(PENDING_SETUP)
+
   // Datos fiscales (Argentina)
-  cuit                String?            @db.VarChar(13)
-  razonSocial         String?            @map("razon_social") @db.VarChar(255)
-  domicilioFiscal     String?            @map("domicilio_fiscal")
-  condicionIVA        String?            @map("condicion_iva") @db.VarChar(50)
-  inicioActividades   DateTime?          @map("inicio_actividades") @db.Date
-  
+  cuit              String?   @db.VarChar(13)
+  razonSocial       String?   @map("razon_social") @db.VarChar(255)
+  domicilioFiscal   String?   @map("domicilio_fiscal")
+  condicionIVA      String?   @map("condicion_iva") @db.VarChar(50)
+  inicioActividades DateTime? @map("inicio_actividades") @db.Date
+
   // Certificado digital (encriptado)
-  certificate         String?            // Certificado .crt en base64
-  privateKey          String?            @map("private_key") // Clave privada .key en base64
-  certificatePassword String?            @map("certificate_password") // Password del certificado (encriptado)
-  certificateExpires  DateTime?          @map("certificate_expires") @db.Timestamptz(6)
-  
+  certificate         String? // Certificado .crt en base64
+  privateKey          String?   @map("private_key") // Clave privada .key en base64
+  certificatePassword String?   @map("certificate_password") // Password del certificado (encriptado)
+  certificateExpires  DateTime? @map("certificate_expires") @db.Timestamptz(6)
+
   // Tokens de AFIP (temporales)
-  wsaaToken           String?            @map("wsaa_token") // Token de autenticación
-  wsaaSign            String?            @map("wsaa_sign") // Firma
-  wsaaExpires         DateTime?          @map("wsaa_expires") @db.Timestamptz(6)
-  
+  wsaaToken   String?   @map("wsaa_token") // Token de autenticación
+  wsaaSign    String?   @map("wsaa_sign") // Firma
+  wsaaExpires DateTime? @map("wsaa_expires") @db.Timestamptz(6)
+
   // Configuración adicional
-  settings            Json?              @default("{}")
-  lastError           String?            @map("last_error")
-  lastTestedAt        DateTime?          @map("last_tested_at") @db.Timestamptz(6)
-  
-  createdAt           DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt           DateTime           @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
-  createdBy           String?            @map("created_by") @db.Uuid
-  
-  puntosVenta         PuntoVenta[]
+  settings     Json?     @default("{}")
+  lastError    String?   @map("last_error")
+  lastTestedAt DateTime? @map("last_tested_at") @db.Timestamptz(6)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy String?  @map("created_by") @db.Uuid
+
+  puntosVenta PuntoVenta[]
 
   @@index([tenantId])
   @@map("fiscal_configs")
@@ -1392,25 +1387,25 @@ model FiscalConfig {
 
 // Puntos de venta habilitados
 model PuntoVenta {
-  id                  String       @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  fiscalConfigId      String       @map("fiscal_config_id") @db.Uuid
-  fiscalConfig        FiscalConfig @relation(fields: [fiscalConfigId], references: [id], onDelete: Cascade)
-  
-  numero              Int          // Número de punto de venta (1-99999)
-  nombre              String?      @db.VarChar(100)
-  domicilio           String?      @db.VarChar(255)
-  tipoEmision         String       @default("CAE") @map("tipo_emision") @db.VarChar(10) // CAE, CAEA
-  
+  id             String       @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  fiscalConfigId String       @map("fiscal_config_id") @db.Uuid
+  fiscalConfig   FiscalConfig @relation(fields: [fiscalConfigId], references: [id], onDelete: Cascade)
+
+  numero      Int // Número de punto de venta (1-99999)
+  nombre      String? @db.VarChar(100)
+  domicilio   String? @db.VarChar(255)
+  tipoEmision String  @default("CAE") @map("tipo_emision") @db.VarChar(10) // CAE, CAEA
+
   // Tipos de comprobante habilitados
-  tiposHabilitados    Json         @default("[]") @map("tipos_habilitados") // [1, 6, 11, etc]
-  
-  isActive            Boolean      @default(true) @map("is_active")
-  isDefault           Boolean      @default(false) @map("is_default")
-  
-  createdAt           DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt           DateTime     @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
-  
-  comprobantes        ComprobanteFiscal[]
+  tiposHabilitados Json @default("[]") @map("tipos_habilitados") // [1, 6, 11, etc]
+
+  isActive  Boolean @default(true) @map("is_active")
+  isDefault Boolean @default(false) @map("is_default")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  comprobantes ComprobanteFiscal[]
 
   @@unique([fiscalConfigId, numero])
   @@index([fiscalConfigId])
@@ -1419,58 +1414,58 @@ model PuntoVenta {
 
 // Comprobantes fiscales emitidos
 model ComprobanteFiscal {
-  id                  String     @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  tenantId            String     @map("tenant_id") @db.Uuid
-  
+  id       String @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+
   // Relación con factura del sistema
-  facturaId           String?    @unique @map("factura_id") @db.Uuid
-  
+  facturaId String? @unique @map("factura_id") @db.Uuid
+
   // Punto de venta
-  puntoVentaId        String     @map("punto_venta_id") @db.Uuid
-  puntoVenta          PuntoVenta @relation(fields: [puntoVentaId], references: [id])
-  
+  puntoVentaId String     @map("punto_venta_id") @db.Uuid
+  puntoVenta   PuntoVenta @relation(fields: [puntoVentaId], references: [id])
+
   // Datos del comprobante
-  tipoComprobante     Int        @map("tipo_comprobante") // 1=FA, 6=FB, 11=FC, etc.
-  puntoVentaNum       Int        @map("punto_venta_num")
-  numeroComprobante   Int        @map("numero_comprobante")
-  numeroCompleto      String     @map("numero_completo") @db.VarChar(20) // 00001-00000001
-  
+  tipoComprobante   Int    @map("tipo_comprobante") // 1=FA, 6=FB, 11=FC, etc.
+  puntoVentaNum     Int    @map("punto_venta_num")
+  numeroComprobante Int    @map("numero_comprobante")
+  numeroCompleto    String @map("numero_completo") @db.VarChar(20) // 00001-00000001
+
   // Datos del receptor
-  tipoDocReceptor     Int        @map("tipo_doc_receptor") // 80=CUIT, 96=DNI, etc.
-  nroDocReceptor      String     @map("nro_doc_receptor") @db.VarChar(20)
-  
+  tipoDocReceptor Int    @map("tipo_doc_receptor") // 80=CUIT, 96=DNI, etc.
+  nroDocReceptor  String @map("nro_doc_receptor") @db.VarChar(20)
+
   // Importes
-  importeTotal        Decimal    @map("importe_total") @db.Decimal(15, 2)
-  importeNeto         Decimal    @map("importe_neto") @db.Decimal(15, 2)
-  importeIVA          Decimal    @map("importe_iva") @db.Decimal(15, 2)
-  importeTributos     Decimal    @default(0) @map("importe_tributos") @db.Decimal(15, 2)
-  importeExento       Decimal    @default(0) @map("importe_exento") @db.Decimal(15, 2)
-  
+  importeTotal    Decimal @map("importe_total") @db.Decimal(15, 2)
+  importeNeto     Decimal @map("importe_neto") @db.Decimal(15, 2)
+  importeIVA      Decimal @map("importe_iva") @db.Decimal(15, 2)
+  importeTributos Decimal @default(0) @map("importe_tributos") @db.Decimal(15, 2)
+  importeExento   Decimal @default(0) @map("importe_exento") @db.Decimal(15, 2)
+
   // Fechas
-  fechaComprobante    DateTime   @map("fecha_comprobante") @db.Date
-  fechaServicioDesde  DateTime?  @map("fecha_servicio_desde") @db.Date
-  fechaServicioHasta  DateTime?  @map("fecha_servicio_hasta") @db.Date
-  fechaVencimiento    DateTime?  @map("fecha_vencimiento") @db.Date
-  
+  fechaComprobante   DateTime  @map("fecha_comprobante") @db.Date
+  fechaServicioDesde DateTime? @map("fecha_servicio_desde") @db.Date
+  fechaServicioHasta DateTime? @map("fecha_servicio_hasta") @db.Date
+  fechaVencimiento   DateTime? @map("fecha_vencimiento") @db.Date
+
   // Datos fiscales de AFIP
-  cae                 String?    @db.VarChar(20)
-  caeVencimiento      DateTime?  @map("cae_vencimiento") @db.Date
-  
+  cae            String?   @db.VarChar(20)
+  caeVencimiento DateTime? @map("cae_vencimiento") @db.Date
+
   // Estado
-  estado              String     @default("PENDIENTE") @db.VarChar(20) // PENDIENTE, AUTORIZADO, RECHAZADO, ANULADO
-  resultado           String?    @db.VarChar(1) // A=Aprobado, R=Rechazado, P=Parcial
-  
+  estado    String  @default("PENDIENTE") @db.VarChar(20) // PENDIENTE, AUTORIZADO, RECHAZADO, ANULADO
+  resultado String? @db.VarChar(1) // A=Aprobado, R=Rechazado, P=Parcial
+
   // Respuesta de AFIP
-  afipResponse        Json?      @map("afip_response")
-  observaciones       String?
-  errores             Json?
-  
+  afipResponse  Json?   @map("afip_response")
+  observaciones String?
+  errores       Json?
+
   // QR y PDF
-  qrData              String?    @map("qr_data")
-  pdfUrl              String?    @map("pdf_url")
-  
-  createdAt           DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt           DateTime   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  qrData String? @map("qr_data")
+  pdfUrl String? @map("pdf_url")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@unique([tenantId, tipoComprobante, puntoVentaNum, numeroComprobante])
   @@index([tenantId])
@@ -1483,12 +1478,12 @@ model ComprobanteFiscal {
 // PRESUPUESTOS
 // =============================================
 model Presupuesto {
-  id              String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  tenantId        String   @map("tenant_id") @db.Uuid
-  numero          String   @db.VarChar(50)
-  
+  id       String @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+  numero   String @db.VarChar(50)
+
   // Estado del presupuesto
-  estado          String   @default("PENDIENTE") @db.VarChar(30)
+  estado String @default("PENDIENTE") @db.VarChar(30)
   // PENDIENTE - Recién creado/solicitado
   // EN_PROCESO - El tenant está trabajando en él
   // ENVIADO - Enviado al cliente para revisión
@@ -1496,108 +1491,108 @@ model Presupuesto {
   // RECHAZADO - Cliente rechazó
   // CONVERTIDO - Convertido a carpeta
   // VENCIDO - Pasó la fecha de validez
-  
+
   // Cliente
-  clienteId       String?  @map("cliente_id") @db.Uuid
-  cliente         Cliente? @relation(fields: [clienteId], references: [id])
-  
+  clienteId String?  @map("cliente_id") @db.Uuid
+  cliente   Cliente? @relation(fields: [clienteId], references: [id])
+
   // Datos del solicitante (puede ser un cliente no registrado)
-  solicitanteNombre   String?  @map("solicitante_nombre") @db.VarChar(255)
-  solicitanteEmail    String?  @map("solicitante_email") @db.VarChar(255)
-  solicitanteTelefono String?  @map("solicitante_telefono") @db.VarChar(50)
-  solicitanteEmpresa  String?  @map("solicitante_empresa") @db.VarChar(255)
-  
+  solicitanteNombre   String? @map("solicitante_nombre") @db.VarChar(255)
+  solicitanteEmail    String? @map("solicitante_email") @db.VarChar(255)
+  solicitanteTelefono String? @map("solicitante_telefono") @db.VarChar(50)
+  solicitanteEmpresa  String? @map("solicitante_empresa") @db.VarChar(255)
+
   // Descripción del pedido inicial del cliente
-  descripcionPedido   String?  @map("descripcion_pedido")
-  
+  descripcionPedido String? @map("descripcion_pedido")
+
   // Clasificación
-  area            String   @default("Marítimo") @db.VarChar(20)
-  sector          String   @default("Importación") @db.VarChar(20)
-  tipoOperacion   String?  @map("tipo_operacion") @db.VarChar(50)
+  area               String  @default("Marítimo") @db.VarChar(20)
+  sector             String  @default("Importación") @db.VarChar(20)
+  tipoOperacion      String? @map("tipo_operacion") @db.VarChar(50)
   tipoOperacionAerea String? @map("tipo_operacion_aerea") @db.VarChar(50)
-  categoriaEmbarque String? @map("categoria_embarque") @db.VarChar(100)
-  consolidado     Boolean  @default(false)
-  
+  categoriaEmbarque  String? @map("categoria_embarque") @db.VarChar(100)
+  consolidado        Boolean @default(false)
+
   // Origen y Destino
-  puertoOrigen    String?  @map("puerto_origen") @db.VarChar(100)
-  lugarCarga      String?  @map("lugar_carga") @db.VarChar(255)
-  puertoDestino   String?  @map("puerto_destino") @db.VarChar(100)
-  lugarDescarga   String?  @map("lugar_descarga") @db.VarChar(255)
+  puertoOrigen     String? @map("puerto_origen") @db.VarChar(100)
+  lugarCarga       String? @map("lugar_carga") @db.VarChar(255)
+  puertoDestino    String? @map("puerto_destino") @db.VarChar(100)
+  lugarDescarga    String? @map("lugar_descarga") @db.VarChar(255)
   puertoTransbordo String? @map("puerto_transbordo") @db.VarChar(100)
-  
+
   // Shipper y Consignee
-  shipperId       String?  @map("shipper_id") @db.Uuid
-  shipper         Cliente? @relation("PresupuestoShipper", fields: [shipperId], references: [id])
-  consigneeId     String?  @map("consignee_id") @db.Uuid
-  consignee       Cliente? @relation("PresupuestoConsignee", fields: [consigneeId], references: [id])
-  
+  shipperId   String?  @map("shipper_id") @db.Uuid
+  shipper     Cliente? @relation("PresupuestoShipper", fields: [shipperId], references: [id])
+  consigneeId String?  @map("consignee_id") @db.Uuid
+  consignee   Cliente? @relation("PresupuestoConsignee", fields: [consigneeId], references: [id])
+
   // Proveedor vinculado
-  proveedorId     String?  @map("proveedor_id") @db.Uuid
-  proveedor       Proveedor? @relation("PresupuestoProveedor", fields: [proveedorId], references: [id])
-  
+  proveedorId String?    @map("proveedor_id") @db.Uuid
+  proveedor   Proveedor? @relation("PresupuestoProveedor", fields: [proveedorId], references: [id])
+
   // Fechas de solicitud
-  fechaSolicitud      DateTime @default(now()) @map("fecha_solicitud") @db.Timestamptz(6)
-  fechaValidez        DateTime? @map("fecha_validez") @db.Timestamptz(6)
-  fechaRespuesta      DateTime? @map("fecha_respuesta") @db.Timestamptz(6)
-  fechaAprobacion     DateTime? @map("fecha_aprobacion") @db.Timestamptz(6)
-  
+  fechaSolicitud  DateTime  @default(now()) @map("fecha_solicitud") @db.Timestamptz(6)
+  fechaValidez    DateTime? @map("fecha_validez") @db.Timestamptz(6)
+  fechaRespuesta  DateTime? @map("fecha_respuesta") @db.Timestamptz(6)
+  fechaAprobacion DateTime? @map("fecha_aprobacion") @db.Timestamptz(6)
+
   // Fechas de viaje (ETD/ETA)
   fechaSalidaEstimada  DateTime? @map("etd") @db.Timestamptz(6)
   fechaLlegadaEstimada DateTime? @map("eta") @db.Timestamptz(6)
-  
+
   // Transporte
-  buque           String?  @db.VarChar(100)
-  viaje           String?  @db.VarChar(50)
-  transportista   String?  @db.VarChar(255)
-  booking         String?  @db.VarChar(100)
+  buque             String? @db.VarChar(100)
+  viaje             String? @db.VarChar(50)
+  transportista     String? @db.VarChar(255)
+  booking           String? @db.VarChar(100)
   terminalPortuaria String? @map("terminal_portuaria") @db.VarChar(100)
-  depositoFiscal  String?  @map("deposito_fiscal") @db.VarChar(100)
-  
+  depositoFiscal    String? @map("deposito_fiscal") @db.VarChar(100)
+
   // BLs
-  masterBL        String?  @map("master_bl") @db.VarChar(100)
-  houseBL         String?  @map("house_bl") @db.VarChar(100)
-  
+  masterBL String? @map("master_bl") @db.VarChar(100)
+  houseBL  String? @map("house_bl") @db.VarChar(100)
+
   // Referencias
-  referenciaCliente String?  @map("referencia_cliente") @db.VarChar(100)
-  
+  referenciaCliente String? @map("referencia_cliente") @db.VarChar(100)
+
   // Tracking de visualización
-  vistoPorCliente     Boolean   @default(false) @map("visto_por_cliente")
+  vistoPorCliente      Boolean   @default(false) @map("visto_por_cliente")
   fechaVistoPorCliente DateTime? @map("fecha_visto_por_cliente") @db.Timestamptz(6)
-  vistoPorTenant      Boolean   @default(false) @map("visto_por_tenant")
-  fechaVistoPorTenant DateTime? @map("fecha_visto_por_tenant") @db.Timestamptz(6)
-  
+  vistoPorTenant       Boolean   @default(false) @map("visto_por_tenant")
+  fechaVistoPorTenant  DateTime? @map("fecha_visto_por_tenant") @db.Timestamptz(6)
+
   // Incoterm y condiciones
-  incoterm        String?  @db.VarChar(10)
-  condiciones     String?
-  
+  incoterm    String? @db.VarChar(10)
+  condiciones String?
+
   // Totales calculados
-  totalVenta      Float?   @map("total_venta")
-  totalCosto      Float?   @map("total_costo")
-  moneda          String   @default("USD") @db.VarChar(10)
-  
+  totalVenta Float? @map("total_venta")
+  totalCosto Float? @map("total_costo")
+  moneda     String @default("USD") @db.VarChar(10)
+
   // Observaciones
-  observaciones       String?
-  notasInternas       String?  @map("notas_internas")
-  motivoRechazo       String?  @map("motivo_rechazo")
-  
+  observaciones String?
+  notasInternas String? @map("notas_internas")
+  motivoRechazo String? @map("motivo_rechazo")
+
   // Banco seleccionado para PDF (ID de la cuenta bancaria del tenant)
-  bancoPdfId          String?  @map("banco_pdf_id") @db.VarChar(50)
-  
+  bancoPdfId String? @map("banco_pdf_id") @db.VarChar(50)
+
   // Relación con carpeta cuando se convierte
-  carpetaId       String?  @unique @map("carpeta_id") @db.Uuid
-  carpeta         Carpeta? @relation(fields: [carpetaId], references: [id])
-  
+  carpetaId String?  @unique @map("carpeta_id") @db.Uuid
+  carpeta   Carpeta? @relation(fields: [carpetaId], references: [id])
+
   // Usuario que creó/gestiona
-  usuarioId       String   @map("usuario_id") @db.Uuid
-  
-  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
-  
+  usuarioId String @map("usuario_id") @db.Uuid
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
   // Relaciones
-  items           ItemPresupuesto[]
-  mensajes        MensajePresupuesto[]
-  mercancias      MercanciaPresupuesto[]
-  contenedores    ContenedorPresupuesto[]
+  items        ItemPresupuesto[]
+  mensajes     MensajePresupuesto[]
+  mercancias   MercanciaPresupuesto[]
+  contenedores ContenedorPresupuesto[]
 
   @@unique([tenantId, numero])
   @@index([tenantId])
@@ -1609,57 +1604,63 @@ model Presupuesto {
 
 // Items del presupuesto (gastos/servicios cotizados)
 model ItemPresupuesto {
-  id              String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  presupuestoId   String   @map("presupuesto_id") @db.Uuid
-  presupuesto     Presupuesto @relation(fields: [presupuestoId], references: [id], onDelete: Cascade)
+  id            String      @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  presupuestoId String      @map("presupuesto_id") @db.Uuid
+  presupuesto   Presupuesto @relation(fields: [presupuestoId], references: [id], onDelete: Cascade)
 
-  concepto        String   @db.VarChar(255)
-  descripcion     String?
-  prepaidCollect  String   @default("P") @map("prepaid_collect") @db.VarChar(10)
-  divisa          String   @default("USD") @db.VarChar(10)
-  montoVenta      Float    @map("monto_venta")
-  montoCosto      Float    @map("monto_costo")
-  base            String?  @db.VarChar(50)
-  cantidad        Float    @default(1)
-  totalVenta      Float    @map("total_venta")
-  totalCosto      Float    @map("total_costo")
-  gravado         Boolean  @default(true)
-  porcentajeIVA   Float    @default(21) @map("porcentaje_iva")
-  categoriaIVA    String   @default("GRAVADO") @map("categoria_iva") @db.VarChar(20)
-  importeMinimo   Float?   @map("importe_minimo")
-  importeMaximo   Float?   @map("importe_maximo")
+  concepto       String  @db.VarChar(255)
+  descripcion    String?
+  prepaidCollect String  @default("P") @map("prepaid_collect") @db.VarChar(10)
+  divisa         String  @default("USD") @db.VarChar(10)
+  montoVenta     Float   @map("monto_venta")
+  montoCosto     Float   @map("monto_costo")
+  base           String? @db.VarChar(50)
+  cantidad       Float   @default(1)
+  totalVenta     Float   @map("total_venta")
+  totalCosto     Float   @map("total_costo")
+  gravado        Boolean @default(true)
+  porcentajeIVA  Float   @default(21) @map("porcentaje_iva")
+  categoriaIVA   String  @default("GRAVADO") @map("categoria_iva") @db.VarChar(20)
+  importeMinimo  Float?  @map("importe_minimo")
+  importeMaximo  Float?  @map("importe_maximo")
 
-  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  // Proveedor responsable del concepto (FK opcional + texto libre como fallback)
+  proveedorId     String?    @map("proveedor_id") @db.Uuid
+  proveedor       Proveedor? @relation("ItemPresupuestoProveedor", fields: [proveedorId], references: [id])
+  proveedorNombre String?    @map("proveedor_nombre") @db.VarChar(255)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@index([presupuestoId])
+  @@index([proveedorId])
   @@map("items_presupuesto")
 }
 
 // MERCANCÍAS DE PRESUPUESTO
 model MercanciaPresupuesto {
-  id              String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  presupuestoId   String   @map("presupuesto_id") @db.Uuid
-  presupuesto     Presupuesto @relation(fields: [presupuestoId], references: [id], onDelete: Cascade)
-  
-  contenedorId    String?  @map("contenedor_id") @db.Uuid
-  contenedor      ContenedorPresupuesto? @relation(fields: [contenedorId], references: [id], onDelete: SetNull)
-  
+  id            String      @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  presupuestoId String      @map("presupuesto_id") @db.Uuid
+  presupuesto   Presupuesto @relation(fields: [presupuestoId], references: [id], onDelete: Cascade)
+
+  contenedorId String?                @map("contenedor_id") @db.Uuid
+  contenedor   ContenedorPresupuesto? @relation(fields: [contenedorId], references: [id], onDelete: SetNull)
+
   descripcion     String
-  embalaje        String?  @db.VarChar(100)
-  marcas          String?  @db.VarChar(255)
+  embalaje        String? @db.VarChar(100)
+  marcas          String? @db.VarChar(255)
   bultos          Int?
   largo           Float?
   ancho           Float?
   alto            Float?
   volumen         Float?
   peso            Float?
-  valorMercaderia Float?   @map("valor_mercaderia")
-  valorCIF        Float?   @map("valor_cif")
-  hsCode          String?  @map("hs_code") @db.VarChar(20)
+  valorMercaderia Float?  @map("valor_mercaderia")
+  valorCIF        Float?  @map("valor_cif")
+  hsCode          String? @map("hs_code") @db.VarChar(20)
 
-  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@index([presupuestoId])
   @@index([contenedorId])
@@ -1668,23 +1669,23 @@ model MercanciaPresupuesto {
 
 // CONTENEDORES DE PRESUPUESTO
 model ContenedorPresupuesto {
-  id              String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  presupuestoId   String   @map("presupuesto_id") @db.Uuid
-  presupuesto     Presupuesto @relation(fields: [presupuestoId], references: [id], onDelete: Cascade)
-  
-  mercancias      MercanciaPresupuesto[]
-  
-  tipo            String   @db.VarChar(20)
-  numero          String?  @db.VarChar(20)
-  blContenedor    String?  @map("bl_contenedor") @db.VarChar(50)
-  condicion       String?  @db.VarChar(50)
-  precinto        String?  @db.VarChar(50)
-  cantidad        Int      @default(1)
-  tara            Float?
-  pesoMaximo      Float?   @map("peso_maximo")
-  
-  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id            String      @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  presupuestoId String      @map("presupuesto_id") @db.Uuid
+  presupuesto   Presupuesto @relation(fields: [presupuestoId], references: [id], onDelete: Cascade)
+
+  mercancias MercanciaPresupuesto[]
+
+  tipo         String  @db.VarChar(20)
+  numero       String? @db.VarChar(20)
+  blContenedor String? @map("bl_contenedor") @db.VarChar(50)
+  condicion    String? @db.VarChar(50)
+  precinto     String? @db.VarChar(50)
+  cantidad     Int     @default(1)
+  tara         Float?
+  pesoMaximo   Float?  @map("peso_maximo")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@index([presupuestoId])
   @@index([numero])
@@ -1693,26 +1694,26 @@ model ContenedorPresupuesto {
 
 // Mensajes/Chat del presupuesto
 model MensajePresupuesto {
-  id              String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  presupuestoId   String   @map("presupuesto_id") @db.Uuid
-  presupuesto     Presupuesto @relation(fields: [presupuestoId], references: [id], onDelete: Cascade)
-  
+  id            String      @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  presupuestoId String      @map("presupuesto_id") @db.Uuid
+  presupuesto   Presupuesto @relation(fields: [presupuestoId], references: [id], onDelete: Cascade)
+
   // Quién envió el mensaje
-  tipoRemitente   String   @map("tipo_remitente") @db.VarChar(20) // CLIENTE, TENANT, SISTEMA
-  usuarioId       String?  @map("usuario_id") @db.Uuid
-  nombreRemitente String   @map("nombre_remitente") @db.VarChar(255)
-  
+  tipoRemitente   String  @map("tipo_remitente") @db.VarChar(20) // CLIENTE, TENANT, SISTEMA
+  usuarioId       String? @map("usuario_id") @db.Uuid
+  nombreRemitente String  @map("nombre_remitente") @db.VarChar(255)
+
   // Contenido
-  mensaje         String
-  
+  mensaje String
+
   // Adjuntos (opcional)
-  adjuntos        Json?    // Array de URLs de archivos
-  
+  adjuntos Json? // Array de URLs de archivos
+
   // Estado
-  leido           Boolean  @default(false)
-  leidoAt         DateTime? @map("leido_at") @db.Timestamptz(6)
-  
-  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  leido   Boolean   @default(false)
+  leidoAt DateTime? @map("leido_at") @db.Timestamptz(6)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@index([presupuestoId])
   @@index([createdAt])
@@ -1724,98 +1725,98 @@ model MensajePresupuesto {
 // ===========================================
 
 model Predespacho {
-  id              String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  tenantId        String   @map("tenant_id") @db.Uuid
-  numero          String   @db.VarChar(50)
-  
+  id       String @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+  numero   String @db.VarChar(50)
+
   // Estado del predespacho
-  estado          String   @default("BORRADOR") @db.VarChar(30)
+  estado String @default("BORRADOR") @db.VarChar(30)
   // BORRADOR - En edición por el despachante
   // ENVIADO - Enviado al cliente
   // APROBADO - Cliente aprobó / fondos recibidos
   // RECHAZADO - Cliente rechazó
   // EN_PROCESO - Operación en curso
   // FINALIZADO - Operación terminada
-  
+
   // Tipo de documento
-  tipoDocumento   String   @default("PEDIDO_DE_FONDOS") @map("tipo_documento") @db.VarChar(30)
+  tipoDocumento String @default("PEDIDO_DE_FONDOS") @map("tipo_documento") @db.VarChar(30)
   // PEDIDO_DE_FONDOS, PRESUPUESTO
-  
+
   // Moneda principal
-  monedaPrincipal String   @default("USD") @map("moneda_principal") @db.VarChar(5)
-  
+  monedaPrincipal String @default("USD") @map("moneda_principal") @db.VarChar(5)
+
   // Referencias
-  nuestraReferencia   String?  @map("nuestra_referencia") @db.VarChar(100)
-  vuestraReferencia   String?  @map("vuestra_referencia") @db.VarChar(255)
-  
+  nuestraReferencia String? @map("nuestra_referencia") @db.VarChar(100)
+  vuestraReferencia String? @map("vuestra_referencia") @db.VarChar(255)
+
   // Fechas
-  fecha               DateTime @default(now()) @db.Timestamptz(6)
-  validoHasta         DateTime? @map("valido_hasta") @db.Timestamptz(6)
-  
+  fecha       DateTime  @default(now()) @db.Timestamptz(6)
+  validoHasta DateTime? @map("valido_hasta") @db.Timestamptz(6)
+
   // Cliente
-  clienteId       String?  @map("cliente_id") @db.Uuid
-  cliente         Cliente? @relation(fields: [clienteId], references: [id])
-  clienteCuit     String?  @map("cliente_cuit") @db.VarChar(20)
-  
+  clienteId   String?  @map("cliente_id") @db.Uuid
+  cliente     Cliente? @relation(fields: [clienteId], references: [id])
+  clienteCuit String?  @map("cliente_cuit") @db.VarChar(20)
+
   // Datos del solicitante (si viene del portal sin cliente registrado)
-  solicitanteNombre   String?  @map("solicitante_nombre") @db.VarChar(255)
-  solicitanteEmail    String?  @map("solicitante_email") @db.VarChar(255)
-  solicitanteTelefono String?  @map("solicitante_telefono") @db.VarChar(50)
-  solicitanteEmpresa  String?  @map("solicitante_empresa") @db.VarChar(255)
-  
+  solicitanteNombre   String? @map("solicitante_nombre") @db.VarChar(255)
+  solicitanteEmail    String? @map("solicitante_email") @db.VarChar(255)
+  solicitanteTelefono String? @map("solicitante_telefono") @db.VarChar(50)
+  solicitanteEmpresa  String? @map("solicitante_empresa") @db.VarChar(255)
+
   // Datos de la operación
-  mercaderia      String?  @db.VarChar(255)
-  destinacion     String?  @db.VarChar(50)
+  mercaderia  String? @db.VarChar(255)
+  destinacion String? @db.VarChar(50)
   // IMPORTACION_A_CONSUMO, EXPORTACION_A_CONSUMO, OTRO_IMPORTACION, OTRO_EXPORTACION
-  
-  etaEtd          String?  @map("eta_etd") @db.VarChar(100)
-  facturasProforma String? @map("facturas_proforma") @db.VarChar(255)
-  blGuia          String?  @map("bl_guia") @db.VarChar(100)
-  aduana          String?  @db.VarChar(100)
-  via             String?  @db.VarChar(20) // AEREO, TERRESTRE, MARITIMO, MULTIMODAL
-  despachante     String?  @db.VarChar(255)
-  origenDestino   String?  @map("origen_destino") @db.VarChar(255)
-  condicionVenta  String?  @map("condicion_venta") @db.VarChar(50) // Incoterm
+
+  etaEtd                  String? @map("eta_etd") @db.VarChar(100)
+  facturasProforma        String? @map("facturas_proforma") @db.VarChar(255)
+  blGuia                  String? @map("bl_guia") @db.VarChar(100)
+  aduana                  String? @db.VarChar(100)
+  via                     String? @db.VarChar(20) // AEREO, TERRESTRE, MARITIMO, MULTIMODAL
+  despachante             String? @db.VarChar(255)
+  origenDestino           String? @map("origen_destino") @db.VarChar(255)
+  condicionVenta          String? @map("condicion_venta") @db.VarChar(50) // Incoterm
   clienteVendedorExterior String? @map("cliente_vendedor_exterior") @db.VarChar(255)
-  agenteCarga     String?  @map("agente_carga") @db.VarChar(255)
-  simiSali        String?  @map("simi_sali") @db.VarChar(255)
-  
+  agenteCarga             String? @map("agente_carga") @db.VarChar(255)
+  simiSali                String? @map("simi_sali") @db.VarChar(255)
+
   // Pesos y medidas
-  pesoNeto        Float?   @map("peso_neto")
-  pesoBruto       Float?   @map("peso_bruto")
-  volumenM3       Float?   @map("volumen_m3")
-  
+  pesoNeto  Float? @map("peso_neto")
+  pesoBruto Float? @map("peso_bruto")
+  volumenM3 Float? @map("volumen_m3")
+
   // Posición arancelaria
   posicionArancelaria String? @map("posicion_arancelaria") @db.VarChar(50)
-  
+
   // Valores base (en divisas y en USD)
-  fobDivisas      Float?   @map("fob_divisas")
-  fobUsd          Float?   @map("fob_usd")
-  fleteDivisas    Float?   @map("flete_divisas")
-  fleteUsd        Float?   @map("flete_usd")
-  seguroDivisas   Float?   @map("seguro_divisas")
-  seguroUsd       Float?   @map("seguro_usd")
-  ajusteIncluir   Float?   @default(0) @map("ajuste_incluir")
-  ajusteDeducir   Float?   @default(0) @map("ajuste_deducir")
-  
+  fobDivisas    Float? @map("fob_divisas")
+  fobUsd        Float? @map("fob_usd")
+  fleteDivisas  Float? @map("flete_divisas")
+  fleteUsd      Float? @map("flete_usd")
+  seguroDivisas Float? @map("seguro_divisas")
+  seguroUsd     Float? @map("seguro_usd")
+  ajusteIncluir Float? @default(0) @map("ajuste_incluir")
+  ajusteDeducir Float? @default(0) @map("ajuste_deducir")
+
   // Tipos de cambio
-  paseUsdFlete    Float?   @map("pase_usd_flete")
-  paseUsdSeguro   Float?   @map("pase_usd_seguro")
-  tipoCambioSim   Float?   @map("tipo_cambio_sim")
-  tipoCambioGastos Float?  @map("tipo_cambio_gastos")
-  
+  paseUsdFlete     Float? @map("pase_usd_flete")
+  paseUsdSeguro    Float? @map("pase_usd_seguro")
+  tipoCambioSim    Float? @map("tipo_cambio_sim")
+  tipoCambioGastos Float? @map("tipo_cambio_gastos")
+
   // Valores calculados
-  valorAduana     Float?   @map("valor_aduana")
-  baseImponible   Float?   @map("base_imponible")
-  
+  valorAduana   Float? @map("valor_aduana")
+  baseImponible Float? @map("base_imponible")
+
   // Derechos, Impuestos y Gastos como JSON
   // Formato: [{ concepto, alicuota, importeUsd, importeArs }]
-  derechos        Json?    @default("[]")
-  impuestos       Json?    @default("[]")
+  derechos  Json? @default("[]")
+  impuestos Json? @default("[]")
   // Formato gastos: [{ concepto, importeUsd, importeArs, grupo }]
   // grupo: AGENTE_CARGA o OPERATIVO
-  gastos          Json?    @default("[]")
-  
+  gastos    Json? @default("[]")
+
   // Totales
   totalDerechosUsd  Float? @map("total_derechos_usd")
   totalDerechosArs  Float? @map("total_derechos_ars")
@@ -1823,47 +1824,47 @@ model Predespacho {
   totalImpuestosArs Float? @map("total_impuestos_ars")
   totalGastosUsd    Float? @map("total_gastos_usd")
   totalGastosArs    Float? @map("total_gastos_ars")
-  
+
   // Totales a transferir
-  totalTransferirForwarderUsd Float? @map("total_transferir_forwarder_usd")
-  totalTransferirForwarderArs Float? @map("total_transferir_forwarder_ars")
-  totalTransferirDepositoUsd  Float? @map("total_transferir_deposito_usd")
-  totalTransferirDepositoArs  Float? @map("total_transferir_deposito_ars")
+  totalTransferirForwarderUsd   Float? @map("total_transferir_forwarder_usd")
+  totalTransferirForwarderArs   Float? @map("total_transferir_forwarder_ars")
+  totalTransferirDepositoUsd    Float? @map("total_transferir_deposito_usd")
+  totalTransferirDepositoArs    Float? @map("total_transferir_deposito_ars")
   totalTransferirDespachanteUsd Float? @map("total_transferir_despachante_usd")
   totalTransferirDespachanteArs Float? @map("total_transferir_despachante_ars")
-  totalGravamenesVepUsd       Float? @map("total_gravamenes_vep_usd")
-  totalGravamenesVepArs       Float? @map("total_gravamenes_vep_ars")
-  
+  totalGravamenesVepUsd         Float? @map("total_gravamenes_vep_usd")
+  totalGravamenesVepArs         Float? @map("total_gravamenes_vep_ars")
+
   // Visibilidad para el cliente
-  visibleCliente  Boolean  @default(false) @map("visible_cliente")
-  enviadoCliente  Boolean  @default(false) @map("enviado_cliente")
+  visibleCliente    Boolean   @default(false) @map("visible_cliente")
+  enviadoCliente    Boolean   @default(false) @map("enviado_cliente")
   fechaEnvioCliente DateTime? @map("fecha_envio_cliente") @db.Timestamptz(6)
-  
+
   // Tracking de visualización
-  vistoPorCliente     Boolean   @default(false) @map("visto_por_cliente")
+  vistoPorCliente      Boolean   @default(false) @map("visto_por_cliente")
   fechaVistoPorCliente DateTime? @map("fecha_visto_por_cliente") @db.Timestamptz(6)
-  vistoPorTenant      Boolean   @default(false) @map("visto_por_tenant")
-  fechaVistoPorTenant DateTime? @map("fecha_visto_por_tenant") @db.Timestamptz(6)
-  
+  vistoPorTenant       Boolean   @default(false) @map("visto_por_tenant")
+  fechaVistoPorTenant  DateTime? @map("fecha_visto_por_tenant") @db.Timestamptz(6)
+
   // Banco seleccionado para PDF
-  bancoPdfId      String?  @map("banco_pdf_id") @db.VarChar(50)
-  
+  bancoPdfId String? @map("banco_pdf_id") @db.VarChar(50)
+
   // Observaciones
-  observaciones       String?
-  notasInternas       String?  @map("notas_internas")
-  motivoRechazo       String?  @map("motivo_rechazo")
-  
+  observaciones String?
+  notasInternas String? @map("notas_internas")
+  motivoRechazo String? @map("motivo_rechazo")
+
   // Descripción del pedido (desde portal cliente)
-  descripcionPedido   String?  @map("descripcion_pedido")
-  
+  descripcionPedido String? @map("descripcion_pedido")
+
   // Usuario que creó
-  usuarioId       String   @map("usuario_id") @db.Uuid
-  
-  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
-  
+  usuarioId String @map("usuario_id") @db.Uuid
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
   // Relaciones
-  mensajes        MensajePredespacho[]
+  mensajes MensajePredespacho[]
 
   @@unique([tenantId, numero])
   @@index([tenantId])
@@ -1875,21 +1876,21 @@ model Predespacho {
 
 // Mensajes/Chat del predespacho
 model MensajePredespacho {
-  id              String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  predespachoId   String   @map("predespacho_id") @db.Uuid
-  predespacho     Predespacho @relation(fields: [predespachoId], references: [id], onDelete: Cascade)
-  
-  tipoRemitente   String   @map("tipo_remitente") @db.VarChar(20)
-  usuarioId       String?  @map("usuario_id") @db.Uuid
-  nombreRemitente String   @map("nombre_remitente") @db.VarChar(255)
-  
-  mensaje         String
-  adjuntos        Json?
-  
-  leido           Boolean  @default(false)
-  leidoAt         DateTime? @map("leido_at") @db.Timestamptz(6)
-  
-  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  id            String      @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  predespachoId String      @map("predespacho_id") @db.Uuid
+  predespacho   Predespacho @relation(fields: [predespachoId], references: [id], onDelete: Cascade)
+
+  tipoRemitente   String  @map("tipo_remitente") @db.VarChar(20)
+  usuarioId       String? @map("usuario_id") @db.Uuid
+  nombreRemitente String  @map("nombre_remitente") @db.VarChar(255)
+
+  mensaje  String
+  adjuntos Json?
+
+  leido   Boolean   @default(false)
+  leidoAt DateTime? @map("leido_at") @db.Timestamptz(6)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@index([predespachoId])
   @@index([createdAt])

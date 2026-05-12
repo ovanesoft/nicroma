@@ -1,5 +1,6 @@
 const prisma = require('../services/prisma');
 const { generarPresupuestoFormal } = require('../services/pdf/presupuestoFormal');
+const { calcularTotalesItem } = require('../utils/itemCalc');
 
 // Helper: buscar cliente de portal por userId o email (y auto-vincular si se encuentra por email)
 const findClientePortal = async (userId, userEmail, tenantId) => {
@@ -261,28 +262,37 @@ const crearPresupuesto = async (req, res) => {
       }
     });
 
-    // Crear items
+    // Crear items (totales calculados según base × mercancías/contenedores)
     const itemsData = (data.items || []).filter(i => i.concepto);
     if (itemsData.length > 0) {
       await prisma.itemPresupuesto.createMany({
-        data: itemsData.map(i => ({
-          presupuestoId: presupuesto.id,
-          concepto: i.concepto,
-          descripcion: i.descripcion,
-          prepaidCollect: i.prepaidCollect || 'P',
-          divisa: i.divisa || 'USD',
-          montoVenta: parseFloat(i.montoVenta) || 0,
-          montoCosto: parseFloat(i.montoCosto) || 0,
-          base: i.base,
-          cantidad: parseFloat(i.cantidad) || 1,
-          totalVenta: parseFloat(i.montoVenta) || 0,
-          totalCosto: parseFloat(i.montoCosto) || 0,
-          categoriaIVA: i.categoriaIVA || 'GRAVADO',
-          porcentajeIVA: parseFloat(i.porcentajeIVA) || 21,
-          gravado: (i.categoriaIVA || 'GRAVADO') === 'GRAVADO',
-          importeMinimo: i.importeMinimo != null ? parseFloat(i.importeMinimo) || null : null,
-          importeMaximo: i.importeMaximo != null ? parseFloat(i.importeMaximo) || null : null,
-        }))
+        data: itemsData.map(i => {
+          const { totalVenta, totalCosto } = calcularTotalesItem(
+            i,
+            data.mercancias || [],
+            data.contenedores || []
+          );
+          return {
+            presupuestoId: presupuesto.id,
+            concepto: i.concepto,
+            descripcion: i.descripcion,
+            prepaidCollect: i.prepaidCollect || 'P',
+            divisa: i.divisa || 'USD',
+            montoVenta: parseFloat(i.montoVenta) || 0,
+            montoCosto: parseFloat(i.montoCosto) || 0,
+            base: i.base,
+            cantidad: parseFloat(i.cantidad) || 1,
+            totalVenta,
+            totalCosto,
+            categoriaIVA: i.categoriaIVA || 'GRAVADO',
+            porcentajeIVA: parseFloat(i.porcentajeIVA) || 21,
+            gravado: (i.categoriaIVA || 'GRAVADO') === 'GRAVADO',
+            importeMinimo: i.importeMinimo != null ? parseFloat(i.importeMinimo) || null : null,
+            importeMaximo: i.importeMaximo != null ? parseFloat(i.importeMaximo) || null : null,
+            proveedorId: i.proveedorId || null,
+            proveedorNombre: i.proveedorNombre || null,
+          };
+        })
       });
     }
 
@@ -517,30 +527,39 @@ const actualizarPresupuesto = async (req, res) => {
         }
       });
 
-      // Actualizar items
+      // Actualizar items (totales calculados según base × mercancías/contenedores)
       if (items !== undefined) {
         await tx.itemPresupuesto.deleteMany({ where: { presupuestoId: id } });
-        
+
         if (items && items.length > 0) {
           await tx.itemPresupuesto.createMany({
-            data: items.filter(i => i.concepto).map(i => ({
-              presupuestoId: id,
-              concepto: i.concepto,
-              descripcion: i.descripcion || null,
-              prepaidCollect: i.prepaidCollect || 'P',
-              divisa: i.divisa || 'USD',
-              montoVenta: parseFloat(i.montoVenta) || 0,
-              montoCosto: parseFloat(i.montoCosto) || 0,
-              base: i.base || null,
-              cantidad: parseFloat(i.cantidad) || 1,
-              totalVenta: parseFloat(i.montoVenta) || 0,
-              totalCosto: parseFloat(i.montoCosto) || 0,
-              categoriaIVA: i.categoriaIVA || 'GRAVADO',
-              porcentajeIVA: parseFloat(i.porcentajeIVA) || 21,
-              gravado: (i.categoriaIVA || 'GRAVADO') === 'GRAVADO',
-              importeMinimo: i.importeMinimo != null ? parseFloat(i.importeMinimo) || null : null,
-              importeMaximo: i.importeMaximo != null ? parseFloat(i.importeMaximo) || null : null,
-            }))
+            data: items.filter(i => i.concepto).map(i => {
+              const { totalVenta, totalCosto } = calcularTotalesItem(
+                i,
+                mercancias || [],
+                contenedores || []
+              );
+              return {
+                presupuestoId: id,
+                concepto: i.concepto,
+                descripcion: i.descripcion || null,
+                prepaidCollect: i.prepaidCollect || 'P',
+                divisa: i.divisa || 'USD',
+                montoVenta: parseFloat(i.montoVenta) || 0,
+                montoCosto: parseFloat(i.montoCosto) || 0,
+                base: i.base || null,
+                cantidad: parseFloat(i.cantidad) || 1,
+                totalVenta,
+                totalCosto,
+                categoriaIVA: i.categoriaIVA || 'GRAVADO',
+                porcentajeIVA: parseFloat(i.porcentajeIVA) || 21,
+                gravado: (i.categoriaIVA || 'GRAVADO') === 'GRAVADO',
+                importeMinimo: i.importeMinimo != null ? parseFloat(i.importeMinimo) || null : null,
+                importeMaximo: i.importeMaximo != null ? parseFloat(i.importeMaximo) || null : null,
+                proveedorId: i.proveedorId || null,
+                proveedorNombre: i.proveedorNombre || null,
+              };
+            })
           });
         }
       }
@@ -707,7 +726,161 @@ const cambiarEstado = async (req, res) => {
   }
 };
 
-// Convertir presupuesto a carpeta
+// ---------------------------------------------------------------------------
+// Helper interno: realiza la conversión Presupuesto → Carpeta dentro de una
+// transacción. Devuelve la carpeta creada. Asume que las validaciones de
+// estado / carpetaId ya fueron hechas por el llamador.
+// ---------------------------------------------------------------------------
+async function realizarConversionACarpeta({ presupuesto, tenantId, usuarioId, autoNote }) {
+  // Generar número de carpeta
+  const year = new Date().getFullYear();
+  const areaCode = (presupuesto.area || 'Marítimo').substring(0, 2).toUpperCase();
+  const sectorCode = presupuesto.sector === 'Importación' ? 'I' : 'E';
+
+  const ultimaCarpeta = await prisma.carpeta.findFirst({
+    where: {
+      tenantId,
+      numero: { startsWith: `${year}-${areaCode}${sectorCode}-` }
+    },
+    orderBy: { numero: 'desc' }
+  });
+
+  let secuencia = 1;
+  if (ultimaCarpeta) {
+    const parts = ultimaCarpeta.numero.split('-');
+    secuencia = parseInt(parts[2]) + 1;
+  }
+  const numeroCarpeta = `${year}-${areaCode}${sectorCode}-${secuencia.toString().padStart(6, '0')}`;
+
+  return prisma.$transaction(async (tx) => {
+    const carpeta = await tx.carpeta.create({
+      data: {
+        tenantId,
+        usuarioId,
+        numero: numeroCarpeta,
+        estado: 'HOUSE',
+        area: presupuesto.area || 'Marítimo',
+        sector: presupuesto.sector || 'Importación',
+        tipoOperacion: presupuesto.tipoOperacion || 'FCL-FCL',
+        tipoOperacionAerea: presupuesto.tipoOperacionAerea || null,
+
+        clienteId: presupuesto.clienteId,
+        shipperId: presupuesto.shipperId || null,
+        consigneeId: presupuesto.consigneeId || null,
+        puertoOrigen: presupuesto.puertoOrigen,
+        puertoDestino: presupuesto.puertoDestino,
+        puertoTransbordo: presupuesto.puertoTransbordo || null,
+
+        // Datos de transporte heredados del presupuesto
+        buque: presupuesto.buque || null,
+        viaje: presupuesto.viaje || null,
+        transportista: presupuesto.transportista || null,
+        booking: presupuesto.booking || null,
+        terminalPortuaria: presupuesto.terminalPortuaria || null,
+        depositoFiscal: presupuesto.depositoFiscal || null,
+        masterBL: presupuesto.masterBL || null,
+        houseBL: presupuesto.houseBL || null,
+        referenciaCliente: presupuesto.referenciaCliente || null,
+
+        // Fechas
+        fechaSalidaEstimada: presupuesto.fechaSalidaEstimada || null,
+        fechaLlegadaEstimada: presupuesto.fechaLlegadaEstimada || null,
+
+        incoterm: presupuesto.incoterm,
+        moneda: presupuesto.moneda || 'USD',
+        bancoPdfId: presupuesto.bancoPdfId || null,
+
+        observaciones: autoNote || `Convertido desde presupuesto ${presupuesto.numero}`,
+
+        // Copiar items como gastos (preservando proveedor responsable)
+        gastos: {
+          create: (presupuesto.items || []).map(item => ({
+            concepto: item.concepto,
+            prepaidCollect: item.prepaidCollect || 'Prepaid',
+            divisa: item.divisa || 'USD',
+            montoVenta: item.montoVenta,
+            montoCosto: item.montoCosto,
+            base: item.base,
+            cantidad: item.cantidad,
+            totalVenta: item.totalVenta,
+            totalCosto: item.totalCosto,
+            gravado: item.gravado ?? true,
+            porcentajeIVA: item.porcentajeIVA ?? 21,
+            proveedorId: item.proveedorId || null,
+            proveedorNombre: item.proveedorNombre || null
+          }))
+        }
+      },
+      include: {
+        cliente: true,
+        gastos: true
+      }
+    });
+
+    // Copiar mercancías del presupuesto a la carpeta
+    if (presupuesto.mercancias && presupuesto.mercancias.length > 0) {
+      await tx.mercancia.createMany({
+        data: presupuesto.mercancias.map(m => ({
+          carpetaId: carpeta.id,
+          descripcion: m.descripcion,
+          embalaje: m.embalaje || null,
+          marcas: m.marcas || null,
+          bultos: m.bultos || null,
+          largo: m.largo || null,
+          ancho: m.ancho || null,
+          alto: m.alto || null,
+          volumen: m.volumen || null,
+          peso: m.peso || null,
+          valorMercaderia: m.valorMercaderia || null,
+          valorCIF: m.valorCIF || null,
+          hsCode: m.hsCode || null
+        }))
+      });
+    }
+
+    // Copiar contenedores del presupuesto a la carpeta (no se copiaba antes;
+    // como ahora son necesarios para los cálculos por base, los propagamos).
+    if (presupuesto.contenedores && presupuesto.contenedores.length > 0) {
+      await tx.contenedor.createMany({
+        data: presupuesto.contenedores.map(c => ({
+          carpetaId: carpeta.id,
+          tipo: c.tipo,
+          numero: c.numero || null,
+          blContenedor: c.blContenedor || null,
+          condicion: c.condicion || null,
+          precinto: c.precinto || null,
+          cantidad: c.cantidad || 1,
+          tara: c.tara || null,
+          pesoMaximo: c.pesoMaximo || null
+        }))
+      });
+    }
+
+    // Actualizar presupuesto
+    await tx.presupuesto.update({
+      where: { id: presupuesto.id },
+      data: {
+        estado: 'CONVERTIDO',
+        carpetaId: carpeta.id,
+        fechaAprobacion: presupuesto.fechaAprobacion || new Date(),
+      }
+    });
+
+    // Agregar mensaje de conversión
+    await tx.mensajePresupuesto.create({
+      data: {
+        presupuestoId: presupuesto.id,
+        tipoRemitente: 'SISTEMA',
+        nombreRemitente: 'Sistema',
+        mensaje: `Presupuesto convertido a carpeta ${numeroCarpeta}`
+      }
+    });
+
+    return carpeta;
+  });
+}
+
+// Convertir presupuesto a carpeta (requiere estado APROBADO)
 const convertirACarpeta = async (req, res) => {
   try {
     const { id } = req.params;
@@ -747,126 +920,106 @@ const convertirACarpeta = async (req, res) => {
       });
     }
 
-    // Generar número de carpeta
-    const year = new Date().getFullYear();
-    const areaCode = (presupuesto.area || 'Marítimo').substring(0, 2).toUpperCase();
-    const sectorCode = presupuesto.sector === 'Importación' ? 'I' : 'E';
-    
-    const ultimaCarpeta = await prisma.carpeta.findFirst({
-      where: {
-        tenantId,
-        numero: { startsWith: `${year}-${areaCode}${sectorCode}-` }
-      },
-      orderBy: { numero: 'desc' }
-    });
-
-    let secuencia = 1;
-    if (ultimaCarpeta) {
-      const parts = ultimaCarpeta.numero.split('-');
-      secuencia = parseInt(parts[2]) + 1;
-    }
-    const numeroCarpeta = `${year}-${areaCode}${sectorCode}-${secuencia.toString().padStart(6, '0')}`;
-
-    // Crear carpeta con transacción
-    const resultado = await prisma.$transaction(async (tx) => {
-      // Crear carpeta
-      const carpeta = await tx.carpeta.create({
-        data: {
-          tenantId,
-          usuarioId,
-          numero: numeroCarpeta,
-          estado: 'HOUSE',
-          area: presupuesto.area || 'Marítimo',
-          sector: presupuesto.sector || 'Importación',
-          tipoOperacion: presupuesto.tipoOperacion || 'FCL-FCL',
-          
-          clienteId: presupuesto.clienteId,
-          shipperId: presupuesto.shipperId || null,
-          consigneeId: presupuesto.consigneeId || null,
-          puertoOrigen: presupuesto.puertoOrigen,
-          puertoDestino: presupuesto.puertoDestino,
-          
-          incoterm: presupuesto.incoterm,
-          moneda: presupuesto.moneda || 'USD',
-          
-          observaciones: `Convertido desde presupuesto ${presupuesto.numero}`,
-          
-          // Copiar items como gastos
-          gastos: {
-            create: presupuesto.items.map(item => ({
-              concepto: item.concepto,
-              prepaidCollect: item.prepaidCollect || 'Prepaid',
-              divisa: item.divisa || 'USD',
-              montoVenta: item.montoVenta,
-              montoCosto: item.montoCosto,
-              base: item.base,
-              cantidad: item.cantidad,
-              totalVenta: item.totalVenta,
-              totalCosto: item.totalCosto,
-              gravado: item.gravado ?? true,
-              porcentajeIVA: item.porcentajeIVA ?? 21
-            }))
-          }
-        },
-        include: {
-          cliente: true,
-          gastos: true
-        }
-      });
-
-      // Copiar mercancías del presupuesto a la carpeta
-      if (presupuesto.mercancias && presupuesto.mercancias.length > 0) {
-        await tx.mercancia.createMany({
-          data: presupuesto.mercancias.map(m => ({
-            carpetaId: carpeta.id,
-            descripcion: m.descripcion,
-            embalaje: m.embalaje || null,
-            marcas: m.marcas || null,
-            bultos: m.bultos || null,
-            largo: m.largo || null,
-            ancho: m.ancho || null,
-            alto: m.alto || null,
-            volumen: m.volumen || null,
-            peso: m.peso || null,
-            valorMercaderia: m.valorMercaderia || null,
-            valorCIF: m.valorCIF || null,
-            hsCode: m.hsCode || null
-          }))
-        });
-      }
-
-      // Actualizar presupuesto
-      await tx.presupuesto.update({
-        where: { id },
-        data: {
-          estado: 'CONVERTIDO',
-          carpetaId: carpeta.id
-        }
-      });
-
-      // Agregar mensaje de conversión
-      await tx.mensajePresupuesto.create({
-        data: {
-          presupuestoId: id,
-          tipoRemitente: 'SISTEMA',
-          nombreRemitente: 'Sistema',
-          mensaje: `Presupuesto convertido a carpeta ${numeroCarpeta}`
-        }
-      });
-
-      return carpeta;
+    const carpeta = await realizarConversionACarpeta({
+      presupuesto,
+      tenantId,
+      usuarioId,
     });
 
     res.json({
       success: true,
       message: 'Presupuesto convertido a carpeta exitosamente',
-      data: { carpeta: resultado }
+      data: { carpeta }
     });
   } catch (error) {
     console.error('Error convirtiendo a carpeta:', error);
     res.status(500).json({
       success: false,
       message: 'Error al convertir a carpeta'
+    });
+  }
+};
+
+// Aceptar presupuesto: en una sola acción aprueba (si no lo estaba) y convierte
+// a carpeta. Diseñado para el botón "Aceptar Presupuesto" del menú de 3 puntos.
+const aceptarPresupuesto = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const tenantId = req.user.tenant_id;
+    const usuarioId = req.user.id;
+
+    const presupuesto = await prisma.presupuesto.findFirst({
+      where: { id, tenantId },
+      include: {
+        items: true,
+        mercancias: true,
+        contenedores: true,
+        cliente: true,
+        shipper: true,
+        consignee: true
+      }
+    });
+
+    if (!presupuesto) {
+      return res.status(404).json({
+        success: false,
+        message: 'Presupuesto no encontrado'
+      });
+    }
+
+    if (presupuesto.carpetaId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Este presupuesto ya fue convertido a carpeta'
+      });
+    }
+
+    if (['CONVERTIDO', 'RECHAZADO'].includes(presupuesto.estado)) {
+      return res.status(400).json({
+        success: false,
+        message: `No se puede aceptar un presupuesto ${presupuesto.estado.toLowerCase()}`
+      });
+    }
+
+    // Marcar como aprobado (si no lo estaba) y agregar mensaje de aprobación
+    if (presupuesto.estado !== 'APROBADO') {
+      await prisma.presupuesto.update({
+        where: { id },
+        data: {
+          estado: 'APROBADO',
+          fechaAprobacion: new Date(),
+        }
+      });
+      presupuesto.estado = 'APROBADO';
+      presupuesto.fechaAprobacion = new Date();
+
+      await prisma.mensajePresupuesto.create({
+        data: {
+          presupuestoId: id,
+          tipoRemitente: 'SISTEMA',
+          nombreRemitente: 'Sistema',
+          mensaje: 'Presupuesto aceptado por el cliente'
+        }
+      });
+    }
+
+    const carpeta = await realizarConversionACarpeta({
+      presupuesto,
+      tenantId,
+      usuarioId,
+      autoNote: `Aceptado y convertido desde presupuesto ${presupuesto.numero}`
+    });
+
+    res.json({
+      success: true,
+      message: 'Presupuesto aceptado y convertido a carpeta',
+      data: { carpeta }
+    });
+  } catch (error) {
+    console.error('Error aceptando presupuesto:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al aceptar presupuesto'
     });
   }
 };
@@ -1305,6 +1458,7 @@ module.exports = {
   actualizarPresupuesto,
   cambiarEstado,
   convertirACarpeta,
+  aceptarPresupuesto,
   agregarMensaje,
   obtenerMensajes,
   listarPresupuestosCliente,
