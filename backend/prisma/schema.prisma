@@ -51,6 +51,13 @@ model Tenant {
   // Formato: [{ id, banco, cuenta, cbu, alias, titular, moneda, cuit, esPrincipal }]
   cuentasBancarias Json? @default("[]") @map("cuentas_bancarias")
 
+  // Numeración configurable (presupuestos y carpetas)
+  // Placeholders soportados: {YEAR}, {YY}, {MONTH}, {AREA}, {AREA1}, {SECTOR}, {SECTOR1}, {N}, {NNN}, {NNNNN}, {NNNNNN}
+  numeracionPresupuestoFormato   String? @default("PRES-{YEAR}-{NNNNN}")               @map("numeracion_presupuesto_formato") @db.VarChar(100)
+  numeracionPresupuestoSiguiente Int?                                                  @map("numeracion_presupuesto_siguiente")
+  numeracionCarpetaFormato       String? @default("{YEAR}-{AREA}{SECTOR1}-{NNNNNN}")   @map("numeracion_carpeta_formato")     @db.VarChar(100)
+  numeracionCarpetaSiguiente     Int?                                                  @map("numeracion_carpeta_siguiente")
+
   audit_logs            AuditLog[]
   payments              payments[]
   promotion_uses        promotion_uses[]

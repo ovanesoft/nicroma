@@ -101,18 +101,38 @@ function CatalogoGastosPage() {
     }
     setSaving(true);
     try {
+      // Payload limpio: forzar tipos correctos
+      const payload = {
+        nombre: form.nombre.trim().toUpperCase(),
+        categoriaIVA: form.categoriaIVA || 'GRAVADO',
+        porcentajeIVA: form.categoriaIVA === 'GRAVADO' ? (parseFloat(form.porcentajeIVA) || 21) : 0,
+        divisa: form.divisa || 'USD',
+        base: form.base || 'IMPORTE_FIJO',
+        prepaidCollect: form.prepaidCollect || 'P',
+      };
       if (editingId) {
-        await api.put(`/conceptos-gasto/${editingId}`, form);
+        await api.put(`/conceptos-gasto/${editingId}`, payload);
         toast.success('Concepto actualizado');
       } else {
-        await createConcepto.mutateAsync(form);
+        await createConcepto.mutateAsync(payload);
         toast.success('Concepto creado');
       }
       setModalOpen(false);
       resetForm();
       refetch();
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Error al guardar');
+      const status = error.response?.status;
+      const msg = error.response?.data?.message;
+      if (status === 409) {
+        toast.error(`Ya existe un concepto con el nombre "${form.nombre.trim().toUpperCase()}"`);
+      } else if (status === 401) {
+        toast.error('Sesión expirada. Recargá la página e iniciá sesión.');
+      } else if (status === 403) {
+        toast.error('No tenés permisos para crear conceptos.');
+      } else {
+        toast.error(msg || error.message || 'Error al guardar el concepto');
+      }
+      console.error('Error guardando concepto:', error);
     } finally {
       setSaving(false);
     }

@@ -283,6 +283,9 @@ function PresupuestoForm() {
   // Estado para tracking de cambios y auto-guardado
   const [hasChanges, setHasChanges] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  // Flag para evitar disparar auto-save antes de que el form termine de cargar los datos:
+  // sin esto, un debounce previo podía llegar con states vacíos y borrar relaciones en backend.
+  const [dataLoaded, setDataLoaded] = useState(false);
   const lastSavedRef = useRef(null);
 
   // Marcar presupuesto como visto cuando se abre
@@ -341,8 +344,12 @@ function PresupuestoForm() {
       setMercancias(presupuesto.mercancias || []);
       setContenedores(presupuesto.contenedores || []);
       setBancoPdfId(presupuesto.bancoPdfId || '');
+      setDataLoaded(true);
+    } else if (!isEditing) {
+      // Crear nuevo: no hay datos previos que cargar
+      setDataLoaded(true);
     }
-  }, [presupuesto]);
+  }, [presupuesto, isEditing]);
   
   // Setear cuenta principal por defecto cuando se carga la lista de cuentas
   useEffect(() => {
@@ -370,6 +377,56 @@ function PresupuestoForm() {
     }
   }, [id, activeTab, mensajes]);
 
+  // Sanea un item antes de enviarlo: descarta los campos que el backend no espera
+  // (id, createdAt, updatedAt, presupuestoId, proveedor poblado) para evitar errores
+  // de Prisma como "Unknown argument" o tipos inválidos.
+  const sanitizeItem = (i) => {
+    const { totalVenta, totalCosto } = calcularTotalesItem(i, mercancias, contenedores);
+    return {
+      concepto: i.concepto,
+      descripcion: i.descripcion || null,
+      prepaidCollect: i.prepaidCollect || 'P',
+      divisa: i.divisa || 'USD',
+      montoVenta: i.montoVenta != null ? Number(i.montoVenta) : 0,
+      montoCosto: i.montoCosto != null ? Number(i.montoCosto) : 0,
+      base: i.base || null,
+      cantidad: i.cantidad != null ? Number(i.cantidad) : 1,
+      totalVenta,
+      totalCosto,
+      categoriaIVA: i.categoriaIVA || 'GRAVADO',
+      porcentajeIVA: i.porcentajeIVA != null ? Number(i.porcentajeIVA) : 21,
+      gravado: i.gravado !== false,
+      importeMinimo: i.importeMinimo != null && i.importeMinimo !== '' ? Number(i.importeMinimo) : null,
+      importeMaximo: i.importeMaximo != null && i.importeMaximo !== '' ? Number(i.importeMaximo) : null,
+      proveedorId: i.proveedorId || null,
+      proveedorNombre: i.proveedorNombre || null,
+    };
+  };
+
+  const sanitizeMercancia = (m) => ({
+    descripcion: m.descripcion,
+    embalaje: m.embalaje || null,
+    marcas: m.marcas || null,
+    bultos: m.bultos != null && m.bultos !== '' ? parseInt(m.bultos) : null,
+    largo: m.largo != null && m.largo !== '' ? Number(m.largo) : null,
+    ancho: m.ancho != null && m.ancho !== '' ? Number(m.ancho) : null,
+    alto: m.alto != null && m.alto !== '' ? Number(m.alto) : null,
+    volumen: m.volumen != null && m.volumen !== '' ? Number(m.volumen) : null,
+    peso: m.peso != null && m.peso !== '' ? Number(m.peso) : null,
+    valorMercaderia: m.valorMercaderia != null && m.valorMercaderia !== '' ? Number(m.valorMercaderia) : null,
+    valorCIF: m.valorCIF != null && m.valorCIF !== '' ? Number(m.valorCIF) : null,
+    hsCode: m.hsCode || null,
+  });
+
+  const sanitizeContenedor = (c) => ({
+    tipo: c.tipo,
+    numero: c.numero || null,
+    blContenedor: c.blContenedor || null,
+    condicion: c.condicion || null,
+    precinto: c.precinto || null,
+    cantidad: c.cantidad != null && c.cantidad !== '' ? parseInt(c.cantidad) : 1,
+  });
+
   const buildPayload = () => ({
     ...formData,
     fechaSalidaEstimada: formData.etd || null,
@@ -378,21 +435,21 @@ function PresupuestoForm() {
     shipperId: selectedShipper?.id || null,
     consigneeId: selectedConsignee?.id || null,
     proveedorId: selectedProveedor?.id || null,
-    items: items.filter(i => i.concepto).map(i => {
-      const { totalVenta, totalCosto } = calcularTotalesItem(i, mercancias, contenedores);
-      return { ...i, totalVenta, totalCosto };
-    }),
-    mercancias: mercancias.filter(m => m.descripcion),
-    contenedores: contenedores.filter(c => c.tipo),
+    items: items.filter(i => i && i.concepto).map(sanitizeItem),
+    mercancias: mercancias.filter(m => m && m.descripcion).map(sanitizeMercancia),
+    contenedores: contenedores.filter(c => c && c.tipo).map(sanitizeContenedor),
     bancoPdfId: bancoPdfId || null
   });
 
   // Auto-guardado silencioso
   const autoSave = useCallback(async () => {
     if (!isEditing || !hasChanges || isSaving) return;
-    
+    // Crítico: no autosalvar antes de que los datos del presupuesto se hayan cargado,
+    // sino mandaríamos arrays vacíos y el backend podría perder items/mercancías existentes.
+    if (!dataLoaded) return;
+
     if (!formData.descripcionPedido && !selectedCliente) return;
-    
+
     try {
       setIsSaving(true);
       const payload = buildPayload();
@@ -405,7 +462,7 @@ function PresupuestoForm() {
     } finally {
       setIsSaving(false);
     }
-  }, [isEditing, hasChanges, isSaving, formData, selectedCliente, selectedShipper, selectedConsignee, selectedProveedor, items, mercancias, contenedores, bancoPdfId, updatePresupuesto]);
+  }, [isEditing, hasChanges, isSaving, dataLoaded, formData, selectedCliente, selectedShipper, selectedConsignee, selectedProveedor, items, mercancias, contenedores, bancoPdfId, updatePresupuesto]);
   
   // Debounce del auto-guardado (2 segundos después de dejar de escribir)
   const debouncedAutoSave = useDebounce(autoSave, 2000);
@@ -636,9 +693,8 @@ function PresupuestoForm() {
     const alto = parseFloat(merc.alto) || 0;
     const bultos = parseInt(merc.bultos) || 1;
     if (!largo || !ancho || !alto) return;
-    const isAereo = formData.area === 'Aéreo';
-    const cbmUnitario = isAereo ? (largo * ancho * alto) / 6000 : largo * ancho * alto;
-    const cbmTotal = parseFloat((cbmUnitario * bultos).toFixed(4));
+    // CBM = (L cm × A cm × H cm × bultos) / 1.000.000 → resultado en m³
+    const cbmTotal = parseFloat(((largo * ancho * alto * bultos) / 1_000_000).toFixed(4));
     updateMercancia(index, 'volumen', cbmTotal);
   };
 
@@ -1601,7 +1657,7 @@ function PresupuestoForm() {
                                           type="button"
                                           onClick={() => calcularCBM(merc.originalIndex)}
                                           className="p-1.5 text-blue-600 hover:bg-blue-100 rounded border border-blue-300 mb-0"
-                                          title={`Calcular CBM (${formData.area === 'Aéreo' ? 'L×A×H/6000×Bultos' : 'L×A×H×Bultos'})`}
+                                          title="Calcular CBM (L × A × H × Bultos / 1.000.000)"
                                         >
                                           <Calculator className="w-3.5 h-3.5" />
                                         </button>
@@ -1774,7 +1830,7 @@ function PresupuestoForm() {
                               type="button"
                               onClick={() => calcularCBM(merc.originalIndex)}
                               className="p-1.5 text-blue-600 hover:bg-blue-100 rounded border border-blue-300 mb-0"
-                              title={`Calcular CBM (${formData.area === 'Aéreo' ? 'L×A×H/6000×Bultos' : 'L×A×H×Bultos'})`}
+                              title="Calcular CBM (L × A × H × Bultos / 1.000.000)"
                             >
                               <Calculator className="w-4 h-4" />
                             </button>

@@ -4,34 +4,10 @@ const { generarBillOfLading } = require('../services/pdf/billOfLading');
 const { generarAirWaybill } = require('../services/pdf/airWaybill');
 const { generarCertificacionFlete } = require('../services/pdf/certificacionFlete');
 const { generarCertificacionGastos } = require('../services/pdf/certificacionGastos');
+const { generarNumeroCarpetaCfg } = require('../utils/numbering');
 
-// Generar número de carpeta
-const generarNumeroCarpeta = async (tenantId, area, sector) => {
-  const year = new Date().getFullYear();
-  const areaCode = area.substring(0, 2).toUpperCase(); // MA, AE, TE
-  const sectorCode = sector === 'Importación' ? 'I' : 'E';
-  
-  // Buscar el último número del año
-  const ultimaCarpeta = await prisma.carpeta.findFirst({
-    where: {
-      tenantId,
-      numero: {
-        startsWith: `${year}-${areaCode}${sectorCode}-`
-      }
-    },
-    orderBy: {
-      numero: 'desc'
-    }
-  });
-
-  let secuencia = 1;
-  if (ultimaCarpeta) {
-    const parts = ultimaCarpeta.numero.split('-');
-    secuencia = parseInt(parts[2]) + 1;
-  }
-
-  return `${year}-${areaCode}${sectorCode}-${secuencia.toString().padStart(6, '0')}`;
-};
+// Usa la configuración del tenant (formato y siguiente número manual)
+const generarNumeroCarpeta = (tenantId, area, sector) => generarNumeroCarpetaCfg(tenantId, area, sector);
 
 // Listar carpetas
 const listarCarpetas = async (req, res) => {
@@ -406,6 +382,43 @@ const actualizarCarpeta = async (req, res) => {
       }
     });
 
+    // ⚠️ PROTECCIÓN ANTI-PÉRDIDA DE DATOS
+    // Cuando el frontend manda un array vacío para mercancías/contenedores/gastos puede ser:
+    //   a) auto-save disparado antes de que el form termine de cargar los datos del backend
+    //   b) edición legítima donde el usuario borró todo
+    // Para evitar (a) miramos cuántas relaciones existen ya en la carpeta. Si el frontend
+    // está mandando MENOS items que los que hay en DB sin items válidos, asumimos que es
+    // auto-save prematuro y NO tocamos esas relaciones. Sólo borramos cuando el array
+    // viene con al menos un item válido (es decir, hubo un cambio real con datos).
+    const [mercanciasExistentes, contenedoresExistentes, gastosExistentes] = await Promise.all([
+      prisma.mercancia.count({ where: { carpetaId: id } }),
+      prisma.contenedor.count({ where: { carpetaId: id } }),
+      prisma.gasto.count({ where: { carpetaId: id } }),
+    ]);
+
+    const mercanciasValidas = Array.isArray(mercancias) ? mercancias.filter(m => m && m.descripcion) : [];
+    const contenedoresValidos = Array.isArray(contenedores) ? contenedores.filter(c => c && c.tipo) : [];
+    const gastosValidos = Array.isArray(gastos) ? gastos.filter(g => g && g.concepto) : [];
+
+    // Aceptar el cambio si:
+    //  - el array no llegó (undefined) → no tocar
+    //  - llegó con items válidos → reemplazar
+    //  - llegó vacío Y la carpeta también está vacía → noop seguro
+    //  - llegó vacío Y la carpeta tenía datos → NO TOCAR (protección)
+    const actualizarMercancias = Array.isArray(mercancias) && (mercanciasValidas.length > 0 || mercanciasExistentes === 0);
+    const actualizarContenedores = Array.isArray(contenedores) && (contenedoresValidos.length > 0 || contenedoresExistentes === 0);
+    const actualizarGastos = Array.isArray(gastos) && (gastosValidos.length > 0 || gastosExistentes === 0);
+
+    if (Array.isArray(mercancias) && mercanciasValidas.length === 0 && mercanciasExistentes > 0) {
+      console.warn(`[carpeta ${id}] Recibido mercancias=[] con ${mercanciasExistentes} en DB → se ignora para evitar pérdida de datos`);
+    }
+    if (Array.isArray(contenedores) && contenedoresValidos.length === 0 && contenedoresExistentes > 0) {
+      console.warn(`[carpeta ${id}] Recibido contenedores=[] con ${contenedoresExistentes} en DB → se ignora`);
+    }
+    if (Array.isArray(gastos) && gastosValidos.length === 0 && gastosExistentes > 0) {
+      console.warn(`[carpeta ${id}] Recibido gastos=[] con ${gastosExistentes} en DB → se ignora`);
+    }
+
     // Usar transacción para actualizar todo
     const carpeta = await prisma.$transaction(async (tx) => {
       // 1. Actualizar datos principales de la carpeta
@@ -415,12 +428,12 @@ const actualizarCarpeta = async (req, res) => {
       });
 
       // 2. Actualizar mercancías (eliminar existentes y crear nuevas)
-      if (mercancias !== undefined) {
+      if (actualizarMercancias) {
         await tx.mercancia.deleteMany({ where: { carpetaId: id } });
-        
-        if (mercancias && mercancias.length > 0) {
+
+        if (mercanciasValidas.length > 0) {
           await tx.mercancia.createMany({
-            data: mercancias.filter(m => m.descripcion).map(m => ({
+            data: mercanciasValidas.map(m => ({
               carpetaId: id,
               descripcion: m.descripcion,
               embalaje: m.embalaje || null,
@@ -441,17 +454,17 @@ const actualizarCarpeta = async (req, res) => {
       }
 
       // 3. Actualizar contenedores (eliminar existentes y crear nuevos)
-      if (contenedores !== undefined) {
+      if (actualizarContenedores) {
         // Primero desvincular mercancías de contenedores que se eliminarán
         await tx.mercancia.updateMany({
           where: { carpetaId: id, contenedorId: { not: null } },
           data: { contenedorId: null }
         });
-        
+
         await tx.contenedor.deleteMany({ where: { carpetaId: id } });
-        
-        if (contenedores && contenedores.length > 0) {
-          for (const c of contenedores.filter(c => c.tipo)) {
+
+        if (contenedoresValidos.length > 0) {
+          for (const c of contenedoresValidos) {
             await tx.contenedor.create({
               data: {
                 carpetaId: id,
@@ -469,12 +482,12 @@ const actualizarCarpeta = async (req, res) => {
       }
 
       // 4. Actualizar gastos (eliminar existentes y crear nuevos)
-      if (gastos !== undefined) {
+      if (actualizarGastos) {
         await tx.gasto.deleteMany({ where: { carpetaId: id } });
 
-        if (gastos && gastos.length > 0) {
+        if (gastosValidos.length > 0) {
           await tx.gasto.createMany({
-            data: gastos.filter(g => g.concepto).map(g => ({
+            data: gastosValidos.map(g => ({
               carpetaId: id,
               concepto: g.concepto,
               prepaidCollect: g.prepaidCollect || 'Prepaid',

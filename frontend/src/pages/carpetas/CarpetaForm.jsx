@@ -132,23 +132,15 @@ function CarpetaForm() {
     if (!id) return;
     setDownloadingPDF(true);
     try {
-      const response = await api.get(`/carpetas/${id}/pdf/aviso-arribo`, {
-        responseType: 'blob'
+      await descargarPDF.mutateAsync({
+        carpetaId: id,
+        documento: 'aviso-arribo',
+        filename: `Aviso_Arribo_${houseBL}.pdf`
       });
-
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `Aviso_Arribo_${houseBL}.pdf`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
-
       toast.success('PDF descargado');
     } catch (error) {
       console.error('Error descargando PDF:', error);
-      toast.error('Error al descargar el PDF');
+      toast.error(error.response?.data?.message || error.message || 'Error al descargar el PDF');
     } finally {
       setDownloadingPDF(false);
     }
@@ -187,6 +179,9 @@ function CarpetaForm() {
     }
   });
 
+  // Flag para evitar submit antes de que se carguen los datos (evita borrar relaciones por accidente)
+  const [dataLoaded, setDataLoaded] = useState(!isEditing);
+
   // Cargar datos si estamos editando
   useEffect(() => {
     if (carpetaData?.data?.carpeta) {
@@ -216,6 +211,7 @@ function CarpetaForm() {
       setContenedores(c.contenedores || []);
       setGastos(c.gastos || []);
       setBancoPdfId(c.bancoPdfId || '');
+      setDataLoaded(true);
     }
   }, [carpetaData, setValue]);
   
@@ -226,13 +222,62 @@ function CarpetaForm() {
     }
   }, [cuentaPrincipal, bancoPdfId]);
 
+  // Sanea cada entidad para evitar mandar campos que el backend no usa (id, timestamps,
+  // proveedor populado, etc.) y forzar tipos correctos.
+  const sanitizeMercancia = (m) => ({
+    descripcion: m.descripcion,
+    embalaje: m.embalaje || null,
+    marcas: m.marcas || null,
+    bultos: m.bultos != null && m.bultos !== '' ? parseInt(m.bultos) : 0,
+    largo: m.largo != null && m.largo !== '' ? Number(m.largo) : null,
+    ancho: m.ancho != null && m.ancho !== '' ? Number(m.ancho) : null,
+    alto: m.alto != null && m.alto !== '' ? Number(m.alto) : null,
+    volumen: m.volumen != null && m.volumen !== '' ? Number(m.volumen) : 0,
+    peso: m.peso != null && m.peso !== '' ? Number(m.peso) : 0,
+    valorMercaderia: m.valorMercaderia != null && m.valorMercaderia !== '' ? Number(m.valorMercaderia) : null,
+    valorCIF: m.valorCIF != null && m.valorCIF !== '' ? Number(m.valorCIF) : null,
+    hsCode: m.hsCode || null,
+    contenedorId: m.contenedorId || null,
+  });
+
+  const sanitizeContenedor = (c) => ({
+    tipo: c.tipo,
+    numero: c.numero || null,
+    condicion: c.condicion || null,
+    precinto: c.precinto || null,
+    cantidad: c.cantidad != null && c.cantidad !== '' ? parseInt(c.cantidad) : 1,
+    tara: c.tara != null && c.tara !== '' ? Number(c.tara) : null,
+    pesoMaximo: c.pesoMaximo != null && c.pesoMaximo !== '' ? Number(c.pesoMaximo) : null,
+  });
+
+  const sanitizeGasto = (g) => ({
+    concepto: g.concepto,
+    prepaidCollect: g.prepaidCollect || 'Prepaid',
+    divisa: g.divisa || 'USD',
+    montoVenta: g.montoVenta != null ? Number(g.montoVenta) : 0,
+    montoCosto: g.montoCosto != null ? Number(g.montoCosto) : 0,
+    base: g.base || null,
+    cantidad: g.cantidad != null && g.cantidad !== '' ? Number(g.cantidad) : 1,
+    totalVenta: g.totalVenta != null ? Number(g.totalVenta) : 0,
+    totalCosto: g.totalCosto != null ? Number(g.totalCosto) : 0,
+    gravado: g.gravado !== false,
+    porcentajeIVA: g.porcentajeIVA != null ? Number(g.porcentajeIVA) : 21,
+    proveedorId: g.proveedorId || null,
+    proveedorNombre: g.proveedorNombre || null,
+  });
+
   const onSubmit = async (formData) => {
+    // Protección: no guardar si los datos aún no se cargaron (evita borrar relaciones existentes)
+    if (isEditing && !dataLoaded) {
+      toast.error('Espera a que la carpeta termine de cargar antes de guardar');
+      return;
+    }
     try {
       const payload = {
         ...formData,
-        mercancias: mercancias.filter(m => m.descripcion),
-        contenedores: contenedores.filter(c => c.tipo),
-        gastos: gastos.filter(g => g.concepto),
+        mercancias: mercancias.filter(m => m && m.descripcion).map(sanitizeMercancia),
+        contenedores: contenedores.filter(c => c && c.tipo).map(sanitizeContenedor),
+        gastos: gastos.filter(g => g && g.concepto).map(sanitizeGasto),
         bancoPdfId: bancoPdfId || null
       };
 
@@ -277,10 +322,8 @@ function CarpetaForm() {
     const alto = parseFloat(merc.alto) || 0;
     const bultos = parseInt(merc.bultos) || 1;
     if (!largo || !ancho || !alto) return;
-    const area = watch('area');
-    const isAereo = area === 'Aéreo';
-    const cbmUnitario = isAereo ? (largo * ancho * alto) / 6000 : largo * ancho * alto;
-    const cbmTotal = parseFloat((cbmUnitario * bultos).toFixed(4));
+    // CBM = (L cm × A cm × H cm × bultos) / 1.000.000 → resultado en m³
+    const cbmTotal = parseFloat(((largo * ancho * alto * bultos) / 1_000_000).toFixed(4));
     updateMercancia(index, 'volumen', cbmTotal);
   };
 
@@ -1077,7 +1120,7 @@ function CarpetaForm() {
                                             type="button"
                                             onClick={() => calcularCBM(merc.originalIndex)}
                                             className="p-1.5 text-blue-600 hover:bg-blue-100 rounded border border-blue-300 mb-0"
-                                            title={`Calcular CBM (${watch('area') === 'Aéreo' ? 'L×A×H/6000×Bultos' : 'L×A×H×Bultos'})`}
+                                            title="Calcular CBM (L × A × H × Bultos / 1.000.000)"
                                           >
                                             <Calculator className="w-3.5 h-3.5" />
                                           </button>
@@ -1250,7 +1293,7 @@ function CarpetaForm() {
                                 type="button"
                                 onClick={() => calcularCBM(merc.originalIndex)}
                                 className="p-1.5 text-blue-600 hover:bg-blue-100 rounded border border-blue-300 mb-0"
-                                title={`Calcular CBM (${watch('area') === 'Aéreo' ? 'L×A×H/6000×Bultos' : 'L×A×H×Bultos'})`}
+                                title="Calcular CBM (L × A × H × Bultos / 1.000.000)"
                               >
                                 <Calculator className="w-4 h-4" />
                               </button>

@@ -1,6 +1,7 @@
 const prisma = require('../services/prisma');
 const { generarPresupuestoFormal } = require('../services/pdf/presupuestoFormal');
 const { calcularTotalesItem } = require('../utils/itemCalc');
+const { generarNumeroPresupuestoCfg } = require('../utils/numbering');
 
 // Helper: buscar cliente de portal por userId o email (y auto-vincular si se encuentra por email)
 const findClientePortal = async (userId, userEmail, tenantId) => {
@@ -25,29 +26,8 @@ const findClientePortal = async (userId, userEmail, tenantId) => {
 };
 
 // Generar número de presupuesto
-const generarNumeroPresupuesto = async (tenantId) => {
-  const year = new Date().getFullYear();
-  
-  const ultimoPresupuesto = await prisma.presupuesto.findFirst({
-    where: {
-      tenantId,
-      numero: {
-        startsWith: `PRES-${year}-`
-      }
-    },
-    orderBy: {
-      numero: 'desc'
-    }
-  });
-
-  let secuencia = 1;
-  if (ultimoPresupuesto) {
-    const parts = ultimoPresupuesto.numero.split('-');
-    secuencia = parseInt(parts[2]) + 1;
-  }
-
-  return `PRES-${year}-${secuencia.toString().padStart(5, '0')}`;
-};
+// Usa la configuración de numeración del tenant (formato + siguiente número manual)
+const generarNumeroPresupuesto = (tenantId) => generarNumeroPresupuestoCfg(tenantId);
 
 // Listar presupuestos
 const listarPresupuestos = async (req, res) => {
@@ -472,6 +452,33 @@ const actualizarPresupuesto = async (req, res) => {
     // Extraer items, mercancias y contenedores del update
     const { items, mercancias, contenedores, ...restData } = data;
 
+    // ⚠️ PROTECCIÓN ANTI-PÉRDIDA DE DATOS (mismo patrón que actualizarCarpeta)
+    // Si llega un array vacío y la entidad ya tenía datos, asumimos auto-save prematuro
+    // y NO tocamos esas relaciones (evita que se borren ítems al editar).
+    const [itemsExistentes, mercanciasExistentes, contenedoresExistentes] = await Promise.all([
+      prisma.itemPresupuesto.count({ where: { presupuestoId: id } }),
+      prisma.mercanciaPresupuesto.count({ where: { presupuestoId: id } }),
+      prisma.contenedorPresupuesto.count({ where: { presupuestoId: id } }),
+    ]);
+
+    const itemsValidos = Array.isArray(items) ? items.filter(i => i && i.concepto) : [];
+    const mercanciasValidas = Array.isArray(mercancias) ? mercancias.filter(m => m && m.descripcion) : [];
+    const contenedoresValidos = Array.isArray(contenedores) ? contenedores.filter(c => c && c.tipo) : [];
+
+    const actualizarItems = Array.isArray(items) && (itemsValidos.length > 0 || itemsExistentes === 0);
+    const actualizarMercancias = Array.isArray(mercancias) && (mercanciasValidas.length > 0 || mercanciasExistentes === 0);
+    const actualizarContenedores = Array.isArray(contenedores) && (contenedoresValidos.length > 0 || contenedoresExistentes === 0);
+
+    if (Array.isArray(items) && itemsValidos.length === 0 && itemsExistentes > 0) {
+      console.warn(`[presupuesto ${id}] Recibido items=[] con ${itemsExistentes} en DB → se ignora`);
+    }
+    if (Array.isArray(mercancias) && mercanciasValidas.length === 0 && mercanciasExistentes > 0) {
+      console.warn(`[presupuesto ${id}] Recibido mercancias=[] con ${mercanciasExistentes} en DB → se ignora`);
+    }
+    if (Array.isArray(contenedores) && contenedoresValidos.length === 0 && contenedoresExistentes > 0) {
+      console.warn(`[presupuesto ${id}] Recibido contenedores=[] con ${contenedoresExistentes} en DB → se ignora`);
+    }
+
     // Actualizar usando transacción
     const presupuesto = await prisma.$transaction(async (tx) => {
       // Actualizar datos principales
@@ -528,16 +535,23 @@ const actualizarPresupuesto = async (req, res) => {
       });
 
       // Actualizar items (totales calculados según base × mercancías/contenedores)
-      if (items !== undefined) {
+      if (actualizarItems) {
         await tx.itemPresupuesto.deleteMany({ where: { presupuestoId: id } });
 
-        if (items && items.length > 0) {
+        if (itemsValidos.length > 0) {
+          // Para calcular totales necesitamos los datos vigentes de mercancías/contenedores:
+          // si el frontend no los mandó usamos los que están en DB.
+          const mercanciasParaCalc = Array.isArray(mercancias) ? mercancias
+            : await tx.mercanciaPresupuesto.findMany({ where: { presupuestoId: id } });
+          const contenedoresParaCalc = Array.isArray(contenedores) ? contenedores
+            : await tx.contenedorPresupuesto.findMany({ where: { presupuestoId: id } });
+
           await tx.itemPresupuesto.createMany({
-            data: items.filter(i => i.concepto).map(i => {
+            data: itemsValidos.map(i => {
               const { totalVenta, totalCosto } = calcularTotalesItem(
                 i,
-                mercancias || [],
-                contenedores || []
+                mercanciasParaCalc,
+                contenedoresParaCalc
               );
               return {
                 presupuestoId: id,
@@ -565,12 +579,12 @@ const actualizarPresupuesto = async (req, res) => {
       }
       
       // Actualizar mercancías
-      if (mercancias !== undefined) {
+      if (actualizarMercancias) {
         await tx.mercanciaPresupuesto.deleteMany({ where: { presupuestoId: id } });
-        
-        if (mercancias && mercancias.length > 0) {
+
+        if (mercanciasValidas.length > 0) {
           await tx.mercanciaPresupuesto.createMany({
-            data: mercancias.filter(m => m.descripcion).map(m => ({
+            data: mercanciasValidas.map(m => ({
               presupuestoId: id,
               descripcion: m.descripcion,
               embalaje: m.embalaje || null,
@@ -590,12 +604,12 @@ const actualizarPresupuesto = async (req, res) => {
       }
       
       // Actualizar contenedores
-      if (contenedores !== undefined) {
+      if (actualizarContenedores) {
         await tx.contenedorPresupuesto.deleteMany({ where: { presupuestoId: id } });
-        
-        if (contenedores && contenedores.length > 0) {
+
+        if (contenedoresValidos.length > 0) {
           await tx.contenedorPresupuesto.createMany({
-            data: contenedores.filter(c => c.tipo).map(c => ({
+            data: contenedoresValidos.map(c => ({
               presupuestoId: id,
               tipo: c.tipo,
               numero: c.numero || null,

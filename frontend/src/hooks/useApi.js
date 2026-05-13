@@ -202,18 +202,45 @@ export function useDuplicarCarpeta(id) {
 export function useDescargarCarpetaPDF() {
   return useMutation({
     mutationFn: async ({ carpetaId, documento, filename }) => {
-      const response = await api.get(`/carpetas/${carpetaId}/pdf/${documento}`, {
-        responseType: 'blob'
-      });
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', filename || `${documento}_${carpetaId}.pdf`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
-      return true;
+      try {
+        const response = await api.get(`/carpetas/${carpetaId}/pdf/${documento}`, {
+          responseType: 'blob'
+        });
+
+        // Si la respuesta vino como blob pero realmente es JSON (error), parsear el mensaje
+        const contentType = response.headers?.['content-type'] || '';
+        if (contentType.includes('application/json')) {
+          const text = await response.data.text();
+          const errJson = JSON.parse(text);
+          throw new Error(errJson.message || 'Error al generar el PDF');
+        }
+
+        const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', filename || `${documento}_${carpetaId}.pdf`);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(url);
+        return true;
+      } catch (error) {
+        // Axios con responseType=blob mete el error como Blob también
+        if (error.response?.data instanceof Blob) {
+          try {
+            const text = await error.response.data.text();
+            const errJson = JSON.parse(text);
+            const e = new Error(errJson.message || 'Error al generar el PDF');
+            e.response = { data: errJson, status: error.response.status };
+            throw e;
+          } catch (parseErr) {
+            // Si no se puede parsear, devolver el error original
+            if (parseErr instanceof Error && parseErr.message !== 'Error al generar el PDF') throw error;
+            throw parseErr;
+          }
+        }
+        throw error;
+      }
     }
   });
 }

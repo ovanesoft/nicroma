@@ -669,6 +669,8 @@ const getCompanyConfig = async (req, res) => {
               payment_bank_cuit, payment_bank_holder, payment_mercado_pago, payment_paypal,
               payment_cheque_order, payment_other_methods, payment_notes,
               cuentas_bancarias,
+              numeracion_presupuesto_formato, numeracion_presupuesto_siguiente,
+              numeracion_carpeta_formato, numeracion_carpeta_siguiente,
               plan, is_active, created_at
        FROM tenants WHERE id = $1`,
       [tenantId]
@@ -727,7 +729,13 @@ const getCompanyConfig = async (req, res) => {
           otherMethods: tenant.payment_other_methods,
           notes: tenant.payment_notes
         },
-        cuentasBancarias: tenant.cuentas_bancarias || []
+        cuentasBancarias: tenant.cuentas_bancarias || [],
+        numeracion: {
+          presupuestoFormato: tenant.numeracion_presupuesto_formato || 'PRES-{YEAR}-{NNNNN}',
+          presupuestoSiguiente: tenant.numeracion_presupuesto_siguiente,
+          carpetaFormato: tenant.numeracion_carpeta_formato || '{YEAR}-{AREA}{SECTOR1}-{NNNNNN}',
+          carpetaSiguiente: tenant.numeracion_carpeta_siguiente,
+        }
       }
     });
 
@@ -753,8 +761,19 @@ const updateCompanyConfig = async (req, res) => {
       paymentBankCuit, paymentBankHolder, paymentMercadoPago, paymentPaypal,
       paymentChequeOrder, paymentOtherMethods, paymentNotes,
       // Cuentas bancarias múltiples
-      cuentasBancarias
+      cuentasBancarias,
+      // Numeración configurable (puede venir suelta o anidada en `numeracion`)
+      numeracion,
+      numeracionPresupuestoFormato, numeracionPresupuestoSiguiente,
+      numeracionCarpetaFormato, numeracionCarpetaSiguiente,
     } = req.body;
+
+    // Permitir formato anidado: { numeracion: { presupuestoFormato, ... } }
+    const cfgNum = numeracion || {};
+    const presFormato   = numeracionPresupuestoFormato   ?? cfgNum.presupuestoFormato;
+    const presSiguiente = numeracionPresupuestoSiguiente ?? cfgNum.presupuestoSiguiente;
+    const carpFormato   = numeracionCarpetaFormato       ?? cfgNum.carpetaFormato;
+    const carpSiguiente = numeracionCarpetaSiguiente     ?? cfgNum.carpetaSiguiente;
 
     if (!tenantId) {
       return res.status(400).json({
@@ -879,6 +898,26 @@ const updateCompanyConfig = async (req, res) => {
     if (cuentasBancarias !== undefined) {
       updates.push(`cuentas_bancarias = $${paramCount++}`);
       values.push(JSON.stringify(cuentasBancarias || []));
+    }
+
+    // Numeración configurable
+    if (presFormato !== undefined) {
+      updates.push(`numeracion_presupuesto_formato = $${paramCount++}`);
+      values.push((presFormato && String(presFormato).trim()) || null);
+    }
+    if (presSiguiente !== undefined) {
+      updates.push(`numeracion_presupuesto_siguiente = $${paramCount++}`);
+      const n = presSiguiente === null || presSiguiente === '' ? null : parseInt(presSiguiente);
+      values.push(Number.isFinite(n) ? n : null);
+    }
+    if (carpFormato !== undefined) {
+      updates.push(`numeracion_carpeta_formato = $${paramCount++}`);
+      values.push((carpFormato && String(carpFormato).trim()) || null);
+    }
+    if (carpSiguiente !== undefined) {
+      updates.push(`numeracion_carpeta_siguiente = $${paramCount++}`);
+      const n = carpSiguiente === null || carpSiguiente === '' ? null : parseInt(carpSiguiente);
+      values.push(Number.isFinite(n) ? n : null);
     }
 
     if (updates.length === 0) {

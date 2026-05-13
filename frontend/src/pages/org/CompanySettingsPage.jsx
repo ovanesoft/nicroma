@@ -64,7 +64,12 @@ function CompanySettingsPage() {
     paymentPaypal: '',
     paymentChequeOrder: '',
     paymentOtherMethods: '',
-    paymentNotes: ''
+    paymentNotes: '',
+    // Numeración configurable
+    numeracionPresupuestoFormato: 'PRES-{YEAR}-{NNNNN}',
+    numeracionPresupuestoSiguiente: '',
+    numeracionCarpetaFormato: '{YEAR}-{AREA}{SECTOR1}-{NNNNNN}',
+    numeracionCarpetaSiguiente: '',
   });
   
   // Múltiples cuentas bancarias
@@ -101,12 +106,37 @@ function CompanySettingsPage() {
         paymentPaypal: config.paymentMethods?.paypal || '',
         paymentChequeOrder: config.paymentMethods?.chequeOrder || '',
         paymentOtherMethods: config.paymentMethods?.otherMethods || '',
-        paymentNotes: config.paymentMethods?.notes || ''
+        paymentNotes: config.paymentMethods?.notes || '',
+        numeracionPresupuestoFormato: config.numeracion?.presupuestoFormato || 'PRES-{YEAR}-{NNNNN}',
+        numeracionPresupuestoSiguiente: config.numeracion?.presupuestoSiguiente ?? '',
+        numeracionCarpetaFormato: config.numeracion?.carpetaFormato || '{YEAR}-{AREA}{SECTOR1}-{NNNNNN}',
+        numeracionCarpetaSiguiente: config.numeracion?.carpetaSiguiente ?? '',
       });
       // Cargar cuentas bancarias
       setCuentasBancarias(config.cuentasBancarias || []);
     }
   }, [config]);
+
+  // Genera un preview del próximo número según el template (cliente-only para UX)
+  const previewNumeracion = (template, area = 'Marítimo', sector = 'Importación', seq = 1) => {
+    if (!template) return '';
+    const fecha = new Date();
+    const year = fecha.getFullYear();
+    const yy = String(year).slice(-2);
+    const month = String(fecha.getMonth() + 1).padStart(2, '0');
+    const areaStr = (area || '').toUpperCase().replace(/[^A-Z]/g, '');
+    const sectorStr = (sector || '').toUpperCase().replace(/[^A-Z]/g, '');
+    const sector1 = (sectorStr.startsWith('EXP')) ? 'E' : 'I';
+    return template
+      .replace(/\{YEAR\}/g, String(year))
+      .replace(/\{YY\}/g, yy)
+      .replace(/\{MONTH\}/g, month)
+      .replace(/\{AREA\}/g, areaStr.substring(0, 2))
+      .replace(/\{AREA1\}/g, areaStr.substring(0, 1))
+      .replace(/\{SECTOR\}/g, sectorStr.substring(0, 3))
+      .replace(/\{SECTOR1\}/g, sector1)
+      .replace(/\{(N+)\}/g, (_, ns) => String(seq).padStart(ns.length, '0'));
+  };
 
   const handleSave = async () => {
     if (!form.name.trim()) {
@@ -752,6 +782,92 @@ function CompanySettingsPage() {
                 <strong>Tip:</strong> Esta información se mostrará a tus clientes en su dashboard 
                 cuando tengan facturas pendientes de pago.
               </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* ============== Numeración configurable ============== */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FileText className="w-5 h-5 text-primary-600" />
+              Numeración de Cotizaciones y Carpetas
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-800">
+              <p className="font-medium mb-1">Cómo funciona</p>
+              <p>Definí un <strong>formato</strong> con los siguientes placeholders:</p>
+              <ul className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 font-mono text-xs">
+                <li><code>{'{YEAR}'}</code> → año completo (2026)</li>
+                <li><code>{'{YY}'}</code> → año en 2 dígitos (26)</li>
+                <li><code>{'{MONTH}'}</code> → mes (01-12)</li>
+                <li><code>{'{AREA}'}</code> → área en 2 letras (MA / AE)</li>
+                <li><code>{'{AREA1}'}</code> → área en 1 letra (M / A)</li>
+                <li><code>{'{SECTOR}'}</code> → sector en 3 letras (IMP / EXP)</li>
+                <li><code>{'{SECTOR1}'}</code> → sector en 1 letra (I / E)</li>
+                <li><code>{'{N}'}, {'{NN}'}, {'{NNNNNN}'}</code> → secuencia (la cantidad de N define el padding)</li>
+              </ul>
+              <p className="mt-2">El campo <strong>Próximo número</strong> es opcional. Si lo seteás, se usará una sola vez y luego se reanuda la secuencia automática.</p>
+            </div>
+
+            {/* Presupuestos */}
+            <div className="border border-slate-200 rounded-xl p-4 space-y-3">
+              <h3 className="font-semibold text-slate-800">Cotizaciones / Presupuestos</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label>Formato</Label>
+                  <Input
+                    value={form.numeracionPresupuestoFormato}
+                    onChange={(e) => setForm({ ...form, numeracionPresupuestoFormato: e.target.value })}
+                    placeholder="PRES-{YEAR}-{NNNNN}"
+                  />
+                  <p className="text-xs text-slate-500 mt-1">
+                    Vista previa: <span className="font-mono text-primary-700">{previewNumeracion(form.numeracionPresupuestoFormato, 'Marítimo', 'Importación', 1)}</span>
+                  </p>
+                </div>
+                <div>
+                  <Label>Próximo número (opcional)</Label>
+                  <Input
+                    type="number"
+                    min="1"
+                    value={form.numeracionPresupuestoSiguiente}
+                    onChange={(e) => setForm({ ...form, numeracionPresupuestoSiguiente: e.target.value })}
+                    placeholder="Auto"
+                  />
+                  <p className="text-xs text-slate-500 mt-1">Forzar el siguiente correlativo (se aplica una vez).</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Carpetas */}
+            <div className="border border-slate-200 rounded-xl p-4 space-y-3">
+              <h3 className="font-semibold text-slate-800">Carpetas</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label>Formato</Label>
+                  <Input
+                    value={form.numeracionCarpetaFormato}
+                    onChange={(e) => setForm({ ...form, numeracionCarpetaFormato: e.target.value })}
+                    placeholder="{YEAR}-{AREA}{SECTOR1}-{NNNNNN}"
+                  />
+                  <p className="text-xs text-slate-500 mt-1">
+                    Marítimo/Import: <span className="font-mono text-primary-700">{previewNumeracion(form.numeracionCarpetaFormato, 'Marítimo', 'Importación', 1)}</span>{' · '}
+                    Aéreo/Export: <span className="font-mono text-primary-700">{previewNumeracion(form.numeracionCarpetaFormato, 'Aéreo', 'Exportación', 1)}</span>
+                  </p>
+                </div>
+                <div>
+                  <Label>Próximo número (opcional)</Label>
+                  <Input
+                    type="number"
+                    min="1"
+                    value={form.numeracionCarpetaSiguiente}
+                    onChange={(e) => setForm({ ...form, numeracionCarpetaSiguiente: e.target.value })}
+                    placeholder="Auto"
+                  />
+                  <p className="text-xs text-slate-500 mt-1">Forzar el siguiente correlativo (se aplica una vez).</p>
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>
