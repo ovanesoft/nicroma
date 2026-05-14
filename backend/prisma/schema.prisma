@@ -952,6 +952,9 @@ model Gasto {
   cantidad       Float   @default(1)
   totalVenta     Float   @map("total_venta")
   totalCosto     Float   @map("total_costo")
+  // Categoría frente al IVA elegida por el usuario (GRAVADO / NO_GRAVADO / EXENTO).
+  // `gravado` se mantiene como bool legacy para no romper consumidores antiguos.
+  categoriaIVA   String  @default("GRAVADO") @map("categoria_iva") @db.VarChar(20)
   gravado        Boolean @default(true)
   porcentajeIVA  Float   @default(21) @map("porcentaje_iva")
 
