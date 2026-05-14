@@ -1,20 +1,28 @@
 const PDFDocument = require('pdfkit');
 
 /**
- * Genera un PDF de Aviso de Arribo basado en los datos de una carpeta
+ * Genera un PDF de Aviso de Arribo (Importación) o Aviso de Salida (Exportación)
+ * basado en el sector de la carpeta.
  * @param {Object} carpeta - Datos completos de la carpeta con relaciones
  * @param {Object} tenant - Datos del tenant (despachante)
  * @param {Object} bancoSeleccionado - Cuenta bancaria seleccionada para el PDF
  * @returns {PDFDocument} - Documento PDF
  */
 function generarAvisoArribo(carpeta, tenant, bancoSeleccionado = null) {
-  const doc = new PDFDocument({ 
-    size: 'A4', 
+  // Para Exportación el documento se llama "Aviso de Salida", para el resto
+  // (Importación, Tránsito, etc.) se mantiene "Aviso de Arribo".
+  const esExportacion = (carpeta.sector || '').toLowerCase() === 'exportación'
+    || (carpeta.sector || '').toLowerCase() === 'exportacion';
+  const tituloDoc = esExportacion ? 'Aviso de Salida' : 'Aviso de Arribo';
+  const tituloUpper = esExportacion ? 'AVISO DE SALIDA' : 'AVISO DE ARRIBO';
+
+  const doc = new PDFDocument({
+    size: 'A4',
     margin: 40,
     info: {
-      Title: `Aviso de Arribo - ${carpeta.houseBL || carpeta.numero}`,
+      Title: `${tituloDoc} - ${carpeta.houseBL || carpeta.numero}`,
       Author: tenant?.name || 'Sistema',
-      Subject: 'Aviso de Arribo de Embarque'
+      Subject: `${tituloDoc} de Embarque`
     }
   });
 
@@ -73,7 +81,7 @@ function generarAvisoArribo(carpeta, tenant, bancoSeleccionado = null) {
   // ============ ENCABEZADO ============
   // Título principal
   doc.fontSize(20).fillColor(primaryColor).font('Helvetica-Bold');
-  doc.text('AVISO DE ARRIBO', 40, 40, { align: 'center' });
+  doc.text(tituloUpper, 40, 40, { align: 'center' });
 
   // Fecha y destinatario
   doc.fontSize(10).fillColor(textColor).font('Helvetica');

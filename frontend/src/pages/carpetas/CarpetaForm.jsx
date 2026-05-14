@@ -126,6 +126,13 @@ function CarpetaForm() {
 
   const carpetaActual = carpetaData?.data?.carpeta;
   const carpetaArea = carpetaActual?.area;
+  const carpetaSector = carpetaActual?.sector;
+  // Para Exportación el documento es "Aviso de Salida". Para el resto (Importación,
+  // Tránsito) usamos "Aviso de Arribo". Comparación case-insensitive y sin acento.
+  const esExportacion = (carpetaSector || '')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase() === 'exportacion';
+  const avisoLabel = esExportacion ? 'Aviso de Salida' : 'Aviso de Arribo';
+  const avisoFilenamePrefix = esExportacion ? 'Aviso_Salida' : 'Aviso_Arribo';
   const houseBL = carpetaActual?.houseBL || carpetaActual?.numero;
 
   const handleDescargarAvisoArribo = async () => {
@@ -135,7 +142,7 @@ function CarpetaForm() {
       await descargarPDF.mutateAsync({
         carpetaId: id,
         documento: 'aviso-arribo',
-        filename: `Aviso_Arribo_${houseBL}.pdf`
+        filename: `${avisoFilenamePrefix}_${houseBL}.pdf`
       });
       toast.success('PDF descargado');
     } catch (error) {
@@ -510,7 +517,7 @@ function CarpetaForm() {
                     >
                       <FileDown className="w-4 h-4 text-blue-600" />
                       <div>
-                        <div className="font-medium">Aviso de Arribo</div>
+                        <div className="font-medium">{avisoLabel}</div>
                         <div className="text-xs text-slate-400">Notificación al cliente</div>
                       </div>
                     </button>
@@ -1591,7 +1598,7 @@ function CarpetaForm() {
                     {cuentasBancarias.length > 0 && (
                       <div className="mt-6 pt-4 border-t">
                         <label className="block text-sm font-medium text-slate-700 mb-2">
-                          Banco para el PDF de Aviso de Arribo
+                          Banco para el PDF de {avisoLabel}
                         </label>
                         <select
                           value={bancoPdfId}
@@ -1606,7 +1613,7 @@ function CarpetaForm() {
                           ))}
                         </select>
                         <p className="text-xs text-slate-500 mt-1">
-                          Estos datos bancarios aparecerán en el PDF del Aviso de Arribo
+                          Estos datos bancarios aparecerán en el PDF del {avisoLabel}
                         </p>
                       </div>
                     )}

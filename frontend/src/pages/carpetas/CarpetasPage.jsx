@@ -317,13 +317,23 @@ function CarpetasPage() {
                                 Documentos
                               </div>
 
-                              <button
-                                onClick={() => handleDescargarPDF(carpeta, 'aviso-arribo', 'Aviso_Arribo')}
-                                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
-                              >
-                                <FileDown className="w-4 h-4 text-blue-600" />
-                                Aviso de Arribo
-                              </button>
+                              {(() => {
+                                // Para Exportación → "Aviso de Salida"; resto → "Aviso de Arribo"
+                                const esExpo = (carpeta.sector || '')
+                                  .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+                                  .toLowerCase() === 'exportacion';
+                                const lbl = esExpo ? 'Aviso de Salida' : 'Aviso de Arribo';
+                                const prefijo = esExpo ? 'Aviso_Salida' : 'Aviso_Arribo';
+                                return (
+                                  <button
+                                    onClick={() => handleDescargarPDF(carpeta, 'aviso-arribo', prefijo)}
+                                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                                  >
+                                    <FileDown className="w-4 h-4 text-blue-600" />
+                                    {lbl}
+                                  </button>
+                                );
+                              })()}
 
                               {carpeta.area === 'Marítimo' && (
                                 <button
