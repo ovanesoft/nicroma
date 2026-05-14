@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -189,10 +189,15 @@ function CarpetaForm() {
   // Flag para evitar submit antes de que se carguen los datos (evita borrar relaciones por accidente)
   const [dataLoaded, setDataLoaded] = useState(!isEditing);
 
-  // Cargar datos si estamos editando
+  // Cargar datos de la carpeta SOLO una vez por id. Si rehidratáramos en cada
+  // cambio del objeto `carpetaData` (por ej. al volver del auto-save), pisaríamos
+  // el state local y haríamos "desaparecer" filas que el usuario acaba de agregar
+  // pero todavía no tienen descripción (la protección anti-pérdida las filtra).
+  const hidratedCarpetaIdRef = useRef(null);
   useEffect(() => {
-    if (carpetaData?.data?.carpeta) {
-      const c = carpetaData.data.carpeta;
+    const c = carpetaData?.data?.carpeta;
+    if (c && hidratedCarpetaIdRef.current !== c.id) {
+      hidratedCarpetaIdRef.current = c.id;
       setValue('area', c.area);
       setValue('sector', c.sector);
       setValue('tipoOperacion', c.tipoOperacion);

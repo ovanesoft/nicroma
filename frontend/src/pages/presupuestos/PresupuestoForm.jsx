@@ -303,9 +303,14 @@ function PresupuestoForm() {
     }
   }, [presupuesto, user?.role, id]);
 
-  // Cargar datos si estamos editando
+  // Cargar datos del presupuesto SOLO una vez (en el primer load por id).
+  // Si rehidratáramos en cada cambio del objeto `presupuesto` (por ej. al volver el
+  // auto-save), pisaríamos el state local y haríamos "desaparecer" filas que el
+  // usuario acaba de agregar pero todavía no tienen descripción (auto-save las filtra).
+  const hidratedPresupuestoIdRef = useRef(null);
   useEffect(() => {
-    if (presupuesto) {
+    if (presupuesto && hidratedPresupuestoIdRef.current !== presupuesto.id) {
+      hidratedPresupuestoIdRef.current = presupuesto.id;
       setFormData({
         solicitanteNombre: presupuesto.solicitanteNombre || '',
         solicitanteEmail: presupuesto.solicitanteEmail || '',
