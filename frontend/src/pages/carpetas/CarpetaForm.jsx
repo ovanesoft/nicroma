@@ -209,7 +209,12 @@ function CarpetaForm() {
       setSelectedCliente(c.cliente);
       setMercancias(c.mercancias || []);
       setContenedores(c.contenedores || []);
-      setGastos(c.gastos || []);
+      // Hidratar categoría IVA respetando lo guardado. Si un gasto viejo no la tiene,
+      // la derivamos del booleano `gravado` (true → GRAVADO, false → NO_GRAVADO).
+      setGastos((c.gastos || []).map(g => ({
+        ...g,
+        categoriaIVA: g.categoriaIVA || (g.gravado === false ? 'NO_GRAVADO' : 'GRAVADO'),
+      })));
       setBancoPdfId(c.bancoPdfId || '');
       setDataLoaded(true);
     }
@@ -250,21 +255,33 @@ function CarpetaForm() {
     pesoMaximo: c.pesoMaximo != null && c.pesoMaximo !== '' ? Number(c.pesoMaximo) : null,
   });
 
-  const sanitizeGasto = (g) => ({
-    concepto: g.concepto,
-    prepaidCollect: g.prepaidCollect || 'Prepaid',
-    divisa: g.divisa || 'USD',
-    montoVenta: g.montoVenta != null ? Number(g.montoVenta) : 0,
-    montoCosto: g.montoCosto != null ? Number(g.montoCosto) : 0,
-    base: g.base || null,
-    cantidad: g.cantidad != null && g.cantidad !== '' ? Number(g.cantidad) : 1,
-    totalVenta: g.totalVenta != null ? Number(g.totalVenta) : 0,
-    totalCosto: g.totalCosto != null ? Number(g.totalCosto) : 0,
-    gravado: g.gravado !== false,
-    porcentajeIVA: g.porcentajeIVA != null ? Number(g.porcentajeIVA) : 21,
-    proveedorId: g.proveedorId || null,
-    proveedorNombre: g.proveedorNombre || null,
-  });
+  const sanitizeGasto = (g) => {
+    // Determinar categoría IVA con fallback a partir del booleano legacy `gravado`
+    // para mantener compatibilidad con gastos viejos guardados antes del selector.
+    let categoriaIVA = g.categoriaIVA;
+    if (!categoriaIVA) {
+      categoriaIVA = g.gravado === false ? 'NO_GRAVADO' : 'GRAVADO';
+    }
+    const esGravado = categoriaIVA === 'GRAVADO';
+    return {
+      concepto: g.concepto,
+      prepaidCollect: g.prepaidCollect || 'Prepaid',
+      divisa: g.divisa || 'USD',
+      montoVenta: g.montoVenta != null ? Number(g.montoVenta) : 0,
+      montoCosto: g.montoCosto != null ? Number(g.montoCosto) : 0,
+      base: g.base || null,
+      cantidad: g.cantidad != null && g.cantidad !== '' ? Number(g.cantidad) : 1,
+      totalVenta: g.totalVenta != null ? Number(g.totalVenta) : 0,
+      totalCosto: g.totalCosto != null ? Number(g.totalCosto) : 0,
+      categoriaIVA,
+      gravado: esGravado,
+      porcentajeIVA: esGravado
+        ? (g.porcentajeIVA != null ? Number(g.porcentajeIVA) : 21)
+        : 0,
+      proveedorId: g.proveedorId || null,
+      proveedorNombre: g.proveedorNombre || null,
+    };
+  };
 
   const onSubmit = async (formData) => {
     // Protección: no guardar si los datos aún no se cargaron (evita borrar relaciones existentes)
@@ -391,6 +408,7 @@ function CarpetaForm() {
       montoCosto: 0, 
       base: 'CANT_CONTENEDORES',
       cantidad: 1,
+      categoriaIVA: 'GRAVADO',
       gravado: true,
       porcentajeIVA: 21
     }]);
@@ -400,8 +418,21 @@ function CarpetaForm() {
     const updated = [...gastos];
     if (field === 'montoVenta' || field === 'montoCosto' || field === 'cantidad' || field === 'porcentajeIVA') {
       updated[index][field] = parseFloat(value) || 0;
+    } else if (field === 'categoriaIVA') {
+      // El usuario eligió manualmente la categoría → preservamos su decisión y
+      // sincronizamos el booleano legacy `gravado` y el porcentaje correspondiente.
+      updated[index].categoriaIVA = value;
+      updated[index].gravado = value === 'GRAVADO';
+      if (value !== 'GRAVADO') {
+        updated[index].porcentajeIVA = 0;
+      } else if (!updated[index].porcentajeIVA) {
+        updated[index].porcentajeIVA = 21;
+      }
     } else if (field === 'gravado') {
-      updated[index][field] = value;
+      // Mantiene compatibilidad si algún código viejo todavía toggleaba el bool.
+      updated[index].gravado = value;
+      updated[index].categoriaIVA = value ? 'GRAVADO' : 'NO_GRAVADO';
+      if (!value) updated[index].porcentajeIVA = 0;
     } else {
       updated[index][field] = value;
     }
@@ -1390,15 +1421,31 @@ function CarpetaForm() {
                                 className="w-full px-2 py-1.5 text-sm rounded border border-slate-300 focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
                               />
                               <div className="flex items-center gap-2 mt-1">
-                                <label className="flex items-center gap-1 text-xs text-slate-500">
-                                  <input
-                                    type="checkbox"
-                                    checked={gasto.gravado !== false}
-                                    onChange={(e) => updateGasto(index, 'gravado', e.target.checked)}
-                                    className="w-3 h-3 rounded border-slate-300"
-                                  />
-                                  Gravado {gasto.gravado !== false ? `${gasto.porcentajeIVA || 21}%` : ''}
-                                </label>
+                                <select
+                                  value={gasto.categoriaIVA || 'GRAVADO'}
+                                  onChange={(e) => updateGasto(index, 'categoriaIVA', e.target.value)}
+                                  className="px-1.5 py-0.5 text-xs rounded border border-slate-300 bg-white"
+                                  title="Condición frente al IVA"
+                                >
+                                  <option value="GRAVADO">Gravado</option>
+                                  <option value="NO_GRAVADO">No Gravado</option>
+                                  <option value="EXENTO">Exento</option>
+                                </select>
+                                {(gasto.categoriaIVA || 'GRAVADO') === 'GRAVADO' && (
+                                  <div className="flex items-center gap-1 text-xs text-slate-500">
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      max="100"
+                                      step="0.01"
+                                      value={gasto.porcentajeIVA ?? 21}
+                                      onChange={(e) => updateGasto(index, 'porcentajeIVA', e.target.value)}
+                                      className="w-12 px-1 py-0.5 text-xs rounded border border-slate-300 text-right"
+                                      title="% IVA"
+                                    />
+                                    <span>%</span>
+                                  </div>
+                                )}
                               </div>
                             </td>
                             

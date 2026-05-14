@@ -291,21 +291,29 @@ const crearCarpeta = async (req, res) => {
         
         // Crear gastos si se enviaron
         gastos: data.gastos ? {
-          create: data.gastos.map(g => ({
-            concepto: g.concepto,
-            prepaidCollect: g.prepaidCollect || 'Prepaid',
-            divisa: g.divisa || 'USD',
-            montoVenta: g.montoVenta,
-            montoCosto: g.montoCosto,
-            base: g.base,
-            cantidad: g.cantidad || 1,
-            totalVenta: g.totalVenta != null ? g.totalVenta : (g.montoVenta || 0) * (g.cantidad || 1),
-            totalCosto: g.totalCosto != null ? g.totalCosto : (g.montoCosto || 0) * (g.cantidad || 1),
-            gravado: g.gravado !== false,
-            porcentajeIVA: g.porcentajeIVA || 21,
-            proveedorId: g.proveedorId || null,
-            proveedorNombre: g.proveedorNombre || null
-          }))
+          create: data.gastos.map(g => {
+            // Preservar la categoría IVA elegida por el usuario.
+            // Si no vino explícita, derivar del booleano `gravado` para retro-compat.
+            const categoriaIVA = g.categoriaIVA
+              || (g.gravado === false ? 'NO_GRAVADO' : 'GRAVADO');
+            const esGravado = categoriaIVA === 'GRAVADO';
+            return {
+              concepto: g.concepto,
+              prepaidCollect: g.prepaidCollect || 'Prepaid',
+              divisa: g.divisa || 'USD',
+              montoVenta: g.montoVenta,
+              montoCosto: g.montoCosto,
+              base: g.base,
+              cantidad: g.cantidad || 1,
+              totalVenta: g.totalVenta != null ? g.totalVenta : (g.montoVenta || 0) * (g.cantidad || 1),
+              totalCosto: g.totalCosto != null ? g.totalCosto : (g.montoCosto || 0) * (g.cantidad || 1),
+              categoriaIVA,
+              gravado: esGravado,
+              porcentajeIVA: esGravado ? (parseFloat(g.porcentajeIVA) || 21) : 0,
+              proveedorId: g.proveedorId || null,
+              proveedorNombre: g.proveedorNombre || null
+            };
+          })
         } : undefined
       },
       include: {
@@ -487,26 +495,34 @@ const actualizarCarpeta = async (req, res) => {
 
         if (gastosValidos.length > 0) {
           await tx.gasto.createMany({
-            data: gastosValidos.map(g => ({
-              carpetaId: id,
-              concepto: g.concepto,
-              prepaidCollect: g.prepaidCollect || 'Prepaid',
-              divisa: g.divisa || 'USD',
-              montoVenta: parseFloat(g.montoVenta) || 0,
-              montoCosto: parseFloat(g.montoCosto) || 0,
-              base: g.base || null,
-              cantidad: parseFloat(g.cantidad) || 1,
-              totalVenta: g.totalVenta != null
-                ? parseFloat(g.totalVenta) || 0
-                : (parseFloat(g.montoVenta) || 0) * (parseFloat(g.cantidad) || 1),
-              totalCosto: g.totalCosto != null
-                ? parseFloat(g.totalCosto) || 0
-                : (parseFloat(g.montoCosto) || 0) * (parseFloat(g.cantidad) || 1),
-              gravado: g.gravado !== false,
-              porcentajeIVA: parseFloat(g.porcentajeIVA) || 21,
-              proveedorId: g.proveedorId || null,
-              proveedorNombre: g.proveedorNombre || null
-            }))
+            data: gastosValidos.map(g => {
+              // Preservar la categoría IVA elegida por el usuario.
+              // Si no vino explícita, derivar del booleano legacy `gravado`.
+              const categoriaIVA = g.categoriaIVA
+                || (g.gravado === false ? 'NO_GRAVADO' : 'GRAVADO');
+              const esGravado = categoriaIVA === 'GRAVADO';
+              return {
+                carpetaId: id,
+                concepto: g.concepto,
+                prepaidCollect: g.prepaidCollect || 'Prepaid',
+                divisa: g.divisa || 'USD',
+                montoVenta: parseFloat(g.montoVenta) || 0,
+                montoCosto: parseFloat(g.montoCosto) || 0,
+                base: g.base || null,
+                cantidad: parseFloat(g.cantidad) || 1,
+                totalVenta: g.totalVenta != null
+                  ? parseFloat(g.totalVenta) || 0
+                  : (parseFloat(g.montoVenta) || 0) * (parseFloat(g.cantidad) || 1),
+                totalCosto: g.totalCosto != null
+                  ? parseFloat(g.totalCosto) || 0
+                  : (parseFloat(g.montoCosto) || 0) * (parseFloat(g.cantidad) || 1),
+                categoriaIVA,
+                gravado: esGravado,
+                porcentajeIVA: esGravado ? (parseFloat(g.porcentajeIVA) || 21) : 0,
+                proveedorId: g.proveedorId || null,
+                proveedorNombre: g.proveedorNombre || null
+              };
+            })
           });
         }
       }

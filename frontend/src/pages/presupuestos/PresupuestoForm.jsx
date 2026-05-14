@@ -340,7 +340,12 @@ function PresupuestoForm() {
       setSelectedShipper(presupuesto.shipper || null);
       setSelectedConsignee(presupuesto.consignee || null);
       setSelectedProveedor(presupuesto.proveedor || null);
-      setItems(presupuesto.items || []);
+      // Hidratar categoría IVA respetando lo guardado. Si un item viejo no la tiene,
+      // la derivamos del booleano `gravado` para mantener consistencia visual.
+      setItems((presupuesto.items || []).map(i => ({
+        ...i,
+        categoriaIVA: i.categoriaIVA || (i.gravado === false ? 'NO_GRAVADO' : 'GRAVADO'),
+      })));
       setMercancias(presupuesto.mercancias || []);
       setContenedores(presupuesto.contenedores || []);
       setBancoPdfId(presupuesto.bancoPdfId || '');
@@ -395,7 +400,7 @@ function PresupuestoForm() {
       totalCosto,
       categoriaIVA: i.categoriaIVA || 'GRAVADO',
       porcentajeIVA: i.porcentajeIVA != null ? Number(i.porcentajeIVA) : 21,
-      gravado: i.gravado !== false,
+      gravado: (i.categoriaIVA || 'GRAVADO') === 'GRAVADO',
       importeMinimo: i.importeMinimo != null && i.importeMinimo !== '' ? Number(i.importeMinimo) : null,
       importeMaximo: i.importeMaximo != null && i.importeMaximo !== '' ? Number(i.importeMaximo) : null,
       proveedorId: i.proveedorId || null,

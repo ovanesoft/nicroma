@@ -818,21 +818,29 @@ async function realizarConversionACarpeta({ presupuesto, tenantId, usuarioId, au
 
         // Copiar items como gastos (preservando proveedor responsable)
         gastos: {
-          create: (presupuesto.items || []).map(item => ({
-            concepto: item.concepto,
-            prepaidCollect: item.prepaidCollect || 'Prepaid',
-            divisa: item.divisa || 'USD',
-            montoVenta: item.montoVenta,
-            montoCosto: item.montoCosto,
-            base: item.base,
-            cantidad: item.cantidad,
-            totalVenta: item.totalVenta,
-            totalCosto: item.totalCosto,
-            gravado: item.gravado ?? true,
-            porcentajeIVA: item.porcentajeIVA ?? 21,
-            proveedorId: item.proveedorId || null,
-            proveedorNombre: item.proveedorNombre || null
-          }))
+          create: (presupuesto.items || []).map(item => {
+            // Propagar la categoría IVA del item del presupuesto tal cual fue elegida.
+            // Si no la tiene (items viejos) derivar del booleano legacy.
+            const categoriaIVA = item.categoriaIVA
+              || (item.gravado === false ? 'NO_GRAVADO' : 'GRAVADO');
+            const esGravado = categoriaIVA === 'GRAVADO';
+            return {
+              concepto: item.concepto,
+              prepaidCollect: item.prepaidCollect || 'Prepaid',
+              divisa: item.divisa || 'USD',
+              montoVenta: item.montoVenta,
+              montoCosto: item.montoCosto,
+              base: item.base,
+              cantidad: item.cantidad,
+              totalVenta: item.totalVenta,
+              totalCosto: item.totalCosto,
+              categoriaIVA,
+              gravado: esGravado,
+              porcentajeIVA: esGravado ? (item.porcentajeIVA ?? 21) : 0,
+              proveedorId: item.proveedorId || null,
+              proveedorNombre: item.proveedorNombre || null
+            };
+          })
         }
       },
       include: {
