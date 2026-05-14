@@ -335,10 +335,15 @@ const crearPresupuesto = async (req, res) => {
     });
   } catch (error) {
     console.error('Error creando presupuesto:', error);
+    console.error('  stack:', error.stack);
+    console.error('  code:', error.code);
+    console.error('  meta:', error.meta);
     res.status(500).json({
       success: false,
       message: 'Error al crear presupuesto',
-      error: error.message
+      error: error.message,
+      // En cualquier entorno enviamos el detalle de Prisma para diagnosticar
+      detalle: error.code ? `[${error.code}] ${error.meta ? JSON.stringify(error.meta) : ''}` : undefined,
     });
   }
 };
@@ -655,9 +660,14 @@ const actualizarPresupuesto = async (req, res) => {
     });
   } catch (error) {
     console.error('Error actualizando presupuesto:', error);
+    console.error('  stack:', error.stack);
+    console.error('  code:', error.code);
+    console.error('  meta:', error.meta);
     res.status(500).json({
       success: false,
-      message: 'Error al actualizar presupuesto'
+      message: 'Error al actualizar presupuesto',
+      error: error.message,
+      detalle: error.code ? `[${error.code}] ${error.meta ? JSON.stringify(error.meta) : ''}` : undefined,
     });
   }
 };

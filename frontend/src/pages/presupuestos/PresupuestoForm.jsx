@@ -726,6 +726,8 @@ function PresupuestoForm() {
 
     try {
       const payload = buildPayload();
+      // Log del payload completo para diagnóstico (visible en F12 → Console)
+      console.log('[presupuesto] Payload a enviar:', payload);
 
       if (isEditing) {
         await updatePresupuesto.mutateAsync(payload);
@@ -738,7 +740,23 @@ function PresupuestoForm() {
         return;
       }
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Error al guardar');
+      // Mostrar TODA la info que tenemos del error para diagnosticar
+      const respData = error.response?.data;
+      const msg = respData?.message || respData?.error || error.message || 'Error al guardar';
+      const detalle = respData?.detalle || respData?.errors || (typeof respData === 'string' ? respData : null);
+
+      console.error('[presupuesto] Error al guardar:', {
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: respData,
+        message: error.message,
+      });
+
+      // Toast con duración extendida para que tengamos tiempo de leerlo
+      toast.error(
+        detalle ? `${msg}\n${typeof detalle === 'string' ? detalle : JSON.stringify(detalle)}` : msg,
+        { duration: 8000 }
+      );
     }
   };
   
