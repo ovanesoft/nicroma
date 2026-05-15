@@ -56,6 +56,23 @@ function generarPresupuestoFormal(presupuesto, tenant, bancoSeleccionado = null,
     return parts.join(' - ');
   }).join('\n') || '-';
 
+  // Resumen de cantidad de contenedores por tipo (ej: "2 × 40DC, 1 × 20DC")
+  const cantidadContenedoresTotal = presupuesto.contenedores?.length || 0;
+  const contenedoresResumen = (() => {
+    if (!cantidadContenedoresTotal) return '';
+    const acc = {};
+    presupuesto.contenedores.forEach(c => {
+      const tipo = c.tipo || 'S/T';
+      acc[tipo] = (acc[tipo] || 0) + 1;
+    });
+    return Object.entries(acc).map(([t, n]) => `${n} × ${t}`).join(', ');
+  })();
+
+  // Detectar si es operación FCL para mostrar el aviso adicional al pie.
+  // Acepta variantes con guion, slash o sin separador (FCL-FCL, FCL/FCL, FCLFCL).
+  const tipoOpUpper = (presupuesto.tipoOperacion || '').toUpperCase().replace(/[\s/_-]+/g, '');
+  const esFclFcl = tipoOpUpper === 'FCLFCL';
+
   // Calcular totales de items
   let totalGravado = 0;
   let totalIVA = 0;
@@ -199,12 +216,25 @@ function generarPresupuestoFormal(presupuesto, tenant, bancoSeleccionado = null,
     }
     
     if (presupuesto.contenedores?.length > 0) {
-      doc.font('Helvetica-Bold').text('CNTDs:', 50, y);
-      const contenedorLines = contenedoresStr.split('\n');
-      contenedorLines.forEach((line, i) => {
-        doc.font('Helvetica').text(line, 100, y + (i * 12), { width: 440 });
-      });
-      y += Math.max(12, contenedorLines.length * 12);
+      // Resumen de cantidad de contenedores (siempre visible cuando hay contenedores)
+      doc.font('Helvetica-Bold').text('Cant. Contenedores:', 50, y);
+      doc.font('Helvetica').text(
+        `${cantidadContenedoresTotal}${contenedoresResumen ? ` (${contenedoresResumen})` : ''}`,
+        165, y, { width: 380 }
+      );
+      y += 14;
+
+      // Listado detallado (tipo - número - bl). Si los contenedores no tienen
+      // número/BL cargados aún (presupuesto), se muestra sólo el tipo.
+      const tieneDetalle = presupuesto.contenedores.some(c => c.numero || c.blContenedor);
+      if (tieneDetalle) {
+        doc.font('Helvetica-Bold').text('CNTDs:', 50, y);
+        const contenedorLines = contenedoresStr.split('\n');
+        contenedorLines.forEach((line, i) => {
+          doc.font('Helvetica').text(line, 100, y + (i * 12), { width: 440 });
+        });
+        y += Math.max(12, contenedorLines.length * 12);
+      }
     }
     
     if (descripcionMercaderia !== '-') {
@@ -371,6 +401,41 @@ function generarPresupuestoFormal(presupuesto, tenant, bancoSeleccionado = null,
     doc.font('Helvetica').fontSize(8).fillColor(lightText);
     doc.text(presupuesto.condiciones, 50, y, { width: 480 });
     y += doc.heightOfString(presupuesto.condiciones, { width: 480 }) + 10;
+  }
+
+  // ============ AVISO ESPECIAL FCL-FCL ============
+  // Para operaciones FCL-FCL se incluye un texto aclaratorio obligatorio.
+  if (esFclFcl) {
+    const empresaNombre = (tenant?.name || 'la empresa').toUpperCase();
+    const avisoLineas = [
+      'Por favor tener presente que para el pago de toda carga FCL se tomará el TC de la naviera cotizada.',
+      `Presentar CARTA DE GARANTIA impresa en papel original con membrete del consignatario del B/L, dirigida a ${empresaNombre}, firmada por apoderado del consignatario del B/L y certificada por Escribano público.`,
+      'Se da aviso a los clientes que para la entrega de documentos originales referidos a las cargas FCL se deberá haber cancelado el embarque en su totalidad. A su vez, la disponibilidad del libre deuda estará a disposición del cliente entre 24 hs - 48 hs luego de la cancelación del embarque.',
+    ];
+
+    // Calcular alto requerido para decidir si saltamos de página
+    const altoTexto = avisoLineas.reduce(
+      (acc, t) => acc + doc.heightOfString(t, { width: 480 }) + 6,
+      18 + 6 // título + margen
+    );
+    if (y + altoTexto > doc.page.height - 50) {
+      doc.addPage();
+      y = 50;
+    } else {
+      y += 22;
+    }
+
+    // Caja resaltada
+    doc.rect(40, y - 4, 515, altoTexto - 6).fillOpacity(0.05).fill('#dc2626').fillOpacity(1).stroke();
+    doc.fillColor('#991b1b').font('Helvetica-Bold').fontSize(9);
+    doc.text('AVISO IMPORTANTE — CARGA FCL', 50, y);
+    y += 14;
+
+    doc.font('Helvetica').fontSize(8).fillColor('#1e293b');
+    avisoLineas.forEach(linea => {
+      doc.text(linea, 50, y, { width: 495, align: 'justify' });
+      y += doc.heightOfString(linea, { width: 495 }) + 6;
+    });
   }
 
   // ============ NOTA DE PAGO ============
