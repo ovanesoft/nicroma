@@ -22,6 +22,10 @@ import {
 import toast from 'react-hot-toast';
 import { AREAS, SECTORES, TIPOS_OPERACION, TIPOS_OPERACION_AEREA, CARPETA_ESTADOS, INCOTERMS, TIPOS_CONTENEDOR } from '../../lib/constants';
 import { cn, formatDate } from '../../lib/utils';
+// Mismo cálculo que el presupuesto: garantiza que al convertir presupuesto en
+// carpeta los totales no cambien y respeten la base elegida (CANT_CONTENEDORES,
+// VOLUMEN, KILOS, TONELADA_M3, etc).
+import { calcularTotalesItem } from '../../lib/itemCalc';
 
 const carpetaSchema = z.object({
   area: z.enum(['Marítimo', 'Aéreo', 'Terrestre']),
@@ -293,6 +297,9 @@ function CarpetaForm() {
       categoriaIVA = g.gravado === false ? 'NO_GRAVADO' : 'GRAVADO';
     }
     const esGravado = categoriaIVA === 'GRAVADO';
+    // Recalcular totales con el mismo método que el presupuesto para que la
+    // conversión sea idempotente y los valores guardados respeten la base.
+    const { totalVenta, totalCosto } = calcularTotalesItem(g, mercancias, contenedores);
     return {
       concepto: g.concepto,
       prepaidCollect: g.prepaidCollect || 'Prepaid',
@@ -301,8 +308,8 @@ function CarpetaForm() {
       montoCosto: g.montoCosto != null ? Number(g.montoCosto) : 0,
       base: g.base || null,
       cantidad: g.cantidad != null && g.cantidad !== '' ? Number(g.cantidad) : 1,
-      totalVenta: g.totalVenta != null ? Number(g.totalVenta) : 0,
-      totalCosto: g.totalCosto != null ? Number(g.totalCosto) : 0,
+      totalVenta,
+      totalCosto,
       categoriaIVA,
       gravado: esGravado,
       porcentajeIVA: esGravado
@@ -1437,8 +1444,11 @@ function CarpetaForm() {
                     </thead>
                     <tbody>
                       {gastos.map((gasto, index) => {
-                        const totalVenta = (gasto.montoVenta || 0) * (gasto.cantidad || 1);
-                        const totalCosto = (gasto.montoCosto || 0) * (gasto.cantidad || 1);
+                        // Mismo cálculo que el presupuesto: aplica multiplicador
+                        // según la base (cant. contenedores, kilos, volumen, etc.).
+                        const { totalVenta, totalCosto } = calcularTotalesItem(
+                          gasto, mercancias, contenedores
+                        );
                         return (
                           <tr key={index} className="border-b border-slate-100 hover:bg-slate-50/50">
                             {/* Gasto (Concepto) */}

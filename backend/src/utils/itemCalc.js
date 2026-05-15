@@ -40,11 +40,17 @@ function calcularMultiplicadorBase(base, mercancias = [], contenedores = []) {
       return totalPeso > 0 ? totalPeso : 1;
     case 'TONELADA':
       return totalPeso > 0 ? totalPeso / 1000 : 1;
+    case 'TONELADA_M3':
+      // Convención de flete: toneladas vs m³ (lo que sea mayor)
+      return Math.max(totalPeso / 1000, totalVolumen) || 1;
     case 'VOLUMEN':
       return totalVolumen > 0 ? totalVolumen : 1;
     case 'CANT_CONTENEDORES':
     case 'POR_CONTENEDOR':
+    case 'POR_CNT_FLETE':
       return totalContenedores > 0 ? totalContenedores : 1;
+    case 'POR_ESCALA':
+      return 1;
     case 'IMPORTE_FIJO':
     default:
       return 1;

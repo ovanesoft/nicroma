@@ -5,6 +5,9 @@ const { generarAirWaybill } = require('../services/pdf/airWaybill');
 const { generarCertificacionFlete } = require('../services/pdf/certificacionFlete');
 const { generarCertificacionGastos } = require('../services/pdf/certificacionGastos');
 const { generarNumeroCarpetaCfg } = require('../utils/numbering');
+// Mismo cálculo que usa el presupuesto: garantiza idempotencia al convertir
+// presupuesto → carpeta y respeta la base (cant. contenedores, kilos, etc.).
+const { calcularTotalesItem } = require('../utils/itemCalc');
 
 // Usa la configuración del tenant (formato y siguiente número manual)
 const generarNumeroCarpeta = (tenantId, area, sector) => generarNumeroCarpetaCfg(tenantId, area, sector);
@@ -297,6 +300,11 @@ const crearCarpeta = async (req, res) => {
             const categoriaIVA = g.categoriaIVA
               || (g.gravado === false ? 'NO_GRAVADO' : 'GRAVADO');
             const esGravado = categoriaIVA === 'GRAVADO';
+            // Recalcular siempre con la fórmula compartida para que coincida
+            // con lo que muestra el frontend y con el presupuesto origen.
+            const { totalVenta, totalCosto } = calcularTotalesItem(
+              g, data.mercancias || [], data.contenedores || []
+            );
             return {
               concepto: g.concepto,
               prepaidCollect: g.prepaidCollect || 'Prepaid',
@@ -305,8 +313,8 @@ const crearCarpeta = async (req, res) => {
               montoCosto: g.montoCosto,
               base: g.base,
               cantidad: g.cantidad || 1,
-              totalVenta: g.totalVenta != null ? g.totalVenta : (g.montoVenta || 0) * (g.cantidad || 1),
-              totalCosto: g.totalCosto != null ? g.totalCosto : (g.montoCosto || 0) * (g.cantidad || 1),
+              totalVenta,
+              totalCosto,
               categoriaIVA,
               gravado: esGravado,
               porcentajeIVA: esGravado ? (parseFloat(g.porcentajeIVA) || 21) : 0,
@@ -494,13 +502,23 @@ const actualizarCarpeta = async (req, res) => {
         await tx.gasto.deleteMany({ where: { carpetaId: id } });
 
         if (gastosValidos.length > 0) {
+          // Para que el cálculo respete la base (cant. contenedores, kilos, etc.)
+          // usamos las mercancías y contenedores efectivos que vamos a guardar.
+          const mercParaCalc = Array.isArray(mercancias) && mercanciasValidas.length > 0
+            ? mercanciasValidas
+            : (await tx.mercancia.findMany({ where: { carpetaId: id } }));
+          const contParaCalc = Array.isArray(contenedores) && contenedoresValidos.length > 0
+            ? contenedoresValidos
+            : (await tx.contenedor.findMany({ where: { carpetaId: id } }));
+
           await tx.gasto.createMany({
             data: gastosValidos.map(g => {
-              // Preservar la categoría IVA elegida por el usuario.
-              // Si no vino explícita, derivar del booleano legacy `gravado`.
               const categoriaIVA = g.categoriaIVA
                 || (g.gravado === false ? 'NO_GRAVADO' : 'GRAVADO');
               const esGravado = categoriaIVA === 'GRAVADO';
+              const { totalVenta, totalCosto } = calcularTotalesItem(
+                g, mercParaCalc, contParaCalc
+              );
               return {
                 carpetaId: id,
                 concepto: g.concepto,
@@ -510,12 +528,8 @@ const actualizarCarpeta = async (req, res) => {
                 montoCosto: parseFloat(g.montoCosto) || 0,
                 base: g.base || null,
                 cantidad: parseFloat(g.cantidad) || 1,
-                totalVenta: g.totalVenta != null
-                  ? parseFloat(g.totalVenta) || 0
-                  : (parseFloat(g.montoVenta) || 0) * (parseFloat(g.cantidad) || 1),
-                totalCosto: g.totalCosto != null
-                  ? parseFloat(g.totalCosto) || 0
-                  : (parseFloat(g.montoCosto) || 0) * (parseFloat(g.cantidad) || 1),
+                totalVenta,
+                totalCosto,
                 categoriaIVA,
                 gravado: esGravado,
                 porcentajeIVA: esGravado ? (parseFloat(g.porcentajeIVA) || 21) : 0,

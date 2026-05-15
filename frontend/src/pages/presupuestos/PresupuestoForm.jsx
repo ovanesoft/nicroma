@@ -21,6 +21,8 @@ import { useAuth } from '../../context/AuthContext';
 import toast from 'react-hot-toast';
 import { AREAS, SECTORES, TIPOS_OPERACION, TIPOS_OPERACION_AEREA, INCOTERMS } from '../../lib/constants';
 import { cn, formatDate } from '../../lib/utils';
+// Cálculo unificado para que presupuesto y carpeta produzcan el mismo total
+import { calcularMultiplicadorBase, calcularTotalesItem } from '../../lib/itemCalc';
 
 // Hook para debounce
 function useDebounce(callback, delay) {
@@ -50,51 +52,8 @@ const BASES_ITEM = [
   { value: 'VOLUMEN', label: 'Volumen' }
 ];
 
-// Calcula el multiplicador a aplicar al monto del item según la base seleccionada
-// y los datos de mercancías/contenedores cargados. Si la base requiere datos que
-// no hay disponibles, devuelve 1 para que el item al menos refleje el monto unitario.
-export function calcularMultiplicadorBase(base, mercancias = [], contenedores = []) {
-  const safe = (v) => (Number.isFinite(parseFloat(v)) ? parseFloat(v) : 0);
-
-  const totalPeso = mercancias.reduce((acc, m) => acc + safe(m.peso) * (safe(m.bultos) || 1), 0);
-  const totalVolumen = mercancias.reduce((acc, m) => acc + safe(m.volumen), 0);
-  const totalContenedores = contenedores.reduce((acc, c) => acc + (parseInt(c.cantidad) || 1), 0);
-
-  switch (base) {
-    case 'KILOS':
-      return totalPeso > 0 ? totalPeso : 1;
-    case 'TONELADA':
-      return totalPeso > 0 ? totalPeso / 1000 : 1;
-    case 'VOLUMEN':
-      return totalVolumen > 0 ? totalVolumen : 1;
-    case 'CANT_CONTENEDORES':
-    case 'POR_CONTENEDOR':
-      return totalContenedores > 0 ? totalContenedores : 1;
-    case 'IMPORTE_FIJO':
-    default:
-      return 1;
-  }
-}
-
-// Calcula los totales (costo / venta) de un item aplicando base + cantidad + min/max
-export function calcularTotalesItem(item, mercancias = [], contenedores = []) {
-  const safe = (v) => (Number.isFinite(parseFloat(v)) ? parseFloat(v) : 0);
-  const cantidad = safe(item.cantidad) || 1;
-  const multiplicador = calcularMultiplicadorBase(item.base, mercancias, contenedores);
-
-  let totalVenta = safe(item.montoVenta) * multiplicador * cantidad;
-  let totalCosto = safe(item.montoCosto) * multiplicador * cantidad;
-
-  // Aplicar importe mínimo / máximo si están definidos
-  const min = item.importeMinimo != null ? safe(item.importeMinimo) : null;
-  const max = item.importeMaximo != null ? safe(item.importeMaximo) : null;
-  if (min != null && totalVenta > 0 && totalVenta < min) totalVenta = min;
-  if (max != null && totalVenta > max) totalVenta = max;
-  if (min != null && totalCosto > 0 && totalCosto < min) totalCosto = min;
-  if (max != null && totalCosto > max) totalCosto = max;
-
-  return { totalVenta, totalCosto, multiplicador };
-}
+// Re-export para no romper imports preexistentes en otros módulos.
+export { calcularMultiplicadorBase, calcularTotalesItem };
 
 const ESTADOS = {
   PENDIENTE: { label: 'Pendiente', color: 'bg-amber-100 text-amber-800' },
