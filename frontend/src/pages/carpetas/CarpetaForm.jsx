@@ -1596,33 +1596,37 @@ function CarpetaForm() {
                     </tbody>
                   </table>
                   
-                  {/* Totales */}
+                  {/* Totales — mismo método de cálculo que el presupuesto:
+                      sumamos el total real por gasto (monto * multiplicadorBase * cantidad)
+                      en vez de la fórmula simple monto*cantidad. */}
+                  {(() => {
+                    const totales = gastos.reduce((acc, g) => {
+                      const { totalVenta: tv, totalCosto: tc } =
+                        calcularTotalesItem(g, mercancias, contenedores);
+                      acc.venta += tv;
+                      acc.costo += tc;
+                      return acc;
+                    }, { venta: 0, costo: 0 });
+                    const margen = totales.venta - totales.costo;
+                    return (
                   <div className="mt-4 pt-4 border-t border-slate-200">
                     <div className="flex justify-end gap-8">
                       <div className="text-right">
                         <p className="text-xs text-slate-500 mb-1">Total Venta</p>
                         <p className="text-lg font-bold text-green-600">
-                          USD {gastos.reduce((sum, g) => sum + (g.montoVenta || 0) * (g.cantidad || 1), 0).toFixed(2)}
+                          USD {totales.venta.toFixed(2)}
                         </p>
                       </div>
                       <div className="text-right">
                         <p className="text-xs text-slate-500 mb-1">Total Costo</p>
                         <p className="text-lg font-bold text-red-600">
-                          USD {gastos.reduce((sum, g) => sum + (g.montoCosto || 0) * (g.cantidad || 1), 0).toFixed(2)}
+                          USD {totales.costo.toFixed(2)}
                         </p>
                       </div>
                       <div className="text-right">
                         <p className="text-xs text-slate-500 mb-1">Margen</p>
-                        <p className={`text-lg font-bold ${
-                          gastos.reduce((sum, g) => sum + (g.montoVenta || 0) * (g.cantidad || 1), 0) -
-                          gastos.reduce((sum, g) => sum + (g.montoCosto || 0) * (g.cantidad || 1), 0) >= 0
-                            ? 'text-emerald-600'
-                            : 'text-red-600'
-                        }`}>
-                          USD {(
-                            gastos.reduce((sum, g) => sum + (g.montoVenta || 0) * (g.cantidad || 1), 0) -
-                            gastos.reduce((sum, g) => sum + (g.montoCosto || 0) * (g.cantidad || 1), 0)
-                          ).toFixed(2)}
+                        <p className={`text-lg font-bold ${margen >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                          USD {margen.toFixed(2)}
                         </p>
                       </div>
                     </div>
@@ -1651,6 +1655,8 @@ function CarpetaForm() {
                       </div>
                     )}
                   </div>
+                    );
+                  })()}
                 </div>
               )}
             </CardContent>
