@@ -56,14 +56,18 @@ function generarPresupuestoFormal(presupuesto, tenant, bancoSeleccionado = null,
     return parts.join(' - ');
   }).join('\n') || '-';
 
-  // Resumen de cantidad de contenedores por tipo (ej: "2 × 40DC, 1 × 20DC")
-  const cantidadContenedoresTotal = presupuesto.contenedores?.length || 0;
+  // Resumen de cantidad de contenedores por tipo (ej: "3 × 40HC, 1 × 20DC").
+  // Cada fila del array puede representar más de un contenedor del mismo tipo
+  // mediante el campo `cantidad`; si está ausente, se asume 1.
+  const sumarCantidad = (arr) =>
+    (arr || []).reduce((s, c) => s + (Number(c.cantidad) || 1), 0);
+  const cantidadContenedoresTotal = sumarCantidad(presupuesto.contenedores);
   const contenedoresResumen = (() => {
     if (!cantidadContenedoresTotal) return '';
     const acc = {};
-    presupuesto.contenedores.forEach(c => {
+    (presupuesto.contenedores || []).forEach(c => {
       const tipo = c.tipo || 'S/T';
-      acc[tipo] = (acc[tipo] || 0) + 1;
+      acc[tipo] = (acc[tipo] || 0) + (Number(c.cantidad) || 1);
     });
     return Object.entries(acc).map(([t, n]) => `${n} × ${t}`).join(', ');
   })();
@@ -269,11 +273,11 @@ function generarPresupuestoFormal(presupuesto, tenant, bancoSeleccionado = null,
     }
   }
 
-  // ============ SECCIÓN ACTORES DEL PROCESO ============
+  // ============ SECCIÓN CLIENTE ============
   y += 35;
   doc.rect(40, y, 515, 20).fill(headerBg).stroke();
   doc.fillColor(primaryColor).font('Helvetica-Bold').fontSize(11);
-  doc.text('ACTORES DEL PROCESO', 50, y + 5);
+  doc.text('CLIENTE', 50, y + 5);
   
   y += 25;
   doc.font('Helvetica').fontSize(9).fillColor(textColor);
