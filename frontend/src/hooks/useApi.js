@@ -163,8 +163,10 @@ export function useCarpeta(id) {
       return response.data;
     },
     enabled: !!id,
-    refetchInterval: 15000,
-    staleTime: 10000,
+    // Sin polling automático: las invalidaciones tras mutar son suficientes y
+    // evitamos refrescos durante la edición que pisaban el state local.
+    refetchInterval: false,
+    staleTime: 30000,
     refetchOnWindowFocus: false,
     placeholderData: keepPreviousData
   });
@@ -1016,8 +1018,12 @@ export function usePresupuesto(id) {
       return response.data;
     },
     enabled: !!id,
-    refetchInterval: 15000,
-    staleTime: 10000,
+    // Sin polling automático: el form de edición lo recarga vía invalidate
+    // tras cada mutación. Un polling agresivo refrescaba el objeto cada 15s
+    // y, combinado con el auto-save, hacía "desaparecer" filas locales sin
+    // descripción todavía cargada.
+    refetchInterval: false,
+    staleTime: 30000,
     refetchOnWindowFocus: false,
     placeholderData: keepPreviousData
   });

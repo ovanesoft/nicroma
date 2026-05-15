@@ -241,8 +241,26 @@ function CarpetaForm() {
 
   // Sanea cada entidad para evitar mandar campos que el backend no usa (id, timestamps,
   // proveedor populado, etc.) y forzar tipos correctos.
+  // Considera "rellena" toda fila con cualquier dato útil (no sólo descripción).
+  // Si el usuario empezó cargando bultos pero todavía no la descripción, la fila
+  // igual se persiste con un placeholder para que no quede sólo en state local.
+  const mercanciaTieneDatos = (m) => !!(
+    m && (
+      (m.descripcion && m.descripcion.trim()) ||
+      m.embalaje || m.marcas || m.hsCode ||
+      (m.bultos != null && m.bultos !== '' && Number(m.bultos) > 0) ||
+      (m.largo != null && m.largo !== '' && Number(m.largo) > 0) ||
+      (m.ancho != null && m.ancho !== '' && Number(m.ancho) > 0) ||
+      (m.alto != null && m.alto !== '' && Number(m.alto) > 0) ||
+      (m.volumen != null && m.volumen !== '' && Number(m.volumen) > 0) ||
+      (m.peso != null && m.peso !== '' && Number(m.peso) > 0) ||
+      (m.valorMercaderia != null && m.valorMercaderia !== '') ||
+      (m.valorCIF != null && m.valorCIF !== '')
+    )
+  );
+
   const sanitizeMercancia = (m) => ({
-    descripcion: m.descripcion,
+    descripcion: (m.descripcion && m.descripcion.trim()) || '-',
     embalaje: m.embalaje || null,
     marcas: m.marcas || null,
     bultos: m.bultos != null && m.bultos !== '' ? parseInt(m.bultos) : 0,
@@ -304,7 +322,7 @@ function CarpetaForm() {
     try {
       const payload = {
         ...formData,
-        mercancias: mercancias.filter(m => m && m.descripcion).map(sanitizeMercancia),
+        mercancias: mercancias.filter(mercanciaTieneDatos).map(sanitizeMercancia),
         contenedores: contenedores.filter(c => c && c.tipo).map(sanitizeContenedor),
         gastos: gastos.filter(g => g && g.concepto).map(sanitizeGasto),
         bancoPdfId: bancoPdfId || null

@@ -413,8 +413,29 @@ function PresupuestoForm() {
     };
   };
 
+  // Considera una fila como "rellena" si tiene cualquier dato útil, no sólo
+  // descripción. Así una fila con bultos/peso/medidas pero descripción aún
+  // vacía igual se persiste (con un placeholder) en vez de quedar sólo en el
+  // state local hasta que el usuario tipee descripción.
+  const mercanciaTieneDatos = (m) => !!(
+    m && (
+      (m.descripcion && m.descripcion.trim()) ||
+      m.embalaje || m.marcas || m.hsCode ||
+      (m.bultos != null && m.bultos !== '' && Number(m.bultos) > 0) ||
+      (m.largo != null && m.largo !== '' && Number(m.largo) > 0) ||
+      (m.ancho != null && m.ancho !== '' && Number(m.ancho) > 0) ||
+      (m.alto != null && m.alto !== '' && Number(m.alto) > 0) ||
+      (m.volumen != null && m.volumen !== '' && Number(m.volumen) > 0) ||
+      (m.peso != null && m.peso !== '' && Number(m.peso) > 0) ||
+      (m.valorMercaderia != null && m.valorMercaderia !== '') ||
+      (m.valorCIF != null && m.valorCIF !== '')
+    )
+  );
+
   const sanitizeMercancia = (m) => ({
-    descripcion: m.descripcion,
+    // `descripcion` es NOT NULL en DB → si el usuario aún no la cargó,
+    // mandamos un guion como placeholder para que la fila persista.
+    descripcion: (m.descripcion && m.descripcion.trim()) || '-',
     embalaje: m.embalaje || null,
     marcas: m.marcas || null,
     bultos: m.bultos != null && m.bultos !== '' ? parseInt(m.bultos) : null,
@@ -446,7 +467,7 @@ function PresupuestoForm() {
     consigneeId: selectedConsignee?.id || null,
     proveedorId: selectedProveedor?.id || null,
     items: items.filter(i => i && i.concepto).map(sanitizeItem),
-    mercancias: mercancias.filter(m => m && m.descripcion).map(sanitizeMercancia),
+    mercancias: mercancias.filter(mercanciaTieneDatos).map(sanitizeMercancia),
     contenedores: contenedores.filter(c => c && c.tipo).map(sanitizeContenedor),
     bancoPdfId: bancoPdfId || null
   });
