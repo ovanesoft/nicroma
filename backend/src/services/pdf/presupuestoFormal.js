@@ -438,60 +438,12 @@ function generarPresupuestoFormal(presupuesto, tenant, bancoSeleccionado = null,
     });
   }
 
-  // ============ NOTA DE PAGO ============
-  y += 20;
-  doc.font('Helvetica').fontSize(8).fillColor(lightText);
-  doc.text(
-    'Estimado cliente: el pago deberá efectuarse mediante transferencia bancaria en pesos, al tipo de cambio informado por',
-    50, y, { width: 480, align: 'left' }
-  );
-  y += 12;
-  doc.text(
-    `${tenant?.name || 'la empresa'} al momento de realizar la transferencia.`,
-    50, y, { width: 480, align: 'left' }
-  );
-
-  // ============ DATOS BANCARIOS DEL TENANT ============
-  if (bancoSeleccionado) {
-    y += 25;
-    doc.font('Helvetica-Bold').fontSize(10).fillColor(textColor);
-    doc.text('Datos Bancarios:', 50, y);
-    y += 15;
-    
-    doc.font('Helvetica').fontSize(9);
-    
-    if (bancoSeleccionado.banco) {
-      doc.text(bancoSeleccionado.banco, 50, y);
-      y += 12;
-    }
-    if (bancoSeleccionado.alias) {
-      doc.text(`ALIAS: ${bancoSeleccionado.alias}`, 50, y);
-      y += 12;
-    }
-    if (bancoSeleccionado.cuenta) {
-      doc.text(`Cuenta: ${bancoSeleccionado.cuenta}`, 50, y);
-      y += 12;
-    }
-    if (bancoSeleccionado.cbu) {
-      doc.text(`CBU: ${bancoSeleccionado.cbu}`, 50, y);
-      y += 12;
-    }
-    if (bancoSeleccionado.cuit) {
-      doc.text(`CUIT: ${bancoSeleccionado.cuit}`, 50, y);
-      y += 12;
-    }
-    if (bancoSeleccionado.titular) {
-      doc.text(`Titular: ${bancoSeleccionado.titular}`, 50, y);
-      y += 12;
-    }
-    if (bancoSeleccionado.moneda && bancoSeleccionado.moneda !== 'ARS') {
-      doc.text(`Moneda: ${bancoSeleccionado.moneda}`, 50, y);
-      y += 12;
-    }
-  }
+  // NOTA: En el PDF de Presupuesto Formal no se muestran datos bancarios ni
+  // la nota sobre tipo de cambio. Esa información va al pedido de fondos /
+  // aviso de arribo / aviso de salida, no al presupuesto inicial al cliente.
 
   // Mensaje final
-  y += 15;
+  y += 25;
   doc.font('Helvetica').fontSize(8).fillColor(lightText);
   doc.text('Agradecemos su consulta. Quedamos a disposición para cualquier aclaración.', 50, y);
 
