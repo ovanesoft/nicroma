@@ -1,13 +1,15 @@
 const PDFDocument = require('pdfkit');
+const { drawTenantLogo } = require('./pdfHelpers');
 
 /**
  * Genera un PDF de Presupuesto Formal basado en los datos de un presupuesto
  * @param {Object} presupuesto - Datos completos del presupuesto con relaciones
  * @param {Object} tenant - Datos del tenant (despachante)
  * @param {Object} bancoSeleccionado - Cuenta bancaria seleccionada para el PDF
+ * @param {Buffer|null} logoBuffer - Logo del tenant ya decodificado
  * @returns {PDFDocument} - Documento PDF
  */
-function generarPresupuestoFormal(presupuesto, tenant, bancoSeleccionado = null) {
+function generarPresupuestoFormal(presupuesto, tenant, bancoSeleccionado = null, logoBuffer = null) {
   const doc = new PDFDocument({ 
     size: 'A4', 
     margin: 40,
@@ -71,13 +73,21 @@ function generarPresupuestoFormal(presupuesto, tenant, bancoSeleccionado = null)
   const totalGeneral = totalGravado + totalIVA + totalExento;
 
   // ============ ENCABEZADO ============
+  // Logo del tenant arriba a la derecha (si está cargado)
+  const logoInfo = drawTenantLogo(doc, logoBuffer, {
+    right: 40, top: 30, maxWidth: 100, maxHeight: 50
+  });
+  const titleMaxW = logoInfo.drawn
+    ? doc.page.width - 80 - logoInfo.width - 14
+    : doc.page.width - 80;
+
   // Título principal
   doc.fontSize(20).fillColor(primaryColor).font('Helvetica-Bold');
-  doc.text('PRESUPUESTO FORMAL', 40, 40, { align: 'center' });
+  doc.text('PRESUPUESTO FORMAL', 40, 40, { align: 'center', width: titleMaxW });
 
   // Número de presupuesto destacado
   doc.fontSize(12).fillColor(textColor);
-  doc.text(`N° ${presupuesto.numero}`, 40, 65, { align: 'center' });
+  doc.text(`N° ${presupuesto.numero}`, 40, 65, { align: 'center', width: titleMaxW });
 
   // Fecha y destinatario
   doc.fontSize(10).fillColor(textColor).font('Helvetica');

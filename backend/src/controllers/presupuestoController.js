@@ -1,5 +1,6 @@
 const prisma = require('../services/prisma');
 const { generarPresupuestoFormal } = require('../services/pdf/presupuestoFormal');
+const { loadLogoBuffer } = require('../services/pdf/pdfHelpers');
 const { calcularTotalesItem } = require('../utils/itemCalc');
 const { generarNumeroPresupuestoCfg } = require('../utils/numbering');
 
@@ -1435,12 +1436,13 @@ const generarPDFPresupuestoFormal = async (req, res) => {
       });
     }
 
-    // Obtener datos del tenant para incluir datos bancarios
+    // Obtener datos del tenant para incluir datos bancarios y logo
     const tenant = await prisma.tenant.findUnique({
       where: { id: tenantId },
       select: {
         id: true,
         name: true,
+        logoUrl: true,
         cuentasBancarias: true,
         companyAddress: true,
         companyPhone: true,
@@ -1461,8 +1463,11 @@ const generarPDFPresupuestoFormal = async (req, res) => {
       }
     }
 
+    // Cargar el logo del tenant (data URL o URL remota) como buffer
+    const logoBuffer = await loadLogoBuffer(tenant?.logoUrl);
+
     // Generar el PDF
-    const doc = generarPresupuestoFormal(presupuesto, tenant, bancoSeleccionado);
+    const doc = generarPresupuestoFormal(presupuesto, tenant, bancoSeleccionado, logoBuffer);
 
     // Configurar headers para descarga
     const filename = `Presupuesto_Formal_${presupuesto.numero}.pdf`;
