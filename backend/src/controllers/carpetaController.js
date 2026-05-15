@@ -731,6 +731,7 @@ async function _cargarCarpetaParaPDF(tenantId, carpetaId, { conProveedorEnGastos
     select: {
       id: true,
       name: true,
+      logoUrl: true,
       cuentasBancarias: true,
       companyAddress: true,
       companyPhone: true,
