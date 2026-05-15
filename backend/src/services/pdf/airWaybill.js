@@ -1,4 +1,5 @@
 const PDFDocument = require('pdfkit');
+const { drawTenantLogo } = require('./pdfHelpers');
 
 /**
  * Genera un PDF de Air Waybill (AWB) — formato genérico tipo "house" para carga aérea.
@@ -6,9 +7,10 @@ const PDFDocument = require('pdfkit');
  *
  * @param {Object} carpeta - Datos completos de la carpeta con relaciones
  * @param {Object} tenant - Datos del tenant (forwarder)
+ * @param {Buffer|null} logoBuffer - Logo del tenant ya decodificado
  * @returns {PDFDocument} - Documento PDF
  */
-function generarAirWaybill(carpeta, tenant) {
+function generarAirWaybill(carpeta, tenant, logoBuffer = null) {
   const doc = new PDFDocument({
     size: 'A4',
     margin: 30,
@@ -51,14 +53,21 @@ function generarAirWaybill(carpeta, tenant) {
   doc.fontSize(8).fillColor(lightText).font('Helvetica');
   doc.text('HAWB - HOUSE AIR WAYBILL', 40, 60);
 
+  // Logo del tenant arriba a la derecha (dentro del bloque del header).
+  // Si hay logo, los datos del HAWB se corren más a la izquierda para no superponerse.
+  const logoInfo = drawTenantLogo(doc, logoBuffer, {
+    right: 32, top: 33, maxWidth: 90, maxHeight: 44
+  });
+  const hawbX = logoInfo.drawn ? 270 : 380;
+
   doc.fontSize(10).fillColor(textColor).font('Helvetica-Bold');
-  doc.text('HAWB No:', 380, 40);
+  doc.text('HAWB No:', hawbX, 40);
   doc.fontSize(13).fillColor(primaryColor);
-  doc.text(carpeta.houseBL || carpeta.numero, 380, 53);
+  doc.text(carpeta.houseBL || carpeta.numero, hawbX, 53);
 
   if (carpeta.masterBL) {
     doc.fontSize(8).font('Helvetica').fillColor(lightText);
-    doc.text(`MAWB: ${carpeta.masterBL}`, 380, 70);
+    doc.text(`MAWB: ${carpeta.masterBL}`, hawbX, 70);
   }
 
   // ============ Issuing Carrier / Forwarder ============

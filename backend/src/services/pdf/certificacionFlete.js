@@ -1,15 +1,17 @@
 const PDFDocument = require('pdfkit');
+const { drawTenantLogo } = require('./pdfHelpers');
 
 /**
  * Genera un PDF de Certificación de Flete para una carpeta de embarque.
  * Lista los gastos cuyo concepto contiene la palabra "FLETE" (o todos si no hay
  * filtro explícito), con detalle de proveedor responsable y montos.
  *
- * @param {Object} carpeta - Carpeta con relaciones (gastos, mercancias, contenedores, cliente, shipper, consignee)
+ * @param {Object} carpeta - Carpeta con relaciones
  * @param {Object} tenant - Datos del tenant
  * @param {Object} bancoSeleccionado - Cuenta bancaria opcional
+ * @param {Buffer|null} logoBuffer - Logo del tenant ya decodificado
  */
-function generarCertificacionFlete(carpeta, tenant, bancoSeleccionado = null) {
+function generarCertificacionFlete(carpeta, tenant, bancoSeleccionado = null, logoBuffer = null) {
   const doc = new PDFDocument({
     size: 'A4',
     margin: 40,
@@ -51,13 +53,21 @@ function generarCertificacionFlete(carpeta, tenant, bancoSeleccionado = null) {
   }, 0);
 
   // ============ Encabezado ============
+  // Logo del tenant arriba a la derecha
+  const logoInfo = drawTenantLogo(doc, logoBuffer, {
+    right: 40, top: 30, maxWidth: 100, maxHeight: 50
+  });
+
+  const titleMaxW = logoInfo.drawn
+    ? doc.page.width - 80 - logoInfo.width - 14
+    : doc.page.width - 80;
   doc.fontSize(20).fillColor(primaryColor).font('Helvetica-Bold');
-  doc.text('CERTIFICACIÓN DE FLETE', 40, 40, { align: 'center' });
+  doc.text('CERTIFICACIÓN DE FLETE', 40, 40, { align: 'center', width: titleMaxW });
 
   doc.fontSize(10).fillColor(textColor).font('Helvetica');
   const fechaHoy = new Date().toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' });
   doc.text(`CABA, ${fechaHoy}`, 40, 75);
-  doc.text(`Carpeta: ${carpeta.numero}`, 400, 75, { align: 'right' });
+  doc.text(`Carpeta: ${carpeta.numero}`, 300, 75, { align: 'right', width: 235 });
 
   // ============ Datos del cliente ============
   let y = 105;

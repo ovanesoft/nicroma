@@ -1,4 +1,5 @@
 const PDFDocument = require('pdfkit');
+const { drawTenantLogo } = require('./pdfHelpers');
 
 /**
  * Genera un PDF de Bill of Lading (BL House) basado en los datos de una carpeta marítima.
@@ -7,9 +8,10 @@ const PDFDocument = require('pdfkit');
  *
  * @param {Object} carpeta - Datos completos de la carpeta con relaciones
  * @param {Object} tenant - Datos del tenant (forwarder)
+ * @param {Buffer|null} logoBuffer - Logo del tenant ya decodificado
  * @returns {PDFDocument} - Documento PDF
  */
-function generarBillOfLading(carpeta, tenant) {
+function generarBillOfLading(carpeta, tenant, logoBuffer = null) {
   const doc = new PDFDocument({
     size: 'A4',
     margin: 35,
@@ -50,18 +52,25 @@ function generarBillOfLading(carpeta, tenant) {
   }).join('\n') || '-';
 
   // ============ ENCABEZADO ============
+  // Logo del tenant arriba a la derecha
+  const logoInfo = drawTenantLogo(doc, logoBuffer, {
+    right: 35, top: 30, maxWidth: 95, maxHeight: 48
+  });
+
+  const titleMaxW = logoInfo.drawn ? doc.page.width - 70 - logoInfo.width - 14 : doc.page.width - 70;
   doc.fontSize(22).fillColor(primaryColor).font('Helvetica-Bold');
-  doc.text('BILL OF LADING', 35, 35, { align: 'center' });
+  doc.text('BILL OF LADING', 35, 35, { align: 'center', width: titleMaxW });
 
   doc.fontSize(8).fillColor(lightText).font('Helvetica');
-  doc.text('Non-Negotiable unless consigned to order', 35, 60, { align: 'center' });
+  doc.text('Non-Negotiable unless consigned to order', 35, 60, { align: 'center', width: titleMaxW });
 
-  // Número de BL destacado
+  // Número de BL destacado (se corre a la izquierda si hay logo)
+  const blNoX = logoInfo.drawn ? 280 : 400;
   doc.fontSize(11).fillColor(textColor).font('Helvetica-Bold');
-  doc.text(`B/L No: ${carpeta.houseBL || carpeta.numero}`, 400, 38);
+  doc.text(`B/L No: ${carpeta.houseBL || carpeta.numero}`, blNoX, 38);
   if (carpeta.masterBL) {
     doc.fontSize(8).font('Helvetica');
-    doc.text(`Master B/L: ${carpeta.masterBL}`, 400, 53);
+    doc.text(`Master B/L: ${carpeta.masterBL}`, blNoX, 53);
   }
 
   // ============ Forwarder (Tenant) ============

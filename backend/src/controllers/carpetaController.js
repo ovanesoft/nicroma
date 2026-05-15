@@ -4,6 +4,7 @@ const { generarBillOfLading } = require('../services/pdf/billOfLading');
 const { generarAirWaybill } = require('../services/pdf/airWaybill');
 const { generarCertificacionFlete } = require('../services/pdf/certificacionFlete');
 const { generarCertificacionGastos } = require('../services/pdf/certificacionGastos');
+const { loadLogoBuffer } = require('../services/pdf/pdfHelpers');
 const { generarNumeroCarpetaCfg } = require('../utils/numbering');
 // Mismo cálculo que usa el presupuesto: garantiza idempotencia al convertir
 // presupuesto → carpeta y respeta la base (cant. contenedores, kilos, etc.).
@@ -767,7 +768,8 @@ const generarPDFAvisoArribo = async (req, res) => {
     const { carpeta, tenant, bancoSeleccionado } = await _cargarCarpetaParaPDF(tenantId, id);
     if (!carpeta) return res.status(404).json({ success: false, message: 'Carpeta no encontrada' });
 
-    const doc = generarAvisoArribo(carpeta, tenant, bancoSeleccionado);
+    const logoBuffer = await loadLogoBuffer(tenant?.logoUrl);
+    const doc = generarAvisoArribo(carpeta, tenant, bancoSeleccionado, logoBuffer);
     _enviarPDF(res, doc, `Aviso_Arribo_${carpeta.houseBL || carpeta.numero}.pdf`);
   } catch (error) {
     console.error('Error generando PDF de aviso de arribo:', error);
@@ -791,7 +793,8 @@ const generarPDFBillOfLading = async (req, res) => {
       });
     }
 
-    const doc = generarBillOfLading(carpeta, tenant);
+    const logoBuffer = await loadLogoBuffer(tenant?.logoUrl);
+    const doc = generarBillOfLading(carpeta, tenant, logoBuffer);
     _enviarPDF(res, doc, `BL_${carpeta.houseBL || carpeta.numero}.pdf`);
   } catch (error) {
     console.error('Error generando PDF de Bill of Lading:', error);
@@ -815,7 +818,8 @@ const generarPDFAirWaybill = async (req, res) => {
       });
     }
 
-    const doc = generarAirWaybill(carpeta, tenant);
+    const logoBuffer = await loadLogoBuffer(tenant?.logoUrl);
+    const doc = generarAirWaybill(carpeta, tenant, logoBuffer);
     _enviarPDF(res, doc, `AWB_${carpeta.houseBL || carpeta.numero}.pdf`);
   } catch (error) {
     console.error('Error generando PDF de Air Waybill:', error);
@@ -832,7 +836,8 @@ const generarPDFCertificacionFlete = async (req, res) => {
     const { carpeta, tenant, bancoSeleccionado } = await _cargarCarpetaParaPDF(tenantId, id, { conProveedorEnGastos: true });
     if (!carpeta) return res.status(404).json({ success: false, message: 'Carpeta no encontrada' });
 
-    const doc = generarCertificacionFlete(carpeta, tenant, bancoSeleccionado);
+    const logoBuffer = await loadLogoBuffer(tenant?.logoUrl);
+    const doc = generarCertificacionFlete(carpeta, tenant, bancoSeleccionado, logoBuffer);
     _enviarPDF(res, doc, `Cert_Flete_${carpeta.houseBL || carpeta.numero}.pdf`);
   } catch (error) {
     console.error('Error generando Certificación de Flete:', error);
@@ -849,7 +854,8 @@ const generarPDFCertificacionGastos = async (req, res) => {
     const { carpeta, tenant, bancoSeleccionado } = await _cargarCarpetaParaPDF(tenantId, id, { conProveedorEnGastos: true });
     if (!carpeta) return res.status(404).json({ success: false, message: 'Carpeta no encontrada' });
 
-    const doc = generarCertificacionGastos(carpeta, tenant, bancoSeleccionado);
+    const logoBuffer = await loadLogoBuffer(tenant?.logoUrl);
+    const doc = generarCertificacionGastos(carpeta, tenant, bancoSeleccionado, logoBuffer);
     _enviarPDF(res, doc, `Cert_Gastos_${carpeta.houseBL || carpeta.numero}.pdf`);
   } catch (error) {
     console.error('Error generando Certificación de Gastos:', error);
