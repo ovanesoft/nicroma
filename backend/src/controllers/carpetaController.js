@@ -772,6 +772,47 @@ function _enviarPDF(res, doc, filename) {
   doc.end();
 }
 
+// Calendario de ETAs: carpetas con llegada estimada en un rango de fechas
+const calendarioEtas = async (req, res) => {
+  try {
+    const tenantId = req.user.tenant_id;
+    const { desde, hasta } = req.query;
+
+    if (!desde || !hasta) {
+      return res.status(400).json({ success: false, message: 'Parámetros desde/hasta requeridos' });
+    }
+
+    const carpetas = await prisma.carpeta.findMany({
+      where: {
+        tenantId,
+        fechaLlegadaEstimada: {
+          gte: new Date(desde + 'T00:00:00.000Z'),
+          lte: new Date(hasta + 'T23:59:59.999Z')
+        }
+      },
+      select: {
+        id: true,
+        numero: true,
+        houseBL: true,
+        masterBL: true,
+        area: true,
+        sector: true,
+        estado: true,
+        fechaLlegadaEstimada: true,
+        cliente: {
+          select: { razonSocial: true }
+        }
+      },
+      orderBy: { fechaLlegadaEstimada: 'asc' }
+    });
+
+    res.json({ success: true, data: { carpetas } });
+  } catch (error) {
+    console.error('Error obteniendo calendario de ETAs:', error);
+    res.status(500).json({ success: false, message: 'Error al obtener el calendario' });
+  }
+};
+
 // Generar PDF de Aviso de Arribo
 const generarPDFAvisoArribo = async (req, res) => {
   try {
@@ -884,6 +925,7 @@ module.exports = {
   eliminarCarpeta,
   siguienteNumero,
   duplicarCarpeta,
+  calendarioEtas,
   generarPDFAvisoArribo,
   generarPDFBillOfLading,
   generarPDFAirWaybill,

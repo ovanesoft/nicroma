@@ -11,6 +11,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useStats, useCompanyConfig, useNotificaciones, useTiposCambio, useUpdateTiposCambio } from '../../hooks/useApi';
 import { formatDate, cn } from '../../lib/utils';
 import toast from 'react-hot-toast';
+import CalendarioEtas from './CalendarioEtas';
 
 // Widget de tipos de cambio del día (USD / EUR)
 function TiposCambioWidget() {
@@ -314,6 +315,9 @@ function AdminDashboard() {
           </Card>
         ))}
       </div>
+
+      {/* Calendario de llegadas ETA */}
+      <CalendarioEtas />
 
       {/* Quick Actions & Stats */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

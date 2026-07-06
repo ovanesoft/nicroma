@@ -196,6 +196,20 @@ export function useDuplicarCarpeta(id) {
   });
 }
 
+// Calendario de ETAs de carpetas (rango de fechas)
+export function useCalendarioEtas(desde, hasta) {
+  return useQuery({
+    queryKey: ['calendarioEtas', desde, hasta],
+    queryFn: async () => {
+      const response = await api.get(`/carpetas/calendario-etas?desde=${desde}&hasta=${hasta}`);
+      return response.data;
+    },
+    enabled: !!desde && !!hasta,
+    staleTime: 60000,
+    placeholderData: keepPreviousData
+  });
+}
+
 // Helper: descarga un PDF de carpeta (BL/AWB/Cert. Flete/Cert. Gastos/Aviso de Arribo)
 // y dispara la descarga en el navegador. Devuelve una función `download` que se
 // puede invocar desde el componente.

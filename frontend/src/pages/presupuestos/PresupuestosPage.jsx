@@ -19,7 +19,7 @@ const ESTADOS = {
   EN_PROCESO: { label: 'En Proceso', color: 'bg-blue-100 text-blue-800', icon: FileText },
   ENVIADO: { label: 'Enviado', color: 'bg-purple-100 text-purple-800', icon: Send },
   APROBADO: { label: 'Aprobado', color: 'bg-green-100 text-green-800', icon: CheckCircle },
-  RECHAZADO: { label: 'Rechazado', color: 'bg-red-100 text-red-800', icon: XCircle },
+  RECHAZADO: { label: 'Cancelado', color: 'bg-red-100 text-red-800', icon: XCircle },
   CONVERTIDO: { label: 'Convertido', color: 'bg-emerald-100 text-emerald-800', icon: FolderOpen },
   VENCIDO: { label: 'Vencido', color: 'bg-slate-100 text-slate-800', icon: Clock }
 };
@@ -209,11 +209,32 @@ function PresupuestosPage() {
                           {pres.descripcionPedido || '-'}
                         </p>
                       </TableCell>
-                      <TableCell>
-                        <span className={cn('inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium', estado.color)}>
-                          <EstadoIcon className="w-3.5 h-3.5" />
-                          {estado.label}
-                        </span>
+                      <TableCell onClick={(e) => e.stopPropagation()}>
+                        {pres.estado === 'CONVERTIDO' ? (
+                          <span className={cn('inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium', estado.color)}>
+                            <EstadoIcon className="w-3.5 h-3.5" />
+                            {estado.label}
+                          </span>
+                        ) : (
+                          <select
+                            value={pres.estado}
+                            onChange={(e) => {
+                              const nuevo = e.target.value;
+                              if (nuevo !== pres.estado) handleCambiarEstado(pres.id, nuevo);
+                            }}
+                            className={cn(
+                              'px-2.5 py-1 rounded-full text-xs font-medium border-0 outline-none cursor-pointer',
+                              estado.color
+                            )}
+                            title="Cambiar estado"
+                          >
+                            {Object.entries(ESTADOS)
+                              .filter(([key]) => key !== 'CONVERTIDO')
+                              .map(([key, { label }]) => (
+                                <option key={key} value={key}>{label}</option>
+                              ))}
+                          </select>
+                        )}
                       </TableCell>
                       <TableCell className="text-right">
                         {pres.totalVenta ? (

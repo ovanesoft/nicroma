@@ -10,6 +10,7 @@ router.use(requireTenant);
 // CRUD de carpetas
 router.get('/', carpetaController.listarCarpetas);
 router.get('/siguiente-numero', carpetaController.siguienteNumero);
+router.get('/calendario-etas', carpetaController.calendarioEtas);
 router.get('/:id', carpetaController.obtenerCarpeta);
 router.post('/', carpetaController.crearCarpeta);
 router.put('/:id', carpetaController.actualizarCarpeta);

@@ -34,6 +34,17 @@ const generarNumeroPresupuesto = (tenantId) => generarNumeroPresupuestoCfg(tenan
 const listarPresupuestos = async (req, res) => {
   try {
     const tenantId = req.user.tenant_id;
+
+    // Auto-vencimiento: marcar como VENCIDO los presupuestos cuya fecha de
+    // validez ya pasó y siguen en un estado abierto (no aprobados/convertidos).
+    await prisma.presupuesto.updateMany({
+      where: {
+        tenantId,
+        fechaValidez: { lt: new Date() },
+        estado: { in: ['PENDIENTE', 'EN_PROCESO', 'ENVIADO'] }
+      },
+      data: { estado: 'VENCIDO' }
+    });
     const { 
       page = 1, 
       limit = 20, 
