@@ -105,7 +105,12 @@ const SKIP_FIELDS = [
   'direccion', 'domicilio', 'puertoOrigen', 'puertoDestino', 'puertoTransbordo',
   'buque', 'viaje', 'booking', 'masterBL', 'houseBL', 'depositoFiscal',
   'mercanciaDescripcion', 'itemConcepto', 'observacion', 'condicionPago',
-  'nombreContacto', 'cargoContacto', 'emailContacto'
+  'nombreContacto', 'cargoContacto', 'emailContacto',
+  // Documentos editables de carpetas (BL, certificados) - JSON con texto libre
+  // que incluye caracteres legítimos como | ' & (ej: "FREIGHT COLLECT | AS ARRANGED")
+  'documentosData',
+  // JSON de predespacho con conceptos de texto libre
+  'derechos', 'impuestos', 'gastos', 'mensaje'
 ];
 
 // Sanitización de inputs (prevención XSS)

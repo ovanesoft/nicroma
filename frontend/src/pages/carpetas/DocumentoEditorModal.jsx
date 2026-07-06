@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, Save, Download, Plus, Trash2 } from 'lucide-react';
+import { X, Save, Download, Plus, Trash2, Eye } from 'lucide-react';
 import { Button, Input } from '../../components/ui';
 import api from '../../api/axios';
 import toast from 'react-hot-toast';
@@ -155,6 +155,7 @@ function DocumentoEditorModal({ tipo, carpeta, tenantName, onClose }) {
   const [datos, setDatos] = useState({});
   const [saving, setSaving] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [previewing, setPreviewing] = useState(false);
 
   const esCert = tipo === 'certFlete' || tipo === 'certGastos';
   const campos = esCert ? CAMPOS_CERT : CAMPOS_BL;
@@ -191,25 +192,44 @@ function DocumentoEditorModal({ tipo, carpeta, tenantName, onClose }) {
     }));
   };
 
-  const guardar = async () => {
+  const guardar = async (silent = false) => {
     setSaving(true);
     try {
       const documentosData = { ...(carpeta.documentosData || {}), [tipo]: datos };
       await api.put(`/carpetas/${carpeta.id}`, { documentosData });
-      toast.success('Documento guardado');
+      if (!silent) toast.success('Documento guardado');
       return true;
     } catch (error) {
-      toast.error('Error al guardar el documento');
+      const msg = error.response?.data?.message || error.message || 'Error al guardar el documento';
+      toast.error(msg);
+      console.error('Error guardando documento:', error.response?.data || error);
       return false;
     } finally {
       setSaving(false);
     }
   };
 
+  const previsualizar = async () => {
+    setPreviewing(true);
+    try {
+      const ok = await guardar(true);
+      if (!ok) return;
+      const response = await api.get(`/carpetas/${carpeta.id}/pdf/${SLUGS_PDF[tipo]}`, { responseType: 'blob' });
+      const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
+      window.open(url, '_blank');
+      // Liberar el objeto después de un rato (la pestaña ya lo tiene cargado)
+      setTimeout(() => window.URL.revokeObjectURL(url), 60000);
+    } catch (error) {
+      toast.error('Error al generar la vista previa');
+    } finally {
+      setPreviewing(false);
+    }
+  };
+
   const descargar = async () => {
     setDownloading(true);
     try {
-      const ok = await guardar();
+      const ok = await guardar(true);
       if (!ok) return;
       const response = await api.get(`/carpetas/${carpeta.id}/pdf/${SLUGS_PDF[tipo]}`, { responseType: 'blob' });
       const url = window.URL.createObjectURL(new Blob([response.data]));
@@ -220,6 +240,7 @@ function DocumentoEditorModal({ tipo, carpeta, tenantName, onClose }) {
       link.click();
       link.remove();
       window.URL.revokeObjectURL(url);
+      toast.success('PDF descargado');
     } catch (error) {
       toast.error('Error al generar el PDF');
     } finally {
@@ -317,8 +338,11 @@ function DocumentoEditorModal({ tipo, carpeta, tenantName, onClose }) {
         {/* Footer */}
         <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-slate-200">
           <Button variant="ghost" onClick={onClose}>Cancelar</Button>
-          <Button variant="outline" onClick={guardar} loading={saving}>
+          <Button variant="outline" onClick={() => guardar(false)} loading={saving}>
             <Save className="w-4 h-4" /> Guardar
+          </Button>
+          <Button variant="secondary" onClick={previsualizar} loading={previewing}>
+            <Eye className="w-4 h-4" /> Vista Previa
           </Button>
           <Button onClick={descargar} loading={downloading}>
             <Download className="w-4 h-4" /> Descargar PDF
