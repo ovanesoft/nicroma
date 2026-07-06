@@ -823,9 +823,9 @@ model Carpeta {
   // Formato: { bl: {...}, certFlete: {...}, certGastos: {...} }
   documentosData Json? @default("{}") @map("documentos_data")
 
-  // Datos del consignatario (texto libre, no requiere Cliente registrado)
+  // Datos del shipper/exportador (texto libre, no requiere Cliente registrado)
   // Formato: { empresa, direccion, localidad, zipCode, pais, telefono, email }
-  consigneeData Json? @default("{}") @map("consignee_data")
+  shipperData Json? @default("{}") @map("shipper_data")
 
   usuarioId String   @map("usuario_id") @db.Uuid
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)

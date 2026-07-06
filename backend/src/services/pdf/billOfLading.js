@@ -54,21 +54,23 @@ function generarBillOfLading(carpeta, tenant, logoBuffer = null) {
     }) || [])
   ].join('\n');
 
-  const shipperDefault = carpeta.shipper
+  // Shipper: priorizar los datos libres cargados en la carpeta (shipperData),
+  // si no hay usar el cliente-shipper vinculado
+  const sd = carpeta.shipperData || {};
+  const shipperDefault = sd.empresa
+    ? [
+        sd.empresa,
+        sd.direccion,
+        [sd.localidad, sd.zipCode, sd.pais].filter(Boolean).join(', '),
+        sd.telefono ? `TEL: ${sd.telefono}` : '',
+        sd.email ? `EMAIL: ${sd.email}` : ''
+      ].filter(Boolean).join('\n')
+    : carpeta.shipper
     ? `${carpeta.shipper.razonSocial}\n${carpeta.shipper.direccion || ''}\n${carpeta.shipper.email || ''}`
     : '';
 
-  // Consignee: priorizar los datos libres cargados en la carpeta (consigneeData)
-  const cd = carpeta.consigneeData || {};
-  const consigneeDefault = cd.empresa
-    ? [
-        cd.empresa,
-        cd.direccion,
-        [cd.localidad, cd.zipCode, cd.pais].filter(Boolean).join(', '),
-        cd.telefono ? `TEL: ${cd.telefono}` : '',
-        cd.email ? `EMAIL: ${cd.email}` : ''
-      ].filter(Boolean).join('\n')
-    : carpeta.consignee
+  // Consignee: el cliente de la carpeta (importador local)
+  const consigneeDefault = carpeta.consignee
     ? `${carpeta.consignee.razonSocial} (CUIT ${carpeta.consignee.numeroDocumento || '-'})\n${carpeta.consignee.direccion || ''}`
     : (carpeta.cliente ? `${carpeta.cliente.razonSocial} (CUIT ${carpeta.cliente.numeroDocumento || '-'})\n${carpeta.cliente.direccion || ''}` : '');
 

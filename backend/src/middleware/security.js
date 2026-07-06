@@ -108,23 +108,24 @@ const SKIP_FIELDS = [
   'nombreContacto', 'cargoContacto', 'emailContacto',
   // Documentos editables de carpetas (BL, certificados) - JSON con texto libre
   // que incluye caracteres legítimos como | ' & (ej: "FREIGHT COLLECT | AS ARRANGED")
-  'documentosData',
+  'documentosData', 'shipperData', 'consigneeData',
   // JSON de predespacho con conceptos de texto libre
-  'derechos', 'impuestos', 'gastos', 'mensaje'
+  'derechos', 'impuestos', 'gastos', 'mensaje',
+  // Mercancías: marcas (Marks & Numbers), embalaje
+  'marcas', 'embalaje', 'marks', 'notify', 'mercancias', 'contenedores', 'items'
 ];
 
 // Sanitización de inputs (prevención XSS)
+// IMPORTANTE: solo escapa < y > (vectores XSS reales). No escapa & ' " /
+// porque son caracteres legítimos en textos de negocio (razones sociales,
+// direcciones, descripciones de mercadería, "Marks & Numbers", etc.) y
+// escaparlos corrompía los datos guardados con entidades HTML.
 const sanitizeInput = (req, res, next) => {
-  const sanitize = (obj) => {
+  const sanitize = (obj, skipKeys = []) => {
     if (typeof obj === 'string') {
-      // Escapar caracteres peligrosos
       return obj
-        .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#x27;')
-        .replace(/\//g, '&#x2F;');
+        .replace(/>/g, '&gt;');
     }
     if (typeof obj === 'object' && obj !== null) {
       const sanitized = Array.isArray(obj) ? [] : {};
@@ -133,7 +134,13 @@ const sanitizeInput = (req, res, next) => {
         if (key === '__proto__' || key === 'constructor' || key === 'prototype') {
           continue;
         }
-        sanitized[key] = sanitize(obj[key]);
+        // Respetar campos exentos en CUALQUIER nivel de anidamiento
+        // (antes solo se saltaban en el nivel superior del body)
+        if (skipKeys.includes(key)) {
+          sanitized[key] = obj[key];
+          continue;
+        }
+        sanitized[key] = sanitize(obj[key], skipKeys);
       }
       return sanitized;
     }
@@ -141,13 +148,7 @@ const sanitizeInput = (req, res, next) => {
   };
 
   if (req.body) {
-    const bodyCopy = { ...req.body };
-    SKIP_FIELDS.forEach(field => delete bodyCopy[field]);
-    const sanitizedBody = sanitize(bodyCopy);
-    SKIP_FIELDS.forEach(field => {
-      if (req.body[field]) sanitizedBody[field] = req.body[field];
-    });
-    req.body = sanitizedBody;
+    req.body = sanitize(req.body, SKIP_FIELDS);
   }
 
   if (req.query) {

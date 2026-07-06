@@ -73,8 +73,9 @@ function CarpetaForm() {
   const [contenedores, setContenedores] = useState([]);
   const [gastos, setGastos] = useState([]);
   
-  // Datos del consignatario (texto libre)
-  const [consigneeData, setConsigneeData] = useState(CONSIGNEE_VACIO);
+  // Datos del shipper/exportador (texto libre)
+  const [shipperData, setShipperData] = useState(CONSIGNEE_VACIO);
+  const [shipperExpanded, setShipperExpanded] = useState(false);
   
   // Tracking
   const [trackingData, setTrackingData] = useState({});
@@ -238,7 +239,10 @@ function CarpetaForm() {
       setValue('observaciones', c.observaciones || '');
       setValue('notify', c.notify || '');
       
-      setConsigneeData({ ...CONSIGNEE_VACIO, ...(c.consigneeData || {}) });
+      const sd = { ...CONSIGNEE_VACIO, ...(c.shipperData || {}) };
+      setShipperData(sd);
+      // Expandir la sección Shipper si ya tiene datos cargados
+      if (Object.values(sd).some(v => v)) setShipperExpanded(true);
       setSelectedCliente(c.cliente);
       setMercancias(c.mercancias || []);
       setContenedores(c.contenedores || []);
@@ -350,7 +354,7 @@ function CarpetaForm() {
         contenedores: contenedores.filter(c => c && c.tipo).map(sanitizeContenedor),
         gastos: gastos.filter(g => g && g.concepto).map(sanitizeGasto),
         bancoPdfId: bancoPdfId || null,
-        consigneeData
+        shipperData
       };
 
       if (isEditing) {
@@ -738,10 +742,10 @@ function CarpetaForm() {
               </CardContent>
             </Card>
 
-            {/* Cliente / Shipper y Consignee */}
+            {/* Consignee (cliente) + Shipper (datos libres) */}
             <Card>
               <CardHeader>
-                <CardTitle>Shipper y Consignee</CardTitle>
+                <CardTitle>Consignee</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="relative">
@@ -802,49 +806,68 @@ function CarpetaForm() {
                   )}
                 </div>
 
-                {/* Consignado (Consignee) */}
+                {/* Shipper (plegable) */}
                 <div className="mt-6 pt-4 border-t border-slate-200">
-                  <p className="text-sm font-semibold text-slate-700 mb-3">Consignado (Consignee)</p>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <Input
-                      label="Empresa"
-                      value={consigneeData.empresa}
-                      onChange={(e) => setConsigneeData(prev => ({ ...prev, empresa: e.target.value }))}
-                      className="md:col-span-2"
-                    />
-                    <Input
-                      label="Número de Teléfono"
-                      value={consigneeData.telefono}
-                      onChange={(e) => setConsigneeData(prev => ({ ...prev, telefono: e.target.value }))}
-                    />
-                    <Input
-                      label="Dirección"
-                      value={consigneeData.direccion}
-                      onChange={(e) => setConsigneeData(prev => ({ ...prev, direccion: e.target.value }))}
-                      className="md:col-span-2"
-                    />
-                    <Input
-                      label="Localidad"
-                      value={consigneeData.localidad}
-                      onChange={(e) => setConsigneeData(prev => ({ ...prev, localidad: e.target.value }))}
-                    />
-                    <Input
-                      label="ZIP Code"
-                      value={consigneeData.zipCode}
-                      onChange={(e) => setConsigneeData(prev => ({ ...prev, zipCode: e.target.value }))}
-                    />
-                    <Input
-                      label="País"
-                      value={consigneeData.pais}
-                      onChange={(e) => setConsigneeData(prev => ({ ...prev, pais: e.target.value }))}
-                    />
-                    <Input
-                      label="Email"
-                      type="email"
-                      value={consigneeData.email}
-                      onChange={(e) => setConsigneeData(prev => ({ ...prev, email: e.target.value }))}
-                    />
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShipperExpanded(!shipperExpanded)}
+                    className="w-full flex items-center justify-between mb-3"
+                  >
+                    <p className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                      Shipper
+                      {!shipperExpanded && Object.values(shipperData).some(v => v) && (
+                        <span className="text-xs font-normal text-slate-400">
+                          {shipperData.empresa || 'con datos'}
+                        </span>
+                      )}
+                    </p>
+                    <ChevronDown className={cn(
+                      'w-4 h-4 text-slate-400 transition-transform',
+                      shipperExpanded && 'rotate-180'
+                    )} />
+                  </button>
+                  {shipperExpanded && (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <Input
+                        label="Empresa"
+                        value={shipperData.empresa}
+                        onChange={(e) => setShipperData(prev => ({ ...prev, empresa: e.target.value }))}
+                        className="md:col-span-2"
+                      />
+                      <Input
+                        label="Número de Teléfono"
+                        value={shipperData.telefono}
+                        onChange={(e) => setShipperData(prev => ({ ...prev, telefono: e.target.value }))}
+                      />
+                      <Input
+                        label="Dirección"
+                        value={shipperData.direccion}
+                        onChange={(e) => setShipperData(prev => ({ ...prev, direccion: e.target.value }))}
+                        className="md:col-span-2"
+                      />
+                      <Input
+                        label="Localidad"
+                        value={shipperData.localidad}
+                        onChange={(e) => setShipperData(prev => ({ ...prev, localidad: e.target.value }))}
+                      />
+                      <Input
+                        label="ZIP Code"
+                        value={shipperData.zipCode}
+                        onChange={(e) => setShipperData(prev => ({ ...prev, zipCode: e.target.value }))}
+                      />
+                      <Input
+                        label="País"
+                        value={shipperData.pais}
+                        onChange={(e) => setShipperData(prev => ({ ...prev, pais: e.target.value }))}
+                      />
+                      <Input
+                        label="Email"
+                        type="email"
+                        value={shipperData.email}
+                        onChange={(e) => setShipperData(prev => ({ ...prev, email: e.target.value }))}
+                      />
+                    </div>
+                  )}
                 </div>
 
                 {/* Notify Party */}
@@ -856,15 +879,8 @@ function CarpetaForm() {
                       variant="outline"
                       size="sm"
                       onClick={() => {
-                        const partes = [
-                          consigneeData.empresa,
-                          consigneeData.direccion,
-                          [consigneeData.localidad, consigneeData.zipCode, consigneeData.pais].filter(Boolean).join(', '),
-                          consigneeData.telefono ? `TEL: ${consigneeData.telefono}` : '',
-                          consigneeData.email ? `EMAIL: ${consigneeData.email}` : ''
-                        ].filter(Boolean);
-                        setValue('notify', partes.length > 0 ? partes.join('\n') : 'SAME AS CONSIGNEE');
-                        toast.success('Datos del Consignee copiados a Notify Party');
+                        setValue('notify', 'SAME AS CONSIGNEE');
+                        toast.success('Notify Party = Same as Consignee');
                       }}
                     >
                       Igual que Consignee
@@ -1882,7 +1898,7 @@ function CarpetaForm() {
       {documentoEditor && carpetaActual && (
         <DocumentoEditorModal
           tipo={documentoEditor}
-          carpeta={{ ...carpetaActual, mercancias, contenedores, gastos }}
+          carpeta={{ ...carpetaActual, mercancias, contenedores, gastos, shipperData }}
           tenantName={companyData?.data?.company?.name || user?.tenantName}
           tenantCuit={companyData?.data?.payment?.bankCuit}
           onClose={() => setDocumentoEditor(null)}

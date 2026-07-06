@@ -107,17 +107,20 @@ function calcularDefaults(tipo, carpeta, tenantName, tenantCuit) {
     ...(carpeta.contenedores?.map(c => [c.tipo, c.numero, c.precinto].filter(Boolean).join('/')) || [])
   ].join('\n');
 
-  // Consignee: priorizar datos libres del formulario (consigneeData)
-  const cd = carpeta.consigneeData || {};
-  const consigneeStr = cd.empresa
+  // Shipper: priorizar datos libres del formulario (shipperData)
+  const sd = carpeta.shipperData || {};
+  const shipperStr = sd.empresa
     ? [
-        cd.empresa,
-        cd.direccion,
-        [cd.localidad, cd.zipCode, cd.pais].filter(Boolean).join(', '),
-        cd.telefono ? `TEL: ${cd.telefono}` : '',
-        cd.email ? `EMAIL: ${cd.email}` : ''
+        sd.empresa,
+        sd.direccion,
+        [sd.localidad, sd.zipCode, sd.pais].filter(Boolean).join(', '),
+        sd.telefono ? `TEL: ${sd.telefono}` : '',
+        sd.email ? `EMAIL: ${sd.email}` : ''
       ].filter(Boolean).join('\n')
-    : carpeta.consignee
+    : (carpeta.shipper ? `${carpeta.shipper.razonSocial}\n${carpeta.shipper.direccion || ''}` : '');
+
+  // Consignee: el cliente de la carpeta (importador)
+  const consigneeStr = carpeta.consignee
     ? `${carpeta.consignee.razonSocial} (CUIT ${carpeta.consignee.numeroDocumento || '-'})\n${carpeta.consignee.direccion || ''}`
     : (carpeta.cliente ? `${carpeta.cliente.razonSocial} (CUIT ${carpeta.cliente.numeroDocumento || '-'})\n${carpeta.cliente.direccion || ''}` : '');
 
@@ -128,7 +131,7 @@ function calcularDefaults(tipo, carpeta, tenantName, tenantCuit) {
     blNumber: carpeta.houseBL || carpeta.numero || '',
     references: carpeta.referenciaInterna || carpeta.referenciaCliente || '',
     exportReferences: '',
-    shipper: carpeta.shipper ? `${carpeta.shipper.razonSocial}\n${carpeta.shipper.direccion || ''}` : '',
+    shipper: shipperStr,
     consignee: consigneeStr,
     notifyParty: carpeta.notify || 'SAME AS CONSIGNEE',
     routingInstructions: '',
