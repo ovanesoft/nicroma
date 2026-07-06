@@ -190,6 +190,8 @@ function PresupuestoForm() {
     houseBL: '',
     referenciaCliente: '',
     depositoFiscal: '',
+    transito: '',
+    frecuencia: '',
     incoterm: '',
     condiciones: '',
     moneda: 'USD',
@@ -294,6 +296,8 @@ function PresupuestoForm() {
         houseBL: presupuesto.houseBL || '',
         referenciaCliente: presupuesto.referenciaCliente || '',
         depositoFiscal: presupuesto.depositoFiscal || '',
+        transito: presupuesto.transito || '',
+        frecuencia: presupuesto.frecuencia || '',
         incoterm: presupuesto.incoterm || '',
         condiciones: presupuesto.condiciones || '',
         moneda: presupuesto.moneda || 'USD',
@@ -1360,6 +1364,19 @@ function PresupuestoForm() {
                 placeholder="Terminal, depósito..."
                 value={formData.depositoFiscal}
                 onChange={(e) => handleChange('depositoFiscal', e.target.value)}
+              />
+              <Input
+                label="Tiempo de Tránsito (días)"
+                type="number"
+                placeholder="Ej: 35"
+                value={formData.transito || ''}
+                onChange={(e) => handleChange('transito', e.target.value)}
+              />
+              <Input
+                label="Salidas"
+                placeholder="Ej: Semanal, Quincenal..."
+                value={formData.frecuencia || ''}
+                onChange={(e) => handleChange('frecuencia', e.target.value)}
               />
             </CardContent>
           </Card>

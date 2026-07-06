@@ -13,6 +13,17 @@ const { calcularTotalesItem } = require('../utils/itemCalc');
 // Usa la configuración del tenant (formato y siguiente número manual)
 const generarNumeroCarpeta = (tenantId, area, sector) => generarNumeroCarpetaCfg(tenantId, area, sector);
 
+// Parsear fecha evitando el corrimiento de día por timezone:
+// "2026-07-06" se interpretaría como medianoche UTC (día anterior en Argentina).
+// Se fija mediodía UTC para que siempre caiga en el día correcto.
+const parseFecha = (value) => {
+  if (!value) return null;
+  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return new Date(value + 'T12:00:00.000Z');
+  }
+  return new Date(value);
+};
+
 // Listar carpetas
 const listarCarpetas = async (req, res) => {
   try {
@@ -187,7 +198,7 @@ const crearCarpeta = async (req, res) => {
         tenantId,
         usuarioId,
         numero,
-        estado: data.estado || 'HOUSE',
+        estado: data.estado || 'ABIERTA',
         area: data.area,
         sector: data.sector,
         tipoOperacion: data.tipoOperacion,
@@ -196,13 +207,13 @@ const crearCarpeta = async (req, res) => {
         consolidado: data.consolidado || false,
         
         // Fechas
-        fechaEmision: data.fechaEmision ? new Date(data.fechaEmision) : new Date(),
-        fechaSalidaEstimada: data.etd ? new Date(data.etd) : null,
-        fechaSalidaConfirmada: data.atd ? new Date(data.atd) : null,
-        fechaLlegadaEstimada: data.eta ? new Date(data.eta) : null,
-        fechaLlegadaConfirmada: data.ata ? new Date(data.ata) : null,
-        fechaCarga: data.fechaCarga ? new Date(data.fechaCarga) : null,
-        fechaDescarga: data.fechaDescarga ? new Date(data.fechaDescarga) : null,
+        fechaEmision: data.fechaEmision ? parseFecha(data.fechaEmision) : new Date(),
+        fechaSalidaEstimada: parseFecha(data.etd),
+        fechaSalidaConfirmada: parseFecha(data.atd),
+        fechaLlegadaEstimada: parseFecha(data.eta),
+        fechaLlegadaConfirmada: parseFecha(data.ata),
+        fechaCarga: parseFecha(data.fechaCarga),
+        fechaDescarga: parseFecha(data.fechaDescarga),
         
         // Lugares
         puertoOrigen: data.puertoOrigen,
@@ -377,18 +388,18 @@ const actualizarCarpeta = async (req, res) => {
     // Preparar datos para actualizar
     const updateData = {
       ...restData,
-      // Convertir fechas
-      fechaEmision: restData.fechaEmision ? new Date(restData.fechaEmision) : undefined,
-      fechaSalidaEstimada: restData.etd ? new Date(restData.etd) : undefined,
-      fechaSalidaConfirmada: restData.atd ? new Date(restData.atd) : undefined,
-      fechaLlegadaEstimada: restData.eta ? new Date(restData.eta) : undefined,
-      fechaLlegadaConfirmada: restData.ata ? new Date(restData.ata) : undefined,
-      fechaCarga: restData.fechaCarga ? new Date(restData.fechaCarga) : undefined,
-      fechaDescarga: restData.fechaDescarga ? new Date(restData.fechaDescarga) : undefined,
-      cutOffDoc: restData.cutOffDoc ? new Date(restData.cutOffDoc) : undefined,
-      cutOffFisico: restData.cutOffFisico ? new Date(restData.cutOffFisico) : undefined,
-      cutOffIMO: restData.cutOffIMO ? new Date(restData.cutOffIMO) : undefined,
-      cutOffVGM: restData.cutOffVGM ? new Date(restData.cutOffVGM) : undefined
+      // Convertir fechas (parseFecha evita corrimiento de día por timezone)
+      fechaEmision: restData.fechaEmision ? parseFecha(restData.fechaEmision) : undefined,
+      fechaSalidaEstimada: restData.etd ? parseFecha(restData.etd) : undefined,
+      fechaSalidaConfirmada: restData.atd ? parseFecha(restData.atd) : undefined,
+      fechaLlegadaEstimada: restData.eta ? parseFecha(restData.eta) : undefined,
+      fechaLlegadaConfirmada: restData.ata ? parseFecha(restData.ata) : undefined,
+      fechaCarga: restData.fechaCarga ? parseFecha(restData.fechaCarga) : undefined,
+      fechaDescarga: restData.fechaDescarga ? parseFecha(restData.fechaDescarga) : undefined,
+      cutOffDoc: restData.cutOffDoc ? parseFecha(restData.cutOffDoc) : undefined,
+      cutOffFisico: restData.cutOffFisico ? parseFecha(restData.cutOffFisico) : undefined,
+      cutOffIMO: restData.cutOffIMO ? parseFecha(restData.cutOffIMO) : undefined,
+      cutOffVGM: restData.cutOffVGM ? parseFecha(restData.cutOffVGM) : undefined
     };
 
     // Eliminar campos undefined y los que no son del modelo Carpeta
@@ -666,7 +677,7 @@ const duplicarCarpeta = async (req, res) => {
         ...carpetaData,
         numero,
         usuarioId,
-        estado: 'HOUSE',
+        estado: 'ABIERTA',
         fechaEmision: new Date(),
         // Duplicar relaciones
         mercancias: {

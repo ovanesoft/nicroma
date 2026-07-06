@@ -3,14 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import { 
   Plus, Search, Filter, FileText, Clock, CheckCircle, 
   XCircle, ArrowRight, MessageSquare, DollarSign, Calendar,
-  MoreVertical, Send, FolderOpen, Sparkles
+  MoreVertical, Send, FolderOpen, Sparkles, Copy
 } from 'lucide-react';
 import Layout from '../../components/layout/Layout';
 import { 
   Card, CardContent, Button, Input, Badge,
   Table, TableHeader, TableBody, TableRow, TableHead, TableCell
 } from '../../components/ui';
-import { usePresupuestos, useCambiarEstadoPresupuesto, useConvertirPresupuesto, useAceptarPresupuesto } from '../../hooks/useApi';
+import { usePresupuestos, useCambiarEstadoPresupuesto, useConvertirPresupuesto, useAceptarPresupuesto, useClonarPresupuesto } from '../../hooks/useApi';
 import { formatDate, formatCurrency, cn } from '../../lib/utils';
 import toast from 'react-hot-toast';
 
@@ -38,6 +38,7 @@ function PresupuestosPage() {
   const cambiarEstado = useCambiarEstadoPresupuesto();
   const convertir = useConvertirPresupuesto();
   const aceptar = useAceptarPresupuesto();
+  const clonar = useClonarPresupuesto();
 
   const presupuestos = data?.data?.presupuestos || [];
   const pagination = data?.data?.pagination || {};
@@ -68,6 +69,18 @@ function PresupuestosPage() {
       navigate(`/carpetas/${result.data.carpeta.id}`);
     } catch (error) {
       toast.error(error.response?.data?.message || 'Error al convertir');
+    }
+  };
+
+  const handleClonar = async (id) => {
+    if (!confirm('¿Clonar este presupuesto? Se creará uno nuevo con todos los datos copiados.')) return;
+    try {
+      const result = await clonar.mutateAsync(id);
+      toast.success(result.message || 'Presupuesto clonado');
+      setActiveMenu(null);
+      navigate(`/presupuestos/${result.data.presupuesto.id}`);
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Error al clonar');
     }
   };
 
@@ -243,6 +256,14 @@ function PresupuestosPage() {
                                 >
                                   <FileText className="w-4 h-4" />
                                   Ver detalle
+                                </button>
+                                
+                                <button
+                                  onClick={() => handleClonar(pres.id)}
+                                  className="w-full px-4 py-2 text-left text-sm hover:bg-slate-50 flex items-center gap-2 text-indigo-600"
+                                >
+                                  <Copy className="w-4 h-4" />
+                                  Clonar
                                 </button>
                                 
                                 {pres.estado === 'PENDIENTE' && (

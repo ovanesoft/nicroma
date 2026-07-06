@@ -225,6 +225,8 @@ const crearPresupuesto = async (req, res) => {
         puertoTransbordo: data.puertoTransbordo || null,
         fechaSalidaEstimada: data.fechaSalidaEstimada ? new Date(data.fechaSalidaEstimada) : null,
         fechaLlegadaEstimada: data.fechaLlegadaEstimada ? new Date(data.fechaLlegadaEstimada) : null,
+        transito: data.transito ? parseInt(data.transito) : null,
+        frecuencia: data.frecuencia || null,
         buque: data.buque || null,
         viaje: data.viaje || null,
         transportista: data.transportista || null,
@@ -515,6 +517,8 @@ const actualizarPresupuesto = async (req, res) => {
           fechaValidez: restData.fechaValidez ? new Date(restData.fechaValidez) : null,
           fechaSalidaEstimada: restData.fechaSalidaEstimada ? new Date(restData.fechaSalidaEstimada) : null,
           fechaLlegadaEstimada: restData.fechaLlegadaEstimada ? new Date(restData.fechaLlegadaEstimada) : null,
+          transito: restData.transito ? parseInt(restData.transito) : null,
+          frecuencia: restData.frecuencia || null,
           
           // Transporte
           buque: restData.buque,
@@ -673,6 +677,93 @@ const actualizarPresupuesto = async (req, res) => {
   }
 };
 
+// Clonar presupuesto: copia todos los datos (incluyendo items, mercancías y
+// contenedores) en un presupuesto nuevo con numeración propia.
+const clonarPresupuesto = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const tenantId = req.user.tenant_id;
+    const usuarioId = req.user.id;
+
+    const original = await prisma.presupuesto.findFirst({
+      where: { id, tenantId },
+      include: {
+        items: true,
+        mercancias: true,
+        contenedores: true
+      }
+    });
+
+    if (!original) {
+      return res.status(404).json({
+        success: false,
+        message: 'Presupuesto no encontrado'
+      });
+    }
+
+    const numero = await generarNumeroPresupuesto(tenantId);
+
+    // Excluir campos que no se clonan
+    const {
+      id: _id, numero: _numero, createdAt, updatedAt,
+      items, mercancias, contenedores,
+      carpetaId, estado, motivoRechazo,
+      fechaRespuesta, fechaAprobacion,
+      vistoPorCliente, fechaVistoPorCliente,
+      vistoPorTenant, fechaVistoPorTenant,
+      totalVenta, totalCosto,
+      ...presupuestoData
+    } = original;
+
+    const nuevo = await prisma.presupuesto.create({
+      data: {
+        ...presupuestoData,
+        numero,
+        usuarioId,
+        estado: 'EN_PROCESO',
+        fechaSolicitud: new Date(),
+        vistoPorTenant: true,
+        items: {
+          create: items.map(({ id, presupuestoId, createdAt, updatedAt, ...i }) => i)
+        },
+        mercancias: {
+          create: mercancias.map(({ id, presupuestoId, contenedorId, createdAt, updatedAt, ...m }) => m)
+        },
+        contenedores: {
+          create: contenedores.map(({ id, presupuestoId, createdAt, updatedAt, ...c }) => c)
+        }
+      },
+      include: {
+        cliente: true,
+        items: true,
+        mercancias: true,
+        contenedores: true
+      }
+    });
+
+    // Recalcular totales del clon
+    const totalV = nuevo.items.reduce((s, i) => s + (i.totalVenta || 0), 0);
+    const totalC = nuevo.items.reduce((s, i) => s + (i.totalCosto || 0), 0);
+    const final = await prisma.presupuesto.update({
+      where: { id: nuevo.id },
+      data: { totalVenta: totalV, totalCosto: totalC },
+      include: { cliente: true }
+    });
+
+    res.status(201).json({
+      success: true,
+      message: `Presupuesto clonado como ${numero}`,
+      data: { presupuesto: final }
+    });
+  } catch (error) {
+    console.error('Error clonando presupuesto:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al clonar presupuesto'
+    });
+  }
+};
+
 // Cambiar estado del presupuesto
 const cambiarEstado = async (req, res) => {
   try {
@@ -783,7 +874,7 @@ async function realizarConversionACarpeta({ presupuesto, tenantId, usuarioId, au
         tenantId,
         usuarioId,
         numero: numeroCarpeta,
-        estado: 'HOUSE',
+        estado: 'ABIERTA',
         area: presupuesto.area || 'Marítimo',
         sector: presupuesto.sector || 'Importación',
         tipoOperacion: presupuesto.tipoOperacion || 'FCL-FCL',
@@ -810,6 +901,8 @@ async function realizarConversionACarpeta({ presupuesto, tenantId, usuarioId, au
         // Fechas
         fechaSalidaEstimada: presupuesto.fechaSalidaEstimada || null,
         fechaLlegadaEstimada: presupuesto.fechaLlegadaEstimada || null,
+        transito: presupuesto.transito || null,
+        frecuencia: presupuesto.frecuencia || null,
 
         incoterm: presupuesto.incoterm,
         moneda: presupuesto.moneda || 'USD',
@@ -1496,6 +1589,7 @@ module.exports = {
   cambiarEstado,
   convertirACarpeta,
   aceptarPresupuesto,
+  clonarPresupuesto,
   agregarMensaje,
   obtenerMensajes,
   listarPresupuestosCliente,

@@ -1311,6 +1311,62 @@ const deleteTenant = async (req, res) => {
   }
 };
 
+// ===========================================
+// TIPOS DE CAMBIO DEL DÍA (guardados en settings del tenant)
+// ===========================================
+
+const getTiposCambio = async (req, res) => {
+  try {
+    const tenantId = req.user.tenant_id;
+    if (!tenantId) {
+      return res.status(400).json({ success: false, message: 'Usuario sin organización asignada' });
+    }
+
+    const result = await query('SELECT settings FROM tenants WHERE id = $1', [tenantId]);
+    const settings = result.rows[0]?.settings || {};
+
+    res.json({
+      success: true,
+      data: {
+        tiposCambio: settings.tiposCambio || { usd: null, eur: null, fecha: null }
+      }
+    });
+  } catch (error) {
+    console.error('Error obteniendo tipos de cambio:', error);
+    res.status(500).json({ success: false, message: 'Error al obtener tipos de cambio' });
+  }
+};
+
+const updateTiposCambio = async (req, res) => {
+  try {
+    const tenantId = req.user.tenant_id;
+    const { usd, eur } = req.body;
+
+    if (!tenantId) {
+      return res.status(400).json({ success: false, message: 'Usuario sin organización asignada' });
+    }
+
+    const tiposCambio = {
+      usd: usd != null && usd !== '' ? parseFloat(usd) : null,
+      eur: eur != null && eur !== '' ? parseFloat(eur) : null,
+      fecha: new Date().toISOString()
+    };
+
+    await query(
+      `UPDATE tenants
+       SET settings = COALESCE(settings, '{}'::jsonb) || jsonb_build_object('tiposCambio', $1::jsonb),
+           updated_at = NOW()
+       WHERE id = $2`,
+      [JSON.stringify(tiposCambio), tenantId]
+    );
+
+    res.json({ success: true, data: { tiposCambio } });
+  } catch (error) {
+    console.error('Error actualizando tipos de cambio:', error);
+    res.status(500).json({ success: false, message: 'Error al actualizar tipos de cambio' });
+  }
+};
+
 module.exports = {
   createTenant,
   listTenants,
@@ -1330,6 +1386,8 @@ module.exports = {
   uploadCompanyLogo,
   deleteCompanyLogo,
   generatePortalSlug,
-  getPortalInfo
+  getPortalInfo,
+  getTiposCambio,
+  updateTiposCambio
 };
 

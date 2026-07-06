@@ -14,6 +14,8 @@ import {
   Card, CardContent, CardHeader, CardTitle, Button, Input, Badge
 } from '../../components/ui';
 import TerminalSelector from '../../components/ui/TerminalSelector';
+import DocumentoEditorModal from './DocumentoEditorModal';
+import { useAuth } from '../../context/AuthContext';
 import { 
   useCarpeta, useCreateCarpeta, useUpdateCarpeta, useBuscarClientes,
   useCreatePrefacturaDesdeCarpeta, useTrack, useIntegrations, useCuentasBancarias,
@@ -32,6 +34,7 @@ const carpetaSchema = z.object({
   sector: z.enum(['Importación', 'Exportación']),
   tipoOperacion: z.string().min(1, 'Requerido'),
   tipoOperacionAerea: z.string().optional(),
+  estado: z.string().optional(),
   clienteId: z.string().uuid('Seleccione un cliente'),
   puertoOrigen: z.string().optional(),
   puertoDestino: z.string().optional(),
@@ -52,6 +55,7 @@ const carpetaSchema = z.object({
 function CarpetaForm() {
   const navigate = useNavigate();
   const { id } = useParams();
+  const { user } = useAuth();
   const isEditing = !!id;
 
   const [activeTab, setActiveTab] = useState('general');
@@ -126,6 +130,7 @@ function CarpetaForm() {
 
   const [downloadingPDF, setDownloadingPDF] = useState(false);
   const [showPDFMenu, setShowPDFMenu] = useState(false);
+  const [documentoEditor, setDocumentoEditor] = useState(null); // 'bl' | 'certFlete' | 'certGastos'
   const descargarPDF = useDescargarCarpetaPDF();
 
   const carpetaActual = carpetaData?.data?.carpeta;
@@ -206,6 +211,7 @@ function CarpetaForm() {
       setValue('sector', c.sector);
       setValue('tipoOperacion', c.tipoOperacion);
       setValue('tipoOperacionAerea', c.tipoOperacionAerea || '');
+      setValue('estado', c.estado || 'ABIERTA');
       setValue('clienteId', c.clienteId);
       setValue('puertoOrigen', c.puertoOrigen || '');
       setValue('puertoDestino', c.puertoDestino || '');
@@ -557,13 +563,13 @@ function CarpetaForm() {
                     {carpetaArea === 'Marítimo' && (
                       <button
                         type="button"
-                        onClick={() => descargarDocumentoCarpeta('bill-of-lading', 'BL')}
+                        onClick={() => { setShowPDFMenu(false); setDocumentoEditor('bl'); }}
                         className="w-full px-4 py-2 text-left text-sm hover:bg-slate-50 flex items-center gap-2"
                       >
                         <Ship className="w-4 h-4 text-cyan-600" />
                         <div>
                           <div className="font-medium">Bill of Lading (BL)</div>
-                          <div className="text-xs text-slate-400">Conocimiento de embarque</div>
+                          <div className="text-xs text-slate-400">Editable antes de generar</div>
                         </div>
                       </button>
                     )}
@@ -586,25 +592,25 @@ function CarpetaForm() {
 
                     <button
                       type="button"
-                      onClick={() => descargarDocumentoCarpeta('cert-flete', 'Cert_Flete')}
+                      onClick={() => { setShowPDFMenu(false); setDocumentoEditor('certFlete'); }}
                       className="w-full px-4 py-2 text-left text-sm hover:bg-slate-50 flex items-center gap-2"
                     >
                       <Award className="w-4 h-4 text-teal-600" />
                       <div>
                         <div className="font-medium">Certificación de Flete</div>
-                        <div className="text-xs text-slate-400">Detalle de costos de flete</div>
+                        <div className="text-xs text-slate-400">Editable antes de generar</div>
                       </div>
                     </button>
 
                     <button
                       type="button"
-                      onClick={() => descargarDocumentoCarpeta('cert-gastos', 'Cert_Gastos')}
+                      onClick={() => { setShowPDFMenu(false); setDocumentoEditor('certGastos'); }}
                       className="w-full px-4 py-2 text-left text-sm hover:bg-slate-50 flex items-center gap-2"
                     >
                       <FileCheck className="w-4 h-4 text-violet-600" />
                       <div>
                         <div className="font-medium">Certificación de Gastos</div>
-                        <div className="text-xs text-slate-400">Gastos por proveedor</div>
+                        <div className="text-xs text-slate-400">Editable antes de generar</div>
                       </div>
                     </button>
                   </div>
@@ -691,6 +697,19 @@ function CarpetaForm() {
                     {TIPOS_OPERACION.map(t => <option key={t} value={t}>{t}</option>)}
                   </select>
                 </div>
+                {isEditing && (
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1.5">Estado</label>
+                    <select
+                      {...register('estado')}
+                      className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none bg-white"
+                    >
+                      {Object.entries(CARPETA_ESTADOS).map(([key, { label }]) => (
+                        <option key={key} value={key}>{label}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
                 {/* Tipo de Operación Aérea - solo visible para cargas aéreas */}
                 {watch('area') === 'Aéreo' && (
                   <div>
@@ -1751,6 +1770,16 @@ function CarpetaForm() {
           </Card>
         )}
       </form>
+
+      {/* Modal editor de documentos (BL / Certificados) */}
+      {documentoEditor && carpetaActual && (
+        <DocumentoEditorModal
+          tipo={documentoEditor}
+          carpeta={{ ...carpetaActual, mercancias, contenedores, gastos }}
+          tenantName={user?.tenantName}
+          onClose={() => setDocumentoEditor(null)}
+        />
+      )}
     </Layout>
   );
 }

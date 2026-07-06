@@ -787,6 +787,26 @@ export function useCompanyConfig() {
   return useApiQuery(['companyConfig'], '/tenants/my/company');
 }
 
+// Tipos de cambio del día (USD/EUR) del tenant
+export function useTiposCambio() {
+  return useApiQuery(['tiposCambio'], '/tenants/my/tipos-cambio', {
+    staleTime: 60000
+  });
+}
+
+export function useUpdateTiposCambio() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (data) => {
+      const response = await api.put('/tenants/my/tipos-cambio', data);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tiposCambio'] });
+    }
+  });
+}
+
 // Hook para obtener cuentas bancarias del tenant (para selectores en presupuesto/carpeta)
 export function useCuentasBancarias() {
   const { data, ...rest } = useApiQuery(['companyConfig'], '/tenants/my/company');
@@ -1069,6 +1089,20 @@ export function useCambiarEstadoPresupuesto() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['presupuestos'] });
       queryClient.invalidateQueries({ queryKey: ['presupuesto', variables.id] });
+    }
+  });
+}
+
+// Clonar presupuesto
+export function useClonarPresupuesto() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id) => {
+      const response = await api.post(`/presupuestos/${id}/clonar`);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['presupuestos'] });
     }
   });
 }

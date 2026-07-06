@@ -213,10 +213,9 @@ export const getNavigation = (role, modules = null) => {
 
 // Estados de carpetas
 export const CARPETA_ESTADOS = {
-  HOUSE: { label: 'House', color: 'bg-blue-100 text-blue-700' },
-  DIRECTA: { label: 'Directa', color: 'bg-green-100 text-green-700' },
-  CONSOLIDADA: { label: 'Consolidada', color: 'bg-purple-100 text-purple-700' },
-  CERRADA: { label: 'Cerrada', color: 'bg-slate-100 text-slate-700' },
+  ABIERTA: { label: 'Abierta', color: 'bg-green-100 text-green-700' },
+  CERRADA: { label: 'Cerrada', color: 'bg-amber-100 text-amber-700' },
+  FINALIZADA: { label: 'Finalizada', color: 'bg-blue-100 text-blue-700' },
   CANCELADA: { label: 'Cancelada', color: 'bg-red-100 text-red-700' }
 };
 

@@ -819,6 +819,10 @@ model Carpeta {
   // Banco seleccionado para PDF (ID de la cuenta bancaria del tenant)
   bancoPdfId String? @map("banco_pdf_id") @db.VarChar(50)
 
+  // Datos editables de documentos generados (BL, certificados)
+  // Formato: { bl: {...}, certFlete: {...}, certGastos: {...} }
+  documentosData Json? @default("{}") @map("documentos_data")
+
   usuarioId String   @map("usuario_id") @db.Uuid
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -1549,6 +1553,10 @@ model Presupuesto {
   // Fechas de viaje (ETD/ETA)
   fechaSalidaEstimada  DateTime? @map("etd") @db.Timestamptz(6)
   fechaLlegadaEstimada DateTime? @map("eta") @db.Timestamptz(6)
+
+  // Tiempo de tránsito (días) y frecuencia de salidas
+  transito   Int?
+  frecuencia String? @db.VarChar(50)
 
   // Transporte
   buque             String? @db.VarChar(100)

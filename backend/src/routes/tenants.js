@@ -28,6 +28,15 @@ router.get('/my/company',
   tenantController.getCompanyConfig
 );
 
+// Tipos de cambio del día
+router.get('/my/tipos-cambio',
+  tenantController.getTiposCambio
+);
+router.put('/my/tipos-cambio',
+  requireRole('admin', 'manager'),
+  tenantController.updateTiposCambio
+);
+
 // Actualizar configuración de la empresa
 router.put('/my/company',
   requireRole('admin', 'root'),

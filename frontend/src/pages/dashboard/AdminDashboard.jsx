@@ -1,19 +1,113 @@
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Ship, Users, FileText, DollarSign, TrendingUp, Receipt, 
   Clock, CheckCircle, AlertCircle, ArrowRight, Building,
-  Calendar, Package, ExternalLink, Globe, FileCheck, MessageSquare
+  Calendar, Package, ExternalLink, Globe, FileCheck, MessageSquare,
+  Banknote, Save
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, Button, Badge } from '../../components/ui';
 import { useAuth } from '../../context/AuthContext';
-import { useStats, useCompanyConfig, useNotificaciones } from '../../hooks/useApi';
+import { useStats, useCompanyConfig, useNotificaciones, useTiposCambio, useUpdateTiposCambio } from '../../hooks/useApi';
 import { formatDate, cn } from '../../lib/utils';
+import toast from 'react-hot-toast';
+
+// Widget de tipos de cambio del día (USD / EUR)
+function TiposCambioWidget() {
+  const { data, isLoading } = useTiposCambio();
+  const updateTC = useUpdateTiposCambio();
+  const [editing, setEditing] = useState(false);
+  const [valores, setValores] = useState({ usd: '', eur: '' });
+
+  const tc = data?.data?.tiposCambio || {};
+
+  useEffect(() => {
+    if (tc && !editing) {
+      setValores({ usd: tc.usd ?? '', eur: tc.eur ?? '' });
+    }
+  }, [data]);
+
+  const handleGuardar = async () => {
+    try {
+      await updateTC.mutateAsync(valores);
+      toast.success('Tipos de cambio actualizados');
+      setEditing(false);
+    } catch {
+      toast.error('Error al guardar');
+    }
+  };
+
+  const fmt = (v) => v != null && v !== '' 
+    ? Number(v).toLocaleString('es-AR', { minimumFractionDigits: 2 }) 
+    : '—';
+
+  return (
+    <div className="flex items-center gap-4 p-4 rounded-xl border border-emerald-200 bg-emerald-50/50 flex-wrap">
+      <div className="flex items-center gap-2">
+        <div className="p-2.5 bg-emerald-100 rounded-lg">
+          <Banknote className="w-5 h-5 text-emerald-600" />
+        </div>
+        <div>
+          <p className="font-medium text-emerald-900 text-sm">Tipo de cambio del día</p>
+          {tc.fecha && (
+            <p className="text-xs text-emerald-600">Actualizado: {formatDate(tc.fecha)}</p>
+          )}
+        </div>
+      </div>
+      <div className="flex items-center gap-3 flex-1 justify-end flex-wrap">
+        {editing ? (
+          <>
+            <div className="flex items-center gap-1.5">
+              <span className="text-sm font-semibold text-emerald-800">USD</span>
+              <input type="number" step="0.01" value={valores.usd}
+                onChange={(e) => setValores(prev => ({ ...prev, usd: e.target.value }))}
+                className="w-28 px-2 py-1.5 rounded-lg border border-emerald-300 text-sm text-right bg-white outline-none focus:border-emerald-500"
+                placeholder="0.00" autoFocus />
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-sm font-semibold text-emerald-800">EUR</span>
+              <input type="number" step="0.01" value={valores.eur}
+                onChange={(e) => setValores(prev => ({ ...prev, eur: e.target.value }))}
+                className="w-28 px-2 py-1.5 rounded-lg border border-emerald-300 text-sm text-right bg-white outline-none focus:border-emerald-500"
+                placeholder="0.00" />
+            </div>
+            <Button size="sm" onClick={handleGuardar} loading={updateTC.isPending}
+              className="bg-emerald-600 hover:bg-emerald-700">
+              <Save className="w-4 h-4" /> Guardar
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => setEditing(false)}>
+              Cancelar
+            </Button>
+          </>
+        ) : (
+          <>
+            <div className="text-right">
+              <p className="text-xs text-emerald-600 font-medium">USD</p>
+              <p className="text-lg font-bold text-emerald-900 tabular-nums">$ {fmt(tc.usd)}</p>
+            </div>
+            <div className="text-right ml-2">
+              <p className="text-xs text-emerald-600 font-medium">EUR</p>
+              <p className="text-lg font-bold text-emerald-900 tabular-nums">$ {fmt(tc.eur)}</p>
+            </div>
+            <Button size="sm" variant="outline" onClick={() => setEditing(true)}
+              className="ml-3 text-emerald-700 border-emerald-300 hover:bg-emerald-100">
+              Editar
+            </Button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
 
 const ESTADO_COLORS = {
+  ABIERTA: 'bg-green-100 text-green-700',
+  CERRADA: 'bg-amber-100 text-amber-700',
+  FINALIZADA: 'bg-blue-100 text-blue-700',
+  CANCELADA: 'bg-red-100 text-red-700',
   HOUSE: 'bg-blue-100 text-blue-700',
   EN_TRANSITO: 'bg-amber-100 text-amber-700',
   ARRIBADA: 'bg-green-100 text-green-700',
-  CERRADA: 'bg-slate-100 text-slate-700',
   PENDIENTE: 'bg-amber-100 text-amber-700',
   PAGADA: 'bg-green-100 text-green-700',
   PAGADA_PARCIAL: 'bg-blue-100 text-blue-700'
@@ -149,6 +243,9 @@ function AdminDashboard() {
           </div>
         </div>
       )}
+
+      {/* Tipos de cambio del día */}
+      <TiposCambioWidget />
 
       {/* Alertas de solicitudes nuevas */}
       {((notificaciones.presupuestosPendientes || 0) > 0 || (notificaciones.predespachosPendientes || 0) > 0) && (
