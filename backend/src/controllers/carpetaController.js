@@ -747,7 +747,8 @@ async function _cargarCarpetaParaPDF(tenantId, carpetaId, { conProveedorEnGastos
       cuentasBancarias: true,
       companyAddress: true,
       companyPhone: true,
-      companyEmail: true
+      companyEmail: true,
+      paymentBankCuit: true
     }
   });
 

@@ -188,7 +188,7 @@ const crearCliente = async (req, res) => {
     if (existing) {
       return res.status(409).json({
         success: false,
-        message: 'Ya existe un cliente con ese número de documento'
+        message: `El documento ${data.numeroDocumento} ya está registrado para "${existing.razonSocial}". Usá otro número o editá ese registro.`
       });
     }
 

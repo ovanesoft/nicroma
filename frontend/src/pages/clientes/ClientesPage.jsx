@@ -77,8 +77,10 @@ function ClientesPage() {
     try {
       if (editingCliente) {
         await updateCliente.mutateAsync(formData);
+        toast.success('Cliente actualizado');
       } else {
         await createCliente.mutateAsync(formData);
+        toast.success('Cliente creado');
       }
       setModalOpen(false);
       setEditingCliente(null);
@@ -86,6 +88,7 @@ function ClientesPage() {
       refetch();
     } catch (error) {
       console.error('Error:', error);
+      toast.error(error.response?.data?.message || 'Error al guardar el cliente');
     }
   };
 

@@ -54,7 +54,7 @@ const CAMPOS_BL = [
 ];
 
 // Defaults calculados desde la carpeta (espejo de la lógica backend)
-function calcularDefaults(tipo, carpeta, tenantName) {
+function calcularDefaults(tipo, carpeta, tenantName, tenantCuit) {
   const hoy = new Date().toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' });
   
   if (tipo === 'certFlete' || tipo === 'certGastos') {
@@ -133,7 +133,11 @@ function calcularDefaults(tipo, carpeta, tenantName) {
     notifyParty: carpeta.notify || 'SAME AS CONSIGNEE',
     routingInstructions: '',
     originCountry: '',
-    forwardingAgent: `${tenantName || ''}\nAGENTE DE TRANSPORTE ADUANERO`,
+    forwardingAgent: [
+      tenantName || '',
+      'AGENTE DE TRANSPORTE ADUANERO',
+      tenantCuit ? `CUIT ${tenantCuit}` : ''
+    ].filter(Boolean).join('\n'),
     deliveryApplyTo: '',
     placeOfReceipt: carpeta.lugarCarga || carpeta.puertoOrigen || '',
     vessel: [carpeta.buque, carpeta.viaje].filter(Boolean).join(' '),
@@ -167,7 +171,7 @@ const SLUGS_PDF = {
   certGastos: 'cert-gastos'
 };
 
-function DocumentoEditorModal({ tipo, carpeta, tenantName, onClose }) {
+function DocumentoEditorModal({ tipo, carpeta, tenantName, tenantCuit, onClose }) {
   const queryClient = useQueryClient();
   const [datos, setDatos] = useState({});
   const [saving, setSaving] = useState(false);
@@ -185,9 +189,9 @@ function DocumentoEditorModal({ tipo, carpeta, tenantName, onClose }) {
     if (hidratedRef.current) return;
     hidratedRef.current = true;
     const guardado = carpeta.documentosData?.[tipo];
-    const defaults = calcularDefaults(tipo, carpeta, tenantName);
+    const defaults = calcularDefaults(tipo, carpeta, tenantName, tenantCuit);
     setDatos(guardado && Object.keys(guardado).length > 0 ? { ...defaults, ...guardado } : defaults);
-  }, [tipo, carpeta, tenantName]);
+  }, [tipo, carpeta, tenantName, tenantCuit]);
 
   const handleChange = (key, value) => {
     setDatos(prev => ({ ...prev, [key]: value }));

@@ -90,7 +90,11 @@ function generarBillOfLading(carpeta, tenant, logoBuffer = null) {
     notifyParty: ov.notifyParty ?? (carpeta.notify || 'SAME AS CONSIGNEE'),
     routingInstructions: ov.routingInstructions ?? '',
     originCountry: ov.originCountry ?? '',
-    forwardingAgent: ov.forwardingAgent ?? `${tenant?.name || ''}\nAGENTE DE TRANSPORTE ADUANERO`,
+    forwardingAgent: ov.forwardingAgent ?? [
+      tenant?.name || '',
+      'AGENTE DE TRANSPORTE ADUANERO',
+      tenant?.paymentBankCuit ? `CUIT ${tenant.paymentBankCuit}` : ''
+    ].filter(Boolean).join('\n'),
     deliveryApplyTo: ov.deliveryApplyTo ?? '',
     placeOfReceipt: ov.placeOfReceipt ?? (carpeta.lugarCarga || carpeta.puertoOrigen || ''),
     vessel: ov.vessel ?? [carpeta.buque, carpeta.viaje].filter(Boolean).join(' '),

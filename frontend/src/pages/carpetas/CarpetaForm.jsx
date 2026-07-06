@@ -19,7 +19,7 @@ import { useAuth } from '../../context/AuthContext';
 import { 
   useCarpeta, useCreateCarpeta, useUpdateCarpeta, useBuscarClientes,
   useCreatePrefacturaDesdeCarpeta, useTrack, useIntegrations, useCuentasBancarias,
-  useDescargarCarpetaPDF
+  useDescargarCarpetaPDF, useCompanyConfig
 } from '../../hooks/useApi';
 import toast from 'react-hot-toast';
 import { AREAS, SECTORES, TIPOS_OPERACION, TIPOS_OPERACION_AEREA, CARPETA_ESTADOS, INCOTERMS, TIPOS_CONTENEDOR } from '../../lib/constants';
@@ -84,6 +84,7 @@ function CarpetaForm() {
   const { data: clientesData } = useBuscarClientes(clienteSearch, 'cliente');
   const { data: integrationsData } = useIntegrations();
   const { data: cuentasBancarias = [] } = useCuentasBancarias();
+  const { data: companyData } = useCompanyConfig();
   const createCarpeta = useCreateCarpeta();
   const updateCarpeta = useUpdateCarpeta(id);
   const crearPrefactura = useCreatePrefacturaDesdeCarpeta();
@@ -1882,7 +1883,8 @@ function CarpetaForm() {
         <DocumentoEditorModal
           tipo={documentoEditor}
           carpeta={{ ...carpetaActual, mercancias, contenedores, gastos }}
-          tenantName={user?.tenantName}
+          tenantName={companyData?.data?.company?.name || user?.tenantName}
+          tenantCuit={companyData?.data?.payment?.bankCuit}
           onClose={() => setDocumentoEditor(null)}
         />
       )}
