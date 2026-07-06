@@ -113,7 +113,7 @@ function generarBillOfLading(carpeta, tenant, logoBuffer = null) {
 
   const doc = new PDFDocument({
     size: 'A4',
-    margin: 25,
+    margin: 30,
     info: {
       Title: `Bill of Lading - ${d.blNumber}`,
       Author: tenant?.name || 'Sistema',
@@ -122,108 +122,106 @@ function generarBillOfLading(carpeta, tenant, logoBuffer = null) {
   });
 
   const border = '#000000';
-  const labelColor = '#444444';
-  const W = doc.page.width - 50; // ancho útil
-  const X = 25;
+  const labelColor = '#555555';
+  const X = 30;
+  const W = doc.page.width - 60; // ancho útil (~535pt)
   const HALF = W / 2;
 
-  // Helper: caja con label y contenido
+  // Helper: caja con label arriba y contenido debajo, bien separados
   const box = (x, y, w, h, label, content, opts = {}) => {
-    doc.rect(x, y, w, h).strokeColor(border).lineWidth(0.7).stroke();
-    doc.fontSize(5.5).fillColor(labelColor).font('Helvetica');
-    doc.text(label, x + 3, y + 3, { width: w - 6 });
+    doc.rect(x, y, w, h).strokeColor(border).lineWidth(0.8).stroke();
+    doc.fontSize(6.5).fillColor(labelColor).font('Helvetica');
+    doc.text(label, x + 4, y + 4, { width: w - 8, lineBreak: false, ellipsis: true });
     if (content) {
-      doc.fontSize(opts.fontSize || 7.5).fillColor('#000').font(opts.bold ? 'Helvetica-Bold' : 'Helvetica');
-      doc.text(content, x + 3, y + 11, { width: w - 6, height: h - 13, ellipsis: false });
+      doc.fontSize(opts.fontSize || 9).fillColor('#000').font(opts.bold ? 'Helvetica-Bold' : 'Helvetica');
+      doc.text(content, x + 4, y + 15, { width: w - 8, height: h - 19 });
     }
   };
 
   // ============ PÁGINA 1: BL ============
-  let y = 25;
+  // Header: título a la izquierda, logo a la derecha (sin solaparse)
+  let y = 30;
+  const headerH = 42;
+  doc.fontSize(17).fillColor('#000').font('Helvetica-Bold');
+  doc.text('BILL OF LADING', X, y + 8);
+  doc.fontSize(10).font('Helvetica');
+  doc.text('ORIGINAL', X + 190, y + 14);
+  drawTenantLogo(doc, logoBuffer, { right: 30, top: y, maxWidth: 120, maxHeight: 40 });
+  y += headerH;
 
-  // Título
-  doc.fontSize(13).fillColor('#000').font('Helvetica-Bold');
-  doc.text('BILL OF LADING', X, y);
-  doc.fontSize(9).font('Helvetica');
-  doc.text('ORIGINAL', X + W - 100, y + 2, { width: 100, align: 'right' });
-
-  // Logo del tenant (centro-derecha del header)
-  drawTenantLogo(doc, logoBuffer, { right: 160, top: 20, maxWidth: 80, maxHeight: 30 });
-  y += 20;
-
-  // Fila 1: Shipper (izq, alto) | BL no + References (der)
-  const rowH1 = 70;
+  // Fila 1: Shipper (izq) | BL no + References + Export refs (der)
+  const rowH1 = 88;
   box(X, y, HALF, rowH1, 'Shipper / Exporter', d.shipper);
-  box(X + HALF, y, HALF / 2, 24, 'Bill of Lading no', d.blNumber, { bold: true, fontSize: 8 });
-  box(X + HALF + HALF / 2, y, HALF / 2, 24, 'References N°', d.references);
-  box(X + HALF, y + 24, HALF, rowH1 - 24, 'Export References', d.exportReferences);
+  box(X + HALF, y, HALF / 2, 32, 'Bill of Lading no', d.blNumber, { bold: true, fontSize: 10 });
+  box(X + HALF + HALF / 2, y, HALF / 2, 32, 'References N°', d.references);
+  box(X + HALF, y + 32, HALF, rowH1 - 32, 'Export References', d.exportReferences);
   y += rowH1;
 
   // Fila 2: Consignee | Routing Instructions
-  const rowH2 = 55;
+  const rowH2 = 72;
   box(X, y, HALF, rowH2, 'Consignee', d.consignee);
   box(X + HALF, y, HALF, rowH2, 'Routing Instructions', d.routingInstructions);
   y += rowH2;
 
   // Fila 3: Notify | Origin + Forwarding agent
-  const rowH3 = 55;
+  const rowH3 = 72;
   box(X, y, HALF, rowH3, 'Notify Party', d.notifyParty);
-  box(X + HALF, y, HALF, 22, 'Point and Country of Origin of Goods', d.originCountry);
-  box(X + HALF, y + 22, HALF, rowH3 - 22, 'Forwarding Agent References', d.forwardingAgent);
+  box(X + HALF, y, HALF, 30, 'Point and Country of Origin of Goods', d.originCountry);
+  box(X + HALF, y + 30, HALF, rowH3 - 30, 'Forwarding Agent References', d.forwardingAgent);
   y += rowH3;
 
   // Fila 4: Place of receipt | For delivery apply to
-  const rowH4 = 32;
+  const rowH4 = 38;
   box(X, y, HALF, rowH4, 'Place of Receipt by pre carrier', d.placeOfReceipt);
   box(X + HALF, y, HALF, rowH4, 'For delivery please apply to', d.deliveryApplyTo);
   y += rowH4;
 
   // Fila 5: Vessel/Voyage | Port of Loading | Final Destination | Type of move
-  const rowH5 = 28;
+  const rowH5 = 36;
   const q = W / 4;
-  box(X, y, q, rowH5, 'Vessel / Voyage', d.vessel);
-  box(X + q, y, q, rowH5, 'Port of Loading', d.portOfLoading);
-  box(X + q * 2, y, q, rowH5, 'Final Destination', d.finalDestination);
-  box(X + q * 3, y, q, rowH5, 'Type of move', d.typeOfMove);
+  box(X, y, q, rowH5, 'Vessel / Voyage', d.vessel, { fontSize: 8 });
+  box(X + q, y, q, rowH5, 'Port of Loading', d.portOfLoading, { fontSize: 8 });
+  box(X + q * 2, y, q, rowH5, 'Final Destination', d.finalDestination, { fontSize: 8 });
+  box(X + q * 3, y, q, rowH5, 'Type of move', d.typeOfMove, { fontSize: 8 });
   y += rowH5;
 
   // Fila 6: Port of discharge | Place of delivery | Freight payable at | N° originals
-  box(X, y, q, rowH5, 'Port of discharge', d.portOfDischarge);
-  box(X + q, y, q, rowH5, 'Place of delivery by on carrier', d.placeOfDelivery);
-  box(X + q * 2, y, q, rowH5, 'Freight payable at', d.freightPayableAt);
-  box(X + q * 3, y, q, rowH5, 'Number of original Bill of Lading', d.numberOfOriginals);
+  box(X, y, q, rowH5, 'Port of discharge', d.portOfDischarge, { fontSize: 8 });
+  box(X + q, y, q, rowH5, 'Place of delivery by on carrier', d.placeOfDelivery, { fontSize: 8 });
+  box(X + q * 2, y, q, rowH5, 'Freight payable at', d.freightPayableAt, { fontSize: 8 });
+  box(X + q * 3, y, q, rowH5, 'Number of original BL', d.numberOfOriginals, { fontSize: 8 });
   y += rowH5;
 
   // Cuerpo: Marks | Packages | Description | Kilograms | Cubic Meters
-  const bodyH = 250;
-  const colMarks = W * 0.16;
-  const colPkgs = W * 0.13;
+  const bodyH = 258;
+  const colMarks = W * 0.17;
+  const colPkgs = W * 0.12;
   const colDesc = W * 0.41;
   const colKg = W * 0.15;
   const colCbm = W * 0.15;
 
-  box(X, y, colMarks, bodyH, 'Marks & Numbers', d.marksNumbers, { fontSize: 7 });
-  box(X + colMarks, y, colPkgs, bodyH, 'No. Of Pallets Or Other Pckgs', d.packages, { fontSize: 7 });
-  box(X + colMarks + colPkgs, y, colDesc, bodyH, 'Description', d.description, { fontSize: 7 });
-  box(X + colMarks + colPkgs + colDesc, y, colKg, bodyH, 'Kilograms', d.kilograms, { fontSize: 7 });
-  box(X + colMarks + colPkgs + colDesc + colKg, y, colCbm, bodyH, 'Cubic Meters', d.cubicMeters, { fontSize: 7 });
+  box(X, y, colMarks, bodyH, 'Marks & Numbers', d.marksNumbers, { fontSize: 8 });
+  box(X + colMarks, y, colPkgs, bodyH, 'N° of Packages', d.packages, { fontSize: 8 });
+  box(X + colMarks + colPkgs, y, colDesc, bodyH, 'Description', d.description, { fontSize: 8 });
+  box(X + colMarks + colPkgs + colDesc, y, colKg, bodyH, 'Kilograms', d.kilograms, { fontSize: 8 });
+  box(X + colMarks + colPkgs + colDesc + colKg, y, colCbm, bodyH, 'Cubic Meters', d.cubicMeters, { fontSize: 8 });
   y += bodyH;
 
   // Freight
-  const rowF = 26;
-  box(X, y, W * 0.6, rowF, 'Freight and Charges', d.freightText, { fontSize: 7.5 });
-  box(X + W * 0.6, y, W * 0.4, rowF, 'Total', `${d.kilograms}    ${d.cubicMeters}`, { fontSize: 7.5 });
+  const rowF = 32;
+  box(X, y, W * 0.6, rowF, 'Freight and Charges', d.freightText, { fontSize: 9 });
+  box(X + W * 0.6, y, W * 0.4, rowF, 'Total', `${d.kilograms}   ${d.cubicMeters}`, { fontSize: 9 });
   y += rowF;
 
   // Legal + Issue + Signed
-  const legalH = 76;
-  const legalText = 'RECEIVED the goods or the containers, vans, trailers, pallet, units or other packages said to contain goods here in mentioned, in apparent good order and condition, except as otherwise indicated, to be transported, delivered or transshipped as provided herein, all of provision written, printed or stamped on either side hereof are part of the bill of lading contract. IN WITNESS whereof, the master or agent of said vessel has signed bills of lading, all of the same tenor and date, one of which be accomplished, the others to stand void.\nFREIGHT AND CHARGES AS AGREED';
-  doc.rect(X, y, W * 0.6, legalH).strokeColor(border).lineWidth(0.7).stroke();
-  doc.fontSize(6).fillColor('#000').font('Helvetica');
-  doc.text(legalText, X + 3, y + 4, { width: W * 0.6 - 8, align: 'justify' });
+  const legalH = 96;
+  const legalText = 'RECEIVED the goods or the containers, vans, trailers, pallet, units or other packages said to contain goods here in mentioned, in apparent good order and condition, except as otherwise indicated, to be transported, delivered or transshipped as provided herein, all of provision written, printed or stamped on either side hereof are part of the bill of lading contract.\nIN WITNESS whereof, the master or agent of said vessel has signed bills of lading, all of the same tenor and date, one of which be accomplished, the others to stand void.\n\nFREIGHT AND CHARGES AS AGREED';
+  doc.rect(X, y, W * 0.6, legalH).strokeColor(border).lineWidth(0.8).stroke();
+  doc.fontSize(7).fillColor('#000').font('Helvetica');
+  doc.text(legalText, X + 4, y + 5, { width: W * 0.6 - 10, align: 'justify' });
 
-  box(X + W * 0.6, y, W * 0.4, legalH / 2, 'Place and date of issue', d.placeDateOfIssue, { fontSize: 8, bold: true });
-  box(X + W * 0.6, y + legalH / 2, W * 0.4, legalH / 2, 'Signed for', d.signedFor, { fontSize: 8 });
+  box(X + W * 0.6, y, W * 0.4, legalH / 2, 'Place and date of issue', d.placeDateOfIssue, { fontSize: 9, bold: true });
+  box(X + W * 0.6, y + legalH / 2, W * 0.4, legalH / 2, 'Signed for', d.signedFor, { fontSize: 9 });
 
   // ============ PÁGINA 2: TÉRMINOS Y CONDICIONES ============
   doc.addPage({ size: 'A4', margin: 22 });
