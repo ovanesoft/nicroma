@@ -789,22 +789,35 @@ const cambiarEstado = async (req, res) => {
       });
     }
 
-    // Validar transiciones de estado permitidas
-    const transicionesValidas = {
-      'PENDIENTE': ['EN_PROCESO', 'RECHAZADO'],
-      'EN_PROCESO': ['ENVIADO', 'RECHAZADO'],
-      'ENVIADO': ['APROBADO', 'RECHAZADO', 'EN_PROCESO'],
-      'APROBADO': ['CONVERTIDO'],
-      'RECHAZADO': ['EN_PROCESO'],
-      'CONVERTIDO': [],
-      'VENCIDO': ['EN_PROCESO']
-    };
-
-    if (!transicionesValidas[presupuesto.estado]?.includes(estado)) {
-      return res.status(400).json({
-        success: false,
-        message: `No se puede cambiar de ${presupuesto.estado} a ${estado}`
-      });
+    // Validar transiciones de estado
+    // - Usuarios del tenant (admin/manager/user): pueden setear cualquier estado
+    //   manualmente (aprobado, rechazado, vencido, etc.), excepto CONVERTIDO que
+    //   tiene su propio flujo. Un presupuesto CONVERTIDO no se puede modificar.
+    // - Clientes: solo las transiciones del flujo normal.
+    if (userRole === 'client') {
+      const transicionesCliente = {
+        'ENVIADO': ['APROBADO', 'RECHAZADO']
+      };
+      if (!transicionesCliente[presupuesto.estado]?.includes(estado)) {
+        return res.status(400).json({
+          success: false,
+          message: `No se puede cambiar de ${presupuesto.estado} a ${estado}`
+        });
+      }
+    } else {
+      if (presupuesto.estado === 'CONVERTIDO') {
+        return res.status(400).json({
+          success: false,
+          message: 'Un presupuesto convertido a carpeta no puede cambiar de estado'
+        });
+      }
+      const estadosPermitidos = ['PENDIENTE', 'EN_PROCESO', 'ENVIADO', 'APROBADO', 'RECHAZADO', 'VENCIDO'];
+      if (!estadosPermitidos.includes(estado)) {
+        return res.status(400).json({
+          success: false,
+          message: `Estado no válido: ${estado}`
+        });
+      }
     }
 
     const updateData = {

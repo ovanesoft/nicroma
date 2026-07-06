@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { X, Save, Download, Plus, Trash2, Eye } from 'lucide-react';
 import { Button, Input } from '../../components/ui';
 import api from '../../api/axios';
@@ -106,14 +107,29 @@ function calcularDefaults(tipo, carpeta, tenantName) {
     ...(carpeta.contenedores?.map(c => [c.tipo, c.numero, c.precinto].filter(Boolean).join('/')) || [])
   ].join('\n');
 
+  // Consignee: priorizar datos libres del formulario (consigneeData)
+  const cd = carpeta.consigneeData || {};
+  const consigneeStr = cd.empresa
+    ? [
+        cd.empresa,
+        cd.direccion,
+        [cd.localidad, cd.zipCode, cd.pais].filter(Boolean).join(', '),
+        cd.telefono ? `TEL: ${cd.telefono}` : '',
+        cd.email ? `EMAIL: ${cd.email}` : ''
+      ].filter(Boolean).join('\n')
+    : carpeta.consignee
+    ? `${carpeta.consignee.razonSocial} (CUIT ${carpeta.consignee.numeroDocumento || '-'})\n${carpeta.consignee.direccion || ''}`
+    : (carpeta.cliente ? `${carpeta.cliente.razonSocial} (CUIT ${carpeta.cliente.numeroDocumento || '-'})\n${carpeta.cliente.direccion || ''}` : '');
+
+  // Marks & Numbers desde las mercancías
+  const marksStr = carpeta.mercancias?.map(m => m.marcas).filter(Boolean).join('\n') || 'N/M';
+
   return {
     blNumber: carpeta.houseBL || carpeta.numero || '',
     references: carpeta.referenciaInterna || carpeta.referenciaCliente || '',
     exportReferences: '',
     shipper: carpeta.shipper ? `${carpeta.shipper.razonSocial}\n${carpeta.shipper.direccion || ''}` : '',
-    consignee: carpeta.consignee
-      ? `${carpeta.consignee.razonSocial} (CUIT ${carpeta.consignee.numeroDocumento || '-'})\n${carpeta.consignee.direccion || ''}`
-      : (carpeta.cliente ? `${carpeta.cliente.razonSocial} (CUIT ${carpeta.cliente.numeroDocumento || '-'})\n${carpeta.cliente.direccion || ''}` : ''),
+    consignee: consigneeStr,
     notifyParty: carpeta.notify || 'SAME AS CONSIGNEE',
     routingInstructions: '',
     originCountry: '',
@@ -128,7 +144,7 @@ function calcularDefaults(tipo, carpeta, tenantName) {
     placeOfDelivery: carpeta.lugarDescarga || carpeta.puertoDestino || '',
     freightPayableAt: 'DESTINATION',
     numberOfOriginals: '3',
-    marksNumbers: 'N/M',
+    marksNumbers: marksStr,
     packages: `${totalBultos}`,
     description: descripcion,
     kilograms: `${fmt(totalPeso)}KGS`,
@@ -152,6 +168,7 @@ const SLUGS_PDF = {
 };
 
 function DocumentoEditorModal({ tipo, carpeta, tenantName, onClose }) {
+  const queryClient = useQueryClient();
   const [datos, setDatos] = useState({});
   const [saving, setSaving] = useState(false);
   const [downloading, setDownloading] = useState(false);
@@ -160,11 +177,17 @@ function DocumentoEditorModal({ tipo, carpeta, tenantName, onClose }) {
   const esCert = tipo === 'certFlete' || tipo === 'certGastos';
   const campos = esCert ? CAMPOS_CERT : CAMPOS_BL;
 
+  // Hidratar SOLO una vez al abrir el modal. Si dependiéramos del objeto
+  // `carpeta` completo, cada re-render del padre (auto-refetch cada 15s)
+  // crearía un objeto nuevo y pisaría lo que el usuario está editando.
+  const hidratedRef = useRef(false);
   useEffect(() => {
+    if (hidratedRef.current) return;
+    hidratedRef.current = true;
     const guardado = carpeta.documentosData?.[tipo];
     const defaults = calcularDefaults(tipo, carpeta, tenantName);
     setDatos(guardado && Object.keys(guardado).length > 0 ? { ...defaults, ...guardado } : defaults);
-  }, [tipo, carpeta]);
+  }, [tipo, carpeta, tenantName]);
 
   const handleChange = (key, value) => {
     setDatos(prev => ({ ...prev, [key]: value }));
@@ -195,8 +218,14 @@ function DocumentoEditorModal({ tipo, carpeta, tenantName, onClose }) {
   const guardar = async (silent = false) => {
     setSaving(true);
     try {
-      const documentosData = { ...(carpeta.documentosData || {}), [tipo]: datos };
+      // Leer el documentosData más reciente del servidor para no pisar
+      // documentos de otro tipo guardados después de abrir este modal
+      const { data: fresh } = await api.get(`/carpetas/${carpeta.id}`);
+      const actual = fresh?.data?.carpeta?.documentosData || carpeta.documentosData || {};
+      const documentosData = { ...actual, [tipo]: datos };
       await api.put(`/carpetas/${carpeta.id}`, { documentosData });
+      // Refrescar el cache para que al reabrir el modal traiga lo guardado
+      queryClient.invalidateQueries({ queryKey: ['carpeta', carpeta.id] });
       if (!silent) toast.success('Documento guardado');
       return true;
     } catch (error) {

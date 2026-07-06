@@ -57,9 +57,26 @@ function generarBillOfLading(carpeta, tenant, logoBuffer = null) {
   const shipperDefault = carpeta.shipper
     ? `${carpeta.shipper.razonSocial}\n${carpeta.shipper.direccion || ''}\n${carpeta.shipper.email || ''}`
     : '';
-  const consigneeDefault = carpeta.consignee
+
+  // Consignee: priorizar los datos libres cargados en la carpeta (consigneeData)
+  const cd = carpeta.consigneeData || {};
+  const consigneeDefault = cd.empresa
+    ? [
+        cd.empresa,
+        cd.direccion,
+        [cd.localidad, cd.zipCode, cd.pais].filter(Boolean).join(', '),
+        cd.telefono ? `TEL: ${cd.telefono}` : '',
+        cd.email ? `EMAIL: ${cd.email}` : ''
+      ].filter(Boolean).join('\n')
+    : carpeta.consignee
     ? `${carpeta.consignee.razonSocial} (CUIT ${carpeta.consignee.numeroDocumento || '-'})\n${carpeta.consignee.direccion || ''}`
     : (carpeta.cliente ? `${carpeta.cliente.razonSocial} (CUIT ${carpeta.cliente.numeroDocumento || '-'})\n${carpeta.cliente.direccion || ''}` : '');
+
+  // Marks & Numbers: tomar las marcas de las mercancías si existen
+  const marksDefault = carpeta.mercancias
+    ?.map(m => m.marcas)
+    .filter(Boolean)
+    .join('\n') || 'N/M';
 
   const hoy = new Date();
   const issueDefault = `${(carpeta.puertoOrigen || '').toUpperCase()}, ${hoy.getFullYear()}/${hoy.getMonth() + 1}/${hoy.getDate()}`;
@@ -84,7 +101,7 @@ function generarBillOfLading(carpeta, tenant, logoBuffer = null) {
     placeOfDelivery: ov.placeOfDelivery ?? (carpeta.lugarDescarga || carpeta.puertoDestino || ''),
     freightPayableAt: ov.freightPayableAt ?? 'DESTINATION',
     numberOfOriginals: ov.numberOfOriginals ?? '3',
-    marksNumbers: ov.marksNumbers ?? 'N/M',
+    marksNumbers: ov.marksNumbers ?? marksDefault,
     packages: ov.packages ?? `${totalBultos}`,
     description: ov.description ?? descripcionDefault,
     kilograms: ov.kilograms ?? `${formatNumber(totalPeso)}KGS`,

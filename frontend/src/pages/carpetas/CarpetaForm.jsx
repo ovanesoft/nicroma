@@ -49,8 +49,13 @@ const carpetaSchema = z.object({
   masterBL: z.string().optional(),
   houseBL: z.string().optional(),
   referenciaCliente: z.string().optional(),
-  observaciones: z.string().optional()
+  observaciones: z.string().optional(),
+  notify: z.string().optional()
 });
+
+const CONSIGNEE_VACIO = {
+  empresa: '', direccion: '', localidad: '', zipCode: '', pais: '', telefono: '', email: ''
+};
 
 function CarpetaForm() {
   const navigate = useNavigate();
@@ -67,6 +72,9 @@ function CarpetaForm() {
   const [mercancias, setMercancias] = useState([]);
   const [contenedores, setContenedores] = useState([]);
   const [gastos, setGastos] = useState([]);
+  
+  // Datos del consignatario (texto libre)
+  const [consigneeData, setConsigneeData] = useState(CONSIGNEE_VACIO);
   
   // Tracking
   const [trackingData, setTrackingData] = useState({});
@@ -227,7 +235,9 @@ function CarpetaForm() {
       setValue('houseBL', c.houseBL || '');
       setValue('referenciaCliente', c.referenciaCliente || '');
       setValue('observaciones', c.observaciones || '');
+      setValue('notify', c.notify || '');
       
+      setConsigneeData({ ...CONSIGNEE_VACIO, ...(c.consigneeData || {}) });
       setSelectedCliente(c.cliente);
       setMercancias(c.mercancias || []);
       setContenedores(c.contenedores || []);
@@ -338,7 +348,8 @@ function CarpetaForm() {
         mercancias: mercancias.filter(mercanciaTieneDatos).map(sanitizeMercancia),
         contenedores: contenedores.filter(c => c && c.tipo).map(sanitizeContenedor),
         gastos: gastos.filter(g => g && g.concepto).map(sanitizeGasto),
-        bancoPdfId: bancoPdfId || null
+        bancoPdfId: bancoPdfId || null,
+        consigneeData
       };
 
       if (isEditing) {
@@ -726,10 +737,10 @@ function CarpetaForm() {
               </CardContent>
             </Card>
 
-            {/* Cliente */}
+            {/* Cliente / Shipper y Consignee */}
             <Card>
               <CardHeader>
-                <CardTitle>Cliente</CardTitle>
+                <CardTitle>Shipper y Consignee</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="relative">
@@ -788,6 +799,82 @@ function CarpetaForm() {
                   {errors.clienteId && (
                     <p className="mt-1 text-sm text-red-500">{errors.clienteId.message}</p>
                   )}
+                </div>
+
+                {/* Consignado (Consignee) */}
+                <div className="mt-6 pt-4 border-t border-slate-200">
+                  <p className="text-sm font-semibold text-slate-700 mb-3">Consignado (Consignee)</p>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <Input
+                      label="Empresa"
+                      value={consigneeData.empresa}
+                      onChange={(e) => setConsigneeData(prev => ({ ...prev, empresa: e.target.value }))}
+                      className="md:col-span-2"
+                    />
+                    <Input
+                      label="Número de Teléfono"
+                      value={consigneeData.telefono}
+                      onChange={(e) => setConsigneeData(prev => ({ ...prev, telefono: e.target.value }))}
+                    />
+                    <Input
+                      label="Dirección"
+                      value={consigneeData.direccion}
+                      onChange={(e) => setConsigneeData(prev => ({ ...prev, direccion: e.target.value }))}
+                      className="md:col-span-2"
+                    />
+                    <Input
+                      label="Localidad"
+                      value={consigneeData.localidad}
+                      onChange={(e) => setConsigneeData(prev => ({ ...prev, localidad: e.target.value }))}
+                    />
+                    <Input
+                      label="ZIP Code"
+                      value={consigneeData.zipCode}
+                      onChange={(e) => setConsigneeData(prev => ({ ...prev, zipCode: e.target.value }))}
+                    />
+                    <Input
+                      label="País"
+                      value={consigneeData.pais}
+                      onChange={(e) => setConsigneeData(prev => ({ ...prev, pais: e.target.value }))}
+                    />
+                    <Input
+                      label="Email"
+                      type="email"
+                      value={consigneeData.email}
+                      onChange={(e) => setConsigneeData(prev => ({ ...prev, email: e.target.value }))}
+                    />
+                  </div>
+                </div>
+
+                {/* Notify Party */}
+                <div className="mt-6 pt-4 border-t border-slate-200">
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-sm font-semibold text-slate-700">Notify Party</p>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const partes = [
+                          consigneeData.empresa,
+                          consigneeData.direccion,
+                          [consigneeData.localidad, consigneeData.zipCode, consigneeData.pais].filter(Boolean).join(', '),
+                          consigneeData.telefono ? `TEL: ${consigneeData.telefono}` : '',
+                          consigneeData.email ? `EMAIL: ${consigneeData.email}` : ''
+                        ].filter(Boolean);
+                        setValue('notify', partes.length > 0 ? partes.join('\n') : 'SAME AS CONSIGNEE');
+                        toast.success('Datos del Consignee copiados a Notify Party');
+                      }}
+                    >
+                      Igual que Consignee
+                    </Button>
+                  </div>
+                  <textarea
+                    {...register('notify')}
+                    rows={3}
+                    placeholder="Datos del Notify Party..."
+                    className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm resize-y focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none"
+                  />
                 </div>
               </CardContent>
             </Card>
@@ -1148,6 +1235,15 @@ function CarpetaForm() {
                                             className="w-full px-2 py-1 text-sm rounded border border-slate-300"
                                           />
                                         </div>
+                                        <div>
+                                          <input
+                                            type="text"
+                                            value={merc.marcas || ''}
+                                            onChange={(e) => updateMercancia(merc.originalIndex, 'marcas', e.target.value)}
+                                            placeholder="Marks & Numbers"
+                                            className="w-full px-2 py-1 text-sm rounded border border-slate-300"
+                                          />
+                                        </div>
                                       </div>
                                       <button
                                         type="button"
@@ -1297,6 +1393,16 @@ function CarpetaForm() {
                                 value={merc.hsCode || ''}
                                 onChange={(e) => updateMercancia(merc.originalIndex, 'hsCode', e.target.value)}
                                 placeholder="8471.30"
+                                className="w-full px-2 py-1.5 text-sm rounded border border-slate-300"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs text-slate-500 mb-1">Marks & Numbers</label>
+                              <input
+                                type="text"
+                                value={merc.marcas || ''}
+                                onChange={(e) => updateMercancia(merc.originalIndex, 'marcas', e.target.value)}
+                                placeholder="N/M"
                                 className="w-full px-2 py-1.5 text-sm rounded border border-slate-300"
                               />
                             </div>

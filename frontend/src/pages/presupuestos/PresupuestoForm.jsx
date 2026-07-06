@@ -60,7 +60,8 @@ const ESTADOS = {
   EN_PROCESO: { label: 'En Proceso', color: 'bg-blue-100 text-blue-800' },
   ENVIADO: { label: 'Enviado', color: 'bg-purple-100 text-purple-800' },
   APROBADO: { label: 'Aprobado', color: 'bg-green-100 text-green-800' },
-  RECHAZADO: { label: 'Rechazado', color: 'bg-red-100 text-red-800' },
+  RECHAZADO: { label: 'Cancelado', color: 'bg-red-100 text-red-800' },
+  VENCIDO: { label: 'Vencido', color: 'bg-slate-200 text-slate-700' },
   CONVERTIDO: { label: 'Convertido', color: 'bg-emerald-100 text-emerald-800' }
 };
 
@@ -153,6 +154,7 @@ function PresupuestoForm() {
   const { id } = useParams();
   const { user } = useAuth();
   const isEditing = !!id;
+  const isClient = user?.role === 'client';
   const chatEndRef = useRef(null);
 
   const [activeTab, setActiveTab] = useState('datos');
@@ -881,9 +883,46 @@ function PresupuestoForm() {
             Volver
           </Button>
           {presupuesto && (
-            <Badge className={ESTADOS[presupuesto.estado]?.color}>
-              {ESTADOS[presupuesto.estado]?.label}
-            </Badge>
+            isClient || presupuesto.estado === 'CONVERTIDO' ? (
+              <Badge className={ESTADOS[presupuesto.estado]?.color}>
+                {ESTADOS[presupuesto.estado]?.label}
+              </Badge>
+            ) : (
+              <select
+                value={presupuesto.estado}
+                onChange={(e) => {
+                  const nuevo = e.target.value;
+                  if (nuevo === presupuesto.estado) return;
+                  if (nuevo === 'RECHAZADO') {
+                    const motivo = prompt('Motivo de la cancelación (opcional):');
+                    cambiarEstado.mutateAsync({ id, estado: nuevo, motivoRechazo: motivo })
+                      .then(() => toast.success('Presupuesto cancelado'))
+                      .catch(err => toast.error(err.response?.data?.message || 'Error al cambiar estado'));
+                  } else {
+                    handleCambiarEstado(nuevo);
+                  }
+                }}
+                className={cn(
+                  'px-3 py-1.5 rounded-full text-xs font-medium border-0 outline-none cursor-pointer',
+                  ESTADOS[presupuesto.estado]?.color
+                )}
+                title="Cambiar estado del presupuesto"
+              >
+                {Object.entries(ESTADOS)
+                  .filter(([key]) => key !== 'CONVERTIDO')
+                  .map(([key, { label }]) => (
+                    <option key={key} value={key}>{label}</option>
+                  ))}
+              </select>
+            )
+          )}
+          {/* Aviso de tarifa vencida según fecha de validez */}
+          {presupuesto?.fechaValidez && 
+           new Date(presupuesto.fechaValidez) < new Date() && 
+           !['VENCIDO', 'CONVERTIDO', 'APROBADO'].includes(presupuesto.estado) && (
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-700">
+              ⚠ Tarifa vencida el {new Date(presupuesto.fechaValidez).toLocaleDateString('es-AR')}
+            </span>
           )}
         </div>
         <div className="flex gap-2">

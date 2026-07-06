@@ -226,6 +226,7 @@ const crearCarpeta = async (req, res) => {
         clienteId: data.clienteId,
         consigneeId: data.consigneeId,
         shipperId: data.shipperId,
+        consigneeData: data.consigneeData || {},
         transportista: data.transportista,
         notify: data.notify,
         agente: data.agente,
