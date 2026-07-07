@@ -1,25 +1,49 @@
 const prisma = require('../services/prisma');
 
 // Generar número de factura
-const generarNumeroFactura = async (tenantId, puntoVenta, tipoComprobante) => {
+// IMPORTANTE: el campo `numero` tiene unique (tenantId, numero), por lo que
+// DEBE incluir el punto de venta: la secuencia se calcula por PV+tipo y sin
+// el PV dos facturas del mismo tipo en PV distintos colisionaban.
+const generarNumeroFactura = async (tenantId, puntoVenta, tipoComprobante, intento = 0) => {
   const ultima = await prisma.factura.findFirst({
     where: { tenantId, puntoVenta, tipoComprobante },
     orderBy: { numeroCompleto: 'desc' }
   });
 
-  let secuencia = 1;
+  let secuencia = 1 + intento;
   if (ultima) {
     const parts = ultima.numeroCompleto.split('-');
-    secuencia = parseInt(parts[1]) + 1;
+    secuencia = parseInt(parts[1]) + 1 + intento;
   }
 
   const pv = puntoVenta.toString().padStart(4, '0');
   const num = secuencia.toString().padStart(8, '0');
-  
+
   return {
-    numero: `${tipoComprobante}-${secuencia}`,
+    numero: `${tipoComprobante}-${pv}-${secuencia}`,
     numeroCompleto: `${pv}-${num}`
   };
+};
+
+// Ejecuta la creación de la factura reintentando con el siguiente número
+// si colisiona la numeración (P2002), p.ej. por requests concurrentes o
+// numeración legacy previa al fix del formato.
+const crearFacturaConReintento = async (tenantId, puntoVenta, tipoComprobante, buildData, maxIntentos = 5) => {
+  let lastError = null;
+  for (let intento = 0; intento < maxIntentos; intento++) {
+    const { numero, numeroCompleto } = await generarNumeroFactura(tenantId, puntoVenta, tipoComprobante, intento);
+    try {
+      return await prisma.factura.create(buildData(numero, numeroCompleto));
+    } catch (error) {
+      if (error.code === 'P2002') {
+        lastError = error;
+        console.warn(`[facturas] Número ${numero} / ${numeroCompleto} ya existe, reintentando (${intento + 1}/${maxIntentos})`);
+        continue;
+      }
+      throw error;
+    }
+  }
+  throw lastError || new Error('No se pudo generar un número de factura único');
 };
 
 // Listar facturas
@@ -150,11 +174,8 @@ const crearDesdePrefactura = async (req, res) => {
       return res.status(400).json({ success: false, message: 'No se puede facturar una prefactura cancelada' });
     }
 
-    // Generar número
-    const { numero, numeroCompleto } = await generarNumeroFactura(tenantId, puntoVenta, tipoComprobante);
-
-    // Crear factura con items
-    const factura = await prisma.factura.create({
+    // Crear factura con items (con reintento si colisiona la numeración)
+    const factura = await crearFacturaConReintento(tenantId, puntoVenta, tipoComprobante, (numero, numeroCompleto) => ({
       data: {
         tenantId,
         numero,
@@ -187,7 +208,7 @@ const crearDesdePrefactura = async (req, res) => {
         cliente: true,
         items: true
       }
-    });
+    }));
 
     // Actualizar estado de prefactura
     await prisma.prefactura.update({
@@ -244,9 +265,7 @@ const crearFactura = async (req, res) => {
     const ivaGeneral = itemsCalculados.reduce((sum, i) => sum + i.iva, 0);
     const totalGeneral = subtotalGeneral + ivaGeneral;
 
-    const { numero, numeroCompleto } = await generarNumeroFactura(tenantId, puntoVenta, tipoComprobante);
-
-    const factura = await prisma.factura.create({
+    const factura = await crearFacturaConReintento(tenantId, puntoVenta, tipoComprobante, (numero, numeroCompleto) => ({
       data: {
         tenantId,
         numero,
@@ -271,7 +290,7 @@ const crearFactura = async (req, res) => {
         cliente: true,
         items: true
       }
-    });
+    }));
 
     res.status(201).json({
       success: true,
