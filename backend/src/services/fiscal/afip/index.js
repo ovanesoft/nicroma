@@ -306,60 +306,82 @@ class AFIPService {
     // Solicitar CAE
     const resultado = await wsfev1.solicitarCAE(config, credentials, comprobante);
 
-    // Generar QR
+    // ⚠️ A PARTIR DE ACÁ el CAE YA ESTÁ AUTORIZADO EN ARCA.
+    // Cualquier error posterior NO debe perder el CAE: logueamos todo y
+    // hacemos el mejor esfuerzo para persistirlo.
+    console.log(`[AFIP] ✅ CAE autorizado: ${resultado.cae} | ${resultado.numeroCompleto} | tenant ${tenantId}`);
+
+    // Generar QR (nunca lanza: devuelve null si falla)
     const qrData = wsfev1.generateQRData({
       ...comprobante,
       ...resultado,
     }, config);
 
-    // Guardar comprobante fiscal
-    const comprobanteFiscal = await prisma.comprobanteFiscal.create({
-      data: {
-        tenantId,
-        facturaId: comprobante.facturaId || null,
-        puntoVentaId: puntoVenta.id,
-        tipoComprobante: comprobante.tipoComprobante,
-        puntoVentaNum: comprobante.puntoVenta,
-        numeroComprobante: resultado.numeroComprobante,
-        numeroCompleto: resultado.numeroCompleto,
-        tipoDocReceptor: comprobante.tipoDocReceptor || 80,
-        nroDocReceptor: comprobante.nroDocReceptor,
-        importeTotal: comprobante.importeTotal,
-        importeNeto: comprobante.importeNeto,
-        importeIVA: comprobante.importeIVA,
-        importeTributos: comprobante.importeTributos || 0,
-        importeExento: comprobante.importeExento || 0,
-        fechaComprobante: comprobante.fecha || new Date(),
-        fechaServicioDesde: comprobante.fechaServicioDesde,
-        fechaServicioHasta: comprobante.fechaServicioHasta,
-        fechaVencimiento: comprobante.fechaVencimiento,
-        cae: resultado.cae,
-        caeVencimiento: resultado.caeVencimiento,
-        estado: resultado.resultado === 'A' ? 'AUTORIZADO' : 'RECHAZADO',
-        resultado: resultado.resultado,
-        afipResponse: resultado,
-        observaciones: resultado.observaciones 
-          ? JSON.stringify(resultado.observaciones) 
-          : null,
-        qrData,
-      },
-    });
+    // Guardar comprobante fiscal y actualizar factura.
+    // Si algo falla acá, devolvemos igual el CAE con una advertencia para
+    // que el usuario lo tenga y se pueda re-sincronizar después.
+    let comprobanteFiscal = null;
+    let advertencia = null;
 
-    // Si tiene factura asociada, actualizar con el CAE
-    if (comprobante.facturaId) {
-      await prisma.factura.update({
-        where: { id: comprobante.facturaId },
+    try {
+      comprobanteFiscal = await prisma.comprobanteFiscal.create({
         data: {
+          tenantId,
+          facturaId: comprobante.facturaId || null,
+          puntoVentaId: puntoVenta.id,
+          tipoComprobante: comprobante.tipoComprobante,
+          puntoVentaNum: comprobante.puntoVenta,
+          numeroComprobante: resultado.numeroComprobante,
+          numeroCompleto: resultado.numeroCompleto,
+          tipoDocReceptor: comprobante.tipoDocReceptor || 80,
+          nroDocReceptor: String(comprobante.nroDocReceptor || ''),
+          importeTotal: comprobante.importeTotal,
+          importeNeto: comprobante.importeNeto,
+          importeIVA: comprobante.importeIVA,
+          importeTributos: comprobante.importeTributos || 0,
+          importeExento: comprobante.importeExento || 0,
+          fechaComprobante: comprobante.fecha || new Date(),
+          fechaServicioDesde: comprobante.fechaServicioDesde,
+          fechaServicioHasta: comprobante.fechaServicioHasta,
+          fechaVencimiento: comprobante.fechaVencimiento,
           cae: resultado.cae,
-          vencimientoCAE: resultado.caeVencimiento,
+          caeVencimiento: resultado.caeVencimiento,
+          estado: resultado.resultado === 'A' ? 'AUTORIZADO' : 'RECHAZADO',
+          resultado: resultado.resultado,
+          afipResponse: resultado,
+          observaciones: resultado.observaciones
+            ? JSON.stringify(resultado.observaciones)
+            : null,
+          qrData,
         },
       });
+    } catch (dbError) {
+      console.error(`[AFIP] ⚠️ CAE ${resultado.cae} autorizado pero falló el guardado del comprobante fiscal:`, dbError.message);
+      advertencia = `El CAE ${resultado.cae} fue autorizado en ARCA pero no pudo guardarse el registro fiscal (${dbError.message}). Usá "Recuperar CAE" para re-sincronizar.`;
+    }
+
+    // Actualizar la factura con el CAE (independiente del paso anterior)
+    if (comprobante.facturaId) {
+      try {
+        await prisma.factura.update({
+          where: { id: comprobante.facturaId },
+          data: {
+            cae: resultado.cae,
+            vencimientoCAE: resultado.caeVencimiento,
+          },
+        });
+      } catch (dbError) {
+        console.error(`[AFIP] ⚠️ CAE ${resultado.cae} autorizado pero falló la actualización de la factura:`, dbError.message);
+        advertencia = (advertencia ? advertencia + ' ' : '') +
+          `Tampoco se pudo actualizar la factura con el CAE (${dbError.message}).`;
+      }
     }
 
     return {
       ...resultado,
       qrData,
       comprobanteFiscal,
+      advertencia,
     };
   }
 

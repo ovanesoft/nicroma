@@ -87,6 +87,12 @@ router.post('/emitir-desde-factura/:facturaId',
   fiscalController.emitirDesdeFactura
 );
 
+// Recuperar CAE huérfano (autorizado en ARCA pero no guardado en el sistema)
+router.post('/recuperar-cae/:facturaId',
+  requireRole('admin', 'manager'),
+  fiscalController.recuperarCAE
+);
+
 // ==================== CONSULTAS ====================
 
 // Listar comprobantes emitidos

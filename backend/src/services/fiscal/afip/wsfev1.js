@@ -262,12 +262,20 @@ class WSFEv1Service {
 
     const result = await client.FECAESolicitarAsync(params);
     const response = result[0]?.FECAESolicitarResult;
-    
+
+    console.log('[WSFEV1] FECAESolicitar response:', JSON.stringify(response, null, 2));
+
     // Verificar errores generales
     this.handleError(response, 'FECAESolicitar');
 
-    // Obtener detalle de respuesta
-    const detResponse = response.FeDetResp?.FECAEDetResponse;
+    // Obtener detalle de respuesta.
+    // IMPORTANTE: node-soap puede devolver FECAEDetResponse como array
+    // aunque CantReg=1. Si no lo normalizamos, CAE/Resultado quedan
+    // undefined y el comprobante se guarda sin CAE.
+    let detResponse = response?.FeDetResp?.FECAEDetResponse;
+    if (Array.isArray(detResponse)) {
+      detResponse = detResponse[0];
+    }
     if (!detResponse) {
       throw new Error('Respuesta vacía de AFIP');
     }
@@ -278,6 +286,14 @@ class WSFEv1Service {
       const obsArray = Array.isArray(observaciones) ? observaciones : [observaciones];
       const obsMessages = obsArray.filter(Boolean).map(o => `[${o.Code}] ${o.Msg}`).join('; ');
       throw new Error(`Comprobante rechazado: ${obsMessages || 'Sin detalles'}`);
+    }
+
+    // Verificar que efectivamente vino el CAE (autorizado o parcial)
+    if (!detResponse.CAE) {
+      throw new Error(
+        `AFIP respondió resultado "${detResponse.Resultado}" pero sin CAE. ` +
+        `Verificá el comprobante en ARCA (PV ${comprobante.puntoVenta}, N° ${nroComprobante}).`
+      );
     }
 
     return {
@@ -393,26 +409,37 @@ class WSFEv1Service {
    * Genera el código QR para el comprobante (según RG 4291)
    */
   generateQRData(comprobante, config) {
-    const data = {
-      ver: 1,
-      fecha: comprobante.fechaComprobante,
-      cuit: config.cuit.replace(/-/g, ''),
-      ptoVta: comprobante.puntoVenta,
-      tipoCmp: comprobante.tipoComprobante,
-      nroCmp: comprobante.numeroComprobante,
-      importe: comprobante.importeTotal,
-      moneda: 'PES',
-      ctz: 1,
-      tipoDocRec: comprobante.tipoDocReceptor,
-      nroDocRec: comprobante.nroDocReceptor.replace(/-/g, ''),
-      tipoCodAut: 'E', // E=CAE
-      codAut: comprobante.cae,
-    };
+    // A prueba de nulls: si algún dato falta NO debe lanzar excepción,
+    // porque este paso corre DESPUÉS de que AFIP ya autorizó el CAE y un
+    // error acá dejaría el CAE huérfano (en ARCA pero no en el sistema).
+    try {
+      const fecha = comprobante.fechaComprobante || comprobante.fecha || new Date();
+      const fechaStr = new Date(fecha).toISOString().split('T')[0];
 
-    const jsonStr = JSON.stringify(data);
-    const base64 = Buffer.from(jsonStr).toString('base64');
-    
-    return `https://www.afip.gob.ar/fe/qr/?p=${base64}`;
+      const data = {
+        ver: 1,
+        fecha: fechaStr,
+        cuit: parseInt(String(config?.cuit || '').replace(/[^0-9]/g, '')) || 0,
+        ptoVta: parseInt(comprobante.puntoVenta) || 0,
+        tipoCmp: parseInt(comprobante.tipoComprobante) || 0,
+        nroCmp: parseInt(comprobante.numeroComprobante) || 0,
+        importe: parseFloat(comprobante.importeTotal) || 0,
+        moneda: comprobante.moneda === 'DOL' ? 'DOL' : 'PES',
+        ctz: parseFloat(comprobante.cotizacion) || 1,
+        tipoDocRec: parseInt(comprobante.tipoDocReceptor) || 80,
+        nroDocRec: parseInt(String(comprobante.nroDocReceptor || '').replace(/[^0-9]/g, '')) || 0,
+        tipoCodAut: 'E', // E=CAE
+        codAut: parseInt(comprobante.cae) || 0,
+      };
+
+      const jsonStr = JSON.stringify(data);
+      const base64 = Buffer.from(jsonStr).toString('base64');
+
+      return `https://www.afip.gob.ar/fe/qr/?p=${base64}`;
+    } catch (error) {
+      console.error('[WSFEV1] Error generando QR (no bloqueante):', error.message);
+      return null;
+    }
   }
 }
 

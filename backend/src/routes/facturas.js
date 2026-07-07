@@ -12,5 +12,6 @@ router.post('/', facturaController.crearFactura);
 router.post('/desde-prefactura', facturaController.crearDesdePrefactura);
 router.post('/:id/anular', facturaController.anularFactura);
 router.post('/:id/cobranza', facturaController.registrarCobranza);
+router.get('/:id/pdf', facturaController.generarPDF);
 
 module.exports = router;

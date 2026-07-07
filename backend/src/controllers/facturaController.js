@@ -383,11 +383,62 @@ const registrarCobranza = async (req, res) => {
   }
 };
 
+// Generar PDF de la factura (con logo del tenant, CAE y QR si están disponibles)
+const generarPDF = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const tenantId = req.user.tenant_id;
+
+    const factura = await prisma.factura.findFirst({
+      where: { id, tenantId },
+      include: {
+        cliente: true,
+        items: { orderBy: { createdAt: 'asc' } },
+        carpeta: { select: { numero: true, houseBL: true } }
+      }
+    });
+
+    if (!factura) {
+      return res.status(404).json({ success: false, message: 'Factura no encontrada' });
+    }
+
+    // Buscar comprobante fiscal asociado (para QR y tipo de comprobante)
+    const comprobanteFiscal = await prisma.comprobanteFiscal.findFirst({
+      where: { tenantId, facturaId: id }
+    });
+
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: {
+        name: true, logoUrl: true, companyAddress: true,
+        companyPhone: true, companyEmail: true, paymentBankCuit: true
+      }
+    });
+
+    const { generarFacturaPdf, generarQRBuffer } = require('../services/pdf/facturaPdf');
+    const { loadLogoBuffer } = require('../services/pdf/pdfHelpers');
+
+    const logoBuffer = await loadLogoBuffer(tenant?.logoUrl);
+    const qrBuffer = await generarQRBuffer(comprobanteFiscal?.qrData);
+
+    const doc = generarFacturaPdf(factura, tenant, comprobanteFiscal, logoBuffer, qrBuffer);
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="Factura_${factura.numeroCompleto}.pdf"`);
+    doc.pipe(res);
+    doc.end();
+  } catch (error) {
+    console.error('Error generando PDF de factura:', error);
+    res.status(500).json({ success: false, message: 'Error al generar el PDF' });
+  }
+};
+
 module.exports = {
   listarFacturas,
   obtenerFactura,
   crearDesdePrefactura,
   crearFactura,
   anularFactura,
-  registrarCobranza
+  registrarCobranza,
+  generarPDF
 };

@@ -446,42 +446,219 @@ exports.emitirDesdeFactura = async (req, res) => {
       pv = defaultPV.numero;
     }
 
+    // Validar documento del receptor ANTES de tocar ARCA
+    const docReceptor = String(factura.cliente?.numeroDocumento || '').replace(/[^0-9]/g, '');
+    if (!docReceptor || docReceptor.length < 7 || docReceptor.startsWith('TEMP')) {
+      return res.status(400).json({
+        success: false,
+        error: `El cliente "${factura.cliente?.razonSocial}" no tiene un CUIT/DNI válido cargado. Corregilo antes de emitir.`
+      });
+    }
+
+    // Tipo de documento según longitud: 11 dígitos = CUIT (80), sino DNI (96)
+    const tipoDocReceptor = docReceptor.length === 11 ? 80 : 96;
+
+    // Desglosar IVA por alícuota real de los ítems (no asumir siempre 21%)
+    // IDs AFIP: 3=0%, 4=10.5%, 5=21%, 6=27%, 8=5%, 9=2.5%
+    const ALICUOTA_ID = { '0': 3, '10.5': 4, '21': 5, '27': 6, '5': 8, '2.5': 9 };
+    const porAlicuota = {};
+    let importeExento = 0;
+    (factura.items || []).forEach(item => {
+      const alic = parseFloat(item.alicuotaIVA) || 0;
+      if (alic === 0 && !item.iva) {
+        importeExento += parseFloat(item.subtotal) || 0;
+        return;
+      }
+      const key = String(alic);
+      if (!porAlicuota[key]) porAlicuota[key] = { base: 0, importe: 0 };
+      porAlicuota[key].base += parseFloat(item.subtotal) || 0;
+      porAlicuota[key].importe += parseFloat(item.iva) || 0;
+    });
+
+    const ivaDesglosado = Object.entries(porAlicuota).map(([alic, v]) => ({
+      id: ALICUOTA_ID[alic] || 5,
+      baseImponible: Math.round(v.base * 100) / 100,
+      importe: Math.round(v.importe * 100) / 100,
+    }));
+
+    // Si no hay items con IVA, fallback al total de la factura
+    if (ivaDesglosado.length === 0 && parseFloat(factura.iva) > 0) {
+      ivaDesglosado.push({
+        id: 5,
+        baseImponible: parseFloat(factura.subtotal),
+        importe: parseFloat(factura.iva),
+      });
+    }
+
     // Construir comprobante
     const comprobante = {
       facturaId: factura.id,
       puntoVenta: pv,
       tipoComprobante: tipoComprobante || determinarTipoComprobante(factura),
-      tipoDocReceptor: 80, // CUIT
-      nroDocReceptor: factura.cliente.numeroDocumento,
+      tipoDocReceptor,
+      nroDocReceptor: docReceptor,
       concepto: 2, // Servicios
       fecha: factura.fecha,
       fechaServicioDesde: factura.fecha,
       fechaServicioHasta: factura.fecha,
       fechaVencimiento: factura.fechaVencimiento,
       importeTotal: parseFloat(factura.total),
-      importeNeto: parseFloat(factura.subtotal),
+      importeNeto: parseFloat(factura.subtotal) - importeExento,
       importeIVA: parseFloat(factura.iva),
-      importeExento: 0,
+      importeExento,
       importeTributos: parseFloat(factura.percepcionIVA || 0) + parseFloat(factura.percepcionIIBB || 0),
       moneda: factura.moneda === 'ARS' ? 'PES' : 'DOL',
       cotizacion: parseFloat(factura.cotizacion) || 1,
-      // IVA desglosado
-      iva: [{
-        id: 5, // 21%
-        baseImponible: parseFloat(factura.subtotal),
-        importe: parseFloat(factura.iva),
-      }],
+      iva: ivaDesglosado,
     };
 
     const resultado = await afipService.emitirComprobante(req.user.tenant_id, comprobante);
 
     res.json({
       success: true,
-      message: 'Factura electrónica emitida',
+      message: resultado.advertencia
+        ? `CAE ${resultado.cae} autorizado, pero con advertencia: ${resultado.advertencia}`
+        : 'Factura electrónica emitida',
       data: resultado,
     });
   } catch (error) {
     console.error('Error emitiendo desde factura:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+/**
+ * POST /api/fiscal/recuperar-cae/:facturaId
+ * Recupera un CAE que quedó autorizado en ARCA pero no se guardó en el
+ * sistema (por un fallo posterior a la autorización). Consulta el último
+ * comprobante autorizado en ARCA para el PV/tipo y, si coincide el importe
+ * y el documento del receptor con la factura, persiste el CAE.
+ */
+exports.recuperarCAE = async (req, res) => {
+  try {
+    const { facturaId } = req.params;
+    const { puntoVenta, tipoComprobante, numeroComprobante } = req.body;
+    const tenantId = req.user.tenant_id;
+
+    const factura = await prisma.factura.findFirst({
+      where: { id: facturaId, tenantId },
+      include: { cliente: true },
+    });
+
+    if (!factura) {
+      return res.status(404).json({ success: false, error: 'Factura no encontrada' });
+    }
+    if (factura.cae) {
+      return res.status(400).json({ success: false, error: 'Esta factura ya tiene CAE registrado' });
+    }
+
+    // Determinar PV y tipo
+    let pv = puntoVenta;
+    if (!pv) {
+      const config = await afipService.getConfig(tenantId);
+      const defaultPV = await prisma.puntoVenta.findFirst({
+        where: { fiscalConfigId: config.id, isDefault: true, isActive: true },
+      });
+      if (!defaultPV) {
+        return res.status(400).json({ success: false, error: 'No hay punto de venta configurado' });
+      }
+      pv = defaultPV.numero;
+    }
+    const tipo = tipoComprobante || determinarTipoComprobante(factura);
+
+    // Número a consultar: el indicado o el último autorizado en ARCA
+    let nro = numeroComprobante;
+    if (!nro) {
+      nro = await afipService.getUltimoAutorizado(tenantId, pv, tipo);
+    }
+    if (!nro) {
+      return res.status(404).json({ success: false, error: 'No hay comprobantes autorizados en ARCA para ese punto de venta y tipo' });
+    }
+
+    // Consultar el comprobante en ARCA
+    const detalle = await afipService.consultarComprobante(tenantId, pv, tipo, nro);
+    if (!detalle || !detalle.CodAutorizacion) {
+      return res.status(404).json({ success: false, error: `El comprobante N° ${nro} no existe en ARCA o no tiene CAE` });
+    }
+
+    // Verificar que el importe coincida con la factura (tolerancia 1 peso)
+    const importeArca = parseFloat(detalle.ImpTotal);
+    const importeFactura = parseFloat(factura.total);
+    if (Math.abs(importeArca - importeFactura) > 1) {
+      return res.status(400).json({
+        success: false,
+        error: `El comprobante N° ${nro} de ARCA tiene importe ${importeArca}, no coincide con el total de la factura (${importeFactura}). Verificá el número de comprobante.`,
+        data: { detalleArca: detalle }
+      });
+    }
+
+    const cae = String(detalle.CodAutorizacion);
+    const caeVto = detalle.FchVto
+      ? new Date(`${String(detalle.FchVto).slice(0, 4)}-${String(detalle.FchVto).slice(4, 6)}-${String(detalle.FchVto).slice(6, 8)}T12:00:00Z`)
+      : null;
+
+    // Persistir en la factura
+    await prisma.factura.update({
+      where: { id: facturaId },
+      data: { cae, vencimientoCAE: caeVto },
+    });
+
+    // Crear el registro fiscal si no existe
+    const config = await afipService.getConfig(tenantId);
+    const pvRecord = await prisma.puntoVenta.findFirst({
+      where: { fiscalConfigId: config.id, numero: pv },
+    });
+
+    const existente = await prisma.comprobanteFiscal.findFirst({
+      where: { tenantId, tipoComprobante: tipo, puntoVentaNum: pv, numeroComprobante: nro },
+    });
+
+    let comprobanteFiscal = existente;
+    if (!existente && pvRecord) {
+      const wsfev1 = require('../services/fiscal/afip/wsfev1').service;
+      const qrData = wsfev1.generateQRData({
+        fecha: factura.fecha,
+        puntoVenta: pv,
+        tipoComprobante: tipo,
+        numeroComprobante: nro,
+        importeTotal: importeFactura,
+        tipoDocReceptor: 80,
+        nroDocReceptor: factura.cliente?.numeroDocumento || '0',
+        cae,
+      }, config);
+
+      comprobanteFiscal = await prisma.comprobanteFiscal.create({
+        data: {
+          tenantId,
+          facturaId,
+          puntoVentaId: pvRecord.id,
+          tipoComprobante: tipo,
+          puntoVentaNum: pv,
+          numeroComprobante: nro,
+          numeroCompleto: `${String(pv).padStart(5, '0')}-${String(nro).padStart(8, '0')}`,
+          tipoDocReceptor: 80,
+          nroDocReceptor: String(factura.cliente?.numeroDocumento || ''),
+          importeTotal: importeFactura,
+          importeNeto: parseFloat(factura.subtotal),
+          importeIVA: parseFloat(factura.iva),
+          fechaComprobante: factura.fecha,
+          cae,
+          caeVencimiento: caeVto,
+          estado: 'AUTORIZADO',
+          resultado: 'A',
+          afipResponse: detalle,
+          qrData,
+        },
+      });
+    }
+
+    res.json({
+      success: true,
+      message: `CAE ${cae} recuperado desde ARCA y guardado`,
+      data: { cae, caeVencimiento: caeVto, comprobanteFiscal },
+    });
+  } catch (error) {
+    console.error('Error recuperando CAE:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 };

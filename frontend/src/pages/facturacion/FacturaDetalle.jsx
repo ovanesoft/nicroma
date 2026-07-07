@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { 
   ArrowLeft, Receipt, XCircle, DollarSign, Building, Calendar, Ship, FileText,
-  Send, CheckCircle, QrCode
+  Send, CheckCircle, QrCode, Download, RefreshCw
 } from 'lucide-react';
 import Layout from '../../components/layout/Layout';
 import { 
@@ -12,6 +12,7 @@ import {
 import { useFactura, useAnularFactura, useRegistrarCobranza, useEmitirDesdeFactura, useFiscalConfig } from '../../hooks/useApi';
 import { formatDate, cn } from '../../lib/utils';
 import toast from 'react-hot-toast';
+import api from '../../api/axios';
 
 const ESTADOS = {
   PENDIENTE: { label: 'Pendiente', color: 'bg-amber-100 text-amber-700' },
@@ -76,21 +77,59 @@ function FacturaDetalle() {
   };
 
   const handleEmitirCAE = async () => {
-    if (!confirm('¿Emitir factura electrónica a AFIP? Esta acción no se puede deshacer.')) return;
+    if (!confirm('¿Emitir factura electrónica a ARCA? Esta acción no se puede deshacer.')) return;
     
     setEmitiendo(true);
     try {
       const result = await emitirCAE.mutateAsync({});
       if (result.success) {
-        toast.success(`CAE obtenido: ${result.data.cae}`);
+        if (result.data?.advertencia) {
+          toast.error(result.data.advertencia, { duration: 10000 });
+        }
+        toast.success(`CAE obtenido: ${result.data.cae}`, { duration: 8000 });
         refetch();
       } else {
         toast.error(result.error || 'Error al emitir');
       }
     } catch (error) {
-      toast.error(error.response?.data?.error || 'Error al emitir factura electrónica');
+      toast.error(error.response?.data?.error || 'Error al emitir factura electrónica', { duration: 10000 });
     } finally {
       setEmitiendo(false);
+    }
+  };
+
+  const [recuperando, setRecuperando] = useState(false);
+  const handleRecuperarCAE = async () => {
+    if (!confirm('¿Buscar en ARCA el CAE de esta factura? Se consultará el último comprobante autorizado y, si el importe coincide, se guardará el CAE en el sistema.')) return;
+    setRecuperando(true);
+    try {
+      const result = await api.post(`/fiscal/recuperar-cae/${id}`, {});
+      toast.success(result.data.message, { duration: 8000 });
+      refetch();
+    } catch (error) {
+      toast.error(error.response?.data?.error || 'No se pudo recuperar el CAE', { duration: 10000 });
+    } finally {
+      setRecuperando(false);
+    }
+  };
+
+  const [descargandoPdf, setDescargandoPdf] = useState(false);
+  const handleDescargarPdf = async () => {
+    setDescargandoPdf(true);
+    try {
+      const response = await api.get(`/facturas/${id}/pdf`, { responseType: 'blob' });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `Factura_${factura.numeroCompleto}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch {
+      toast.error('Error al descargar el PDF');
+    } finally {
+      setDescargandoPdf(false);
     }
   };
 
@@ -133,19 +172,34 @@ function FacturaDetalle() {
           Volver
         </Button>
         <div className="flex gap-2">
+          <Button variant="outline" onClick={handleDescargarPdf} loading={descargandoPdf}>
+            <Download className="w-4 h-4" />
+            Descargar PDF
+          </Button>
           {canEmitCAE && (
-            <Button 
-              onClick={handleEmitirCAE} 
-              disabled={emitiendo}
-              className="bg-green-600 hover:bg-green-700"
-            >
-              {emitiendo ? (
-                <Send className="w-4 h-4 animate-pulse" />
-              ) : (
-                <Send className="w-4 h-4" />
-              )}
-              {emitiendo ? 'Emitiendo...' : 'Emitir CAE'}
-            </Button>
+            <>
+              <Button 
+                onClick={handleEmitirCAE} 
+                disabled={emitiendo}
+                className="bg-green-600 hover:bg-green-700"
+              >
+                {emitiendo ? (
+                  <Send className="w-4 h-4 animate-pulse" />
+                ) : (
+                  <Send className="w-4 h-4" />
+                )}
+                {emitiendo ? 'Emitiendo...' : 'Emitir CAE'}
+              </Button>
+              <Button 
+                variant="outline"
+                onClick={handleRecuperarCAE}
+                loading={recuperando}
+                title="Si emitiste y el CAE quedó en ARCA pero no se guardó acá, usá esta opción"
+              >
+                <RefreshCw className="w-4 h-4" />
+                Recuperar CAE
+              </Button>
+            </>
           )}
           {(factura.estado === 'PENDIENTE' || factura.estado === 'PAGADA_PARCIAL') && (
             <Button onClick={openCobranzaModal}>
