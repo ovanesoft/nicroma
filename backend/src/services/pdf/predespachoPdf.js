@@ -120,45 +120,63 @@ function generarPredespachoPdf(predespacho, tenant, bancoSeleccionado = null) {
   y += 16;
 
   // Tabla de datos de operación
+  // drawField devuelve la altura ocupada para que las filas con textos
+  // largos (multilinea) no se solapen con la siguiente.
   const drawField = (label, value, x, yPos, width = 150) => {
     doc.fontSize(7).fillColor(lightText).font('Helvetica-Bold').text(label, x, yPos);
-    doc.fontSize(8).fillColor(textColor).font('Helvetica').text(value || '-', x, yPos + 9, { width });
+    doc.fontSize(8).fillColor(textColor).font('Helvetica');
+    const texto = String(value || '-');
+    const hVal = doc.heightOfString(texto, { width });
+    doc.text(texto, x, yPos + 9, { width });
+    return 9 + Math.max(hVal, 10);
+  };
+
+  // Dibuja una fila de campos y avanza según el más alto
+  const drawRow = (campos) => {
+    let maxH = 0;
+    campos.forEach(([label, value, x, width]) => {
+      const h = drawField(label, value, x, y, width);
+      if (h > maxH) maxH = h;
+    });
+    y += maxH + 5;
   };
 
   const halfW = pageWidth / 2 - 5;
-  
-  drawField('Cliente', predespacho.cliente?.razonSocial || predespacho.solicitanteNombre || '-', col1, y, halfW);
-  drawField('CUIT', predespacho.clienteCuit || predespacho.cliente?.numeroDocumento || '-', col1 + halfW + 10, y);
-  y += 24;
-  
-  drawField('Mercadería', predespacho.mercaderia, col1, y, halfW);
-  drawField('Cliente / Vend. Exterior', predespacho.clienteVendedorExterior, col1 + halfW + 10, y);
-  y += 24;
-  
-  drawField('Destinación', predespacho.destinacion?.replace(/_/g, ' '), col1, y, halfW);
-  drawField('Facturas proforma', predespacho.facturasProforma, col1 + halfW + 10, y);
-  y += 24;
-  
-  drawField('ETA / ETD', predespacho.etaEtd, col1, y, 120);
-  drawField('Aduana', predespacho.aduana, col1 + 130, y, 120);
-  drawField('Vía', predespacho.via, col1 + 265, y, 80);
-  drawField('Origen / Destino', predespacho.origenDestino, col1 + 350, y, 180);
-  y += 24;
-  
-  drawField('B/L - Guía', predespacho.blGuia, col1, y, 120);
-  drawField('Despachante', predespacho.despachante, col1 + 130, y, 120);
-  drawField('Condición venta', predespacho.condicionVenta, col1 + 265, y, 80);
-  drawField('Agente de Carga', predespacho.agenteCarga, col1 + 350, y, 180);
-  y += 24;
-  
-  drawField('Peso neto', predespacho.pesoNeto ? `${formatNumber(predespacho.pesoNeto)} kg` : '-', col1, y, 100);
-  drawField('Peso bruto', predespacho.pesoBruto ? `${formatNumber(predespacho.pesoBruto)} kg` : '-', col1 + 110, y, 100);
-  drawField('Volumen', predespacho.volumenM3 ? `${formatNumber(predespacho.volumenM3)} m³` : '-', col1 + 220, y, 80);
-  drawField('NCM', predespacho.posicionArancelaria, col1 + 310, y, 180);
-  y += 24;
 
-  drawField('SIMI / Fecha SALI', predespacho.simiSali, col1, y, 200);
-  y += 26;
+  drawRow([
+    ['Cliente', predespacho.cliente?.razonSocial || predespacho.solicitanteNombre || '-', col1, halfW],
+    ['CUIT', predespacho.clienteCuit || predespacho.cliente?.numeroDocumento || '-', col1 + halfW + 10, 150]
+  ]);
+  drawRow([
+    ['Mercadería', predespacho.mercaderia, col1, halfW],
+    ['Cliente / Vend. Exterior', predespacho.clienteVendedorExterior, col1 + halfW + 10, 150]
+  ]);
+  drawRow([
+    ['Destinación', predespacho.destinacion?.replace(/_/g, ' '), col1, halfW],
+    ['Facturas proforma', predespacho.facturasProforma, col1 + halfW + 10, 150]
+  ]);
+  drawRow([
+    ['ETA / ETD', predespacho.etaEtd, col1, 120],
+    ['Aduana', predespacho.aduana, col1 + 130, 120],
+    ['Vía', predespacho.via, col1 + 265, 80],
+    ['Origen / Destino', predespacho.origenDestino, col1 + 350, 180]
+  ]);
+  drawRow([
+    ['B/L - Guía', predespacho.blGuia, col1, 120],
+    ['Despachante', predespacho.despachante, col1 + 130, 120],
+    ['Condición venta', predespacho.condicionVenta, col1 + 265, 80],
+    ['Agente de Carga', predespacho.agenteCarga, col1 + 350, 180]
+  ]);
+  drawRow([
+    ['Peso neto', predespacho.pesoNeto ? `${formatNumber(predespacho.pesoNeto)} kg` : '-', col1, 100],
+    ['Peso bruto', predespacho.pesoBruto ? `${formatNumber(predespacho.pesoBruto)} kg` : '-', col1 + 110, 100],
+    ['Volumen', predespacho.volumenM3 ? `${formatNumber(predespacho.volumenM3)} m³` : '-', col1 + 220, 80],
+    ['NCM', predespacho.posicionArancelaria, col1 + 310, 180]
+  ]);
+  drawRow([
+    ['SIMI / Fecha SALI', predespacho.simiSali, col1, 200]
+  ]);
+  y += 2;
 
   // ============ VALORES BASE ============
   doc.moveTo(col1, y).lineTo(col1 + pageWidth, y).strokeColor(borderColor).lineWidth(0.5).stroke();

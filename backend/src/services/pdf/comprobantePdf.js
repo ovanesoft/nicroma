@@ -132,12 +132,13 @@ function generarComprobantePdf(comprobante, tenant, logoBuffer = null) {
     doc.font('Helvetica').fontSize(8.5).fillColor(textColor);
     items.forEach(item => {
       if (y > 700) { doc.addPage(); y = 50; }
+      const h = doc.heightOfString(item.descripcion || '-', { width: 280 });
       doc.text(item.descripcion || '-', 58, y, { width: 280 });
       doc.text(`${item.cantidad ?? 1}`, 350, y);
       doc.text(formatCurrency(item.precioUnitario ?? 0), 400, y, { width: 65, align: 'right' });
       doc.font('Helvetica-Bold').text(formatCurrency(item.total ?? 0), 480, y, { width: 65, align: 'right' });
       doc.font('Helvetica');
-      y += 14;
+      y += Math.max(h, 10) + 4;
     });
     y += 10;
   } else if (comprobante.concepto) {

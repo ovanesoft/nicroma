@@ -108,13 +108,18 @@ function generarPrefacturaPdf(prefactura, tenant, logoBuffer = null) {
       ['Volumen', `${formatCurrency(totalVolumen)} M³`, 'Contenedor', contenedoresStr],
     ];
 
+    // Altura dinámica por fila: los valores largos (puertos, shipper,
+    // contenedores) pueden ocupar varias líneas y no deben solaparse.
     doc.fontSize(8.5).fillColor(textColor);
     grid.forEach(([lblA, valA, lblB, valB]) => {
+      doc.font('Helvetica');
+      const hA = doc.heightOfString(String(valA || '-'), { width: 160 });
+      const hB = doc.heightOfString(String(valB || '-'), { width: 155 });
       doc.font('Helvetica-Bold').text(`${lblA}:`, 58, y);
-      doc.font('Helvetica').text(valA, 135, y, { width: 160 });
+      doc.font('Helvetica').text(String(valA || '-'), 135, y, { width: 160 });
       doc.font('Helvetica-Bold').text(`${lblB}:`, 310, y);
-      doc.font('Helvetica').text(valB, 390, y, { width: 155 });
-      y += 14;
+      doc.font('Helvetica').text(String(valB || '-'), 390, y, { width: 155 });
+      y += Math.max(hA, hB, 11) + 4;
     });
     y += 8;
   }
@@ -140,6 +145,7 @@ function generarPrefacturaPdf(prefactura, tenant, logoBuffer = null) {
   doc.font('Helvetica').fontSize(8).fillColor(textColor);
   items.forEach(item => {
     if (y > 720) { doc.addPage(); y = 50; }
+    const hDesc = doc.heightOfString(item.descripcion || '-', { width: 190 });
     doc.text(item.descripcion || '-', 58, y, { width: 190 });
     doc.text(item.divisa || 'USD', 255, y);
     doc.text(`${item.cantidad ?? 1}`, 295, y);
@@ -148,7 +154,7 @@ function generarPrefacturaPdf(prefactura, tenant, logoBuffer = null) {
     doc.text(formatCurrency(item.iva), 455, y, { width: 40, align: 'right' });
     doc.font('Helvetica-Bold').text(formatCurrency(item.total), 500, y, { width: 45, align: 'right' });
     doc.font('Helvetica');
-    y += 13;
+    y += Math.max(hDesc, 10) + 4;
   });
   y += 8;
 

@@ -100,22 +100,34 @@ function generarFacturaPdf(factura, tenant, comprobanteFiscal = null, logoBuffer
   let y = 40 + headH + 12;
 
   // ============ CLIENTE ============
-  const clienteH = 58;
+  // Alturas dinámicas: razón social y domicilio pueden ocupar varias líneas
+  doc.fontSize(8);
+  doc.font('Helvetica');
+  const hRazon = doc.heightOfString(cliente.razonSocial || '-', { width: W / 2 - 90 });
+  const hDom = doc.heightOfString(cliente.direccion || '-', { width: W / 2 - 90 });
+  const filaRazonH = Math.max(hRazon, 10) + 4;
+  const filaDomH = Math.max(hDom, 10) + 4;
+  const filaRefH = factura.carpeta?.numero ? 14 : 0;
+  const clienteH = 8 + filaRazonH + filaDomH + filaRefH + 8;
+
   doc.rect(X, y, W, clienteH).strokeColor(borderColor).lineWidth(0.8).stroke();
-  doc.fontSize(8).fillColor(textColor);
-  doc.font('Helvetica-Bold').text('Señores:', X + 8, y + 8);
-  doc.font('Helvetica').text(cliente.razonSocial || '-', X + 60, y + 8, { width: W / 2 });
-  doc.font('Helvetica-Bold').text('CUIT:', X + W / 2 + 24, y + 8);
-  doc.font('Helvetica').text(cliente.numeroDocumento || '-', X + W / 2 + 60, y + 8);
-  doc.font('Helvetica-Bold').text('Domicilio:', X + 8, y + 22);
-  doc.font('Helvetica').text(cliente.direccion || '-', X + 60, y + 22, { width: W / 2 });
-  doc.font('Helvetica-Bold').text('Cond. IVA:', X + W / 2 + 24, y + 22);
-  doc.font('Helvetica').text(cliente.condicionFiscal || 'Responsable Inscripto', X + W / 2 + 80, y + 22, { width: 140 });
+  doc.fillColor(textColor);
+  let cy = y + 8;
+  doc.font('Helvetica-Bold').text('Señores:', X + 8, cy);
+  doc.font('Helvetica').text(cliente.razonSocial || '-', X + 60, cy, { width: W / 2 - 90 });
+  doc.font('Helvetica-Bold').text('CUIT:', X + W / 2 + 24, cy);
+  doc.font('Helvetica').text(cliente.numeroDocumento || '-', X + W / 2 + 60, cy);
+  cy += filaRazonH;
+  doc.font('Helvetica-Bold').text('Domicilio:', X + 8, cy);
+  doc.font('Helvetica').text(cliente.direccion || '-', X + 60, cy, { width: W / 2 - 90 });
+  doc.font('Helvetica-Bold').text('Cond. IVA:', X + W / 2 + 24, cy);
+  doc.font('Helvetica').text(cliente.condicionFiscal || 'Responsable Inscripto', X + W / 2 + 80, cy, { width: 140 });
+  cy += filaDomH;
   if (factura.carpeta?.numero) {
-    doc.font('Helvetica-Bold').text('Ref. Operación:', X + 8, y + 36);
+    doc.font('Helvetica-Bold').text('Ref. Operación:', X + 8, cy);
     doc.font('Helvetica').text(
       `${factura.carpeta.numero}${factura.carpeta.houseBL ? ` • HBL ${factura.carpeta.houseBL}` : ''}`,
-      X + 80, y + 36, { width: W - 100 }
+      X + 80, cy, { width: W - 100 }
     );
   }
   y += clienteH + 12;

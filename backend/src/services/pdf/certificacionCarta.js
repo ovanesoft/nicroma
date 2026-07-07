@@ -69,9 +69,10 @@ function generarCertificadoCarta({ titulo, datos, tenant, logoBuffer }) {
   refRows.forEach(([label, value]) => {
     if (value == null || value === '') return;
     doc.font('Helvetica').fontSize(10).fillColor(textColor);
+    const h = doc.heightOfString(String(value), { width: 380 });
     doc.text(label, 60, y);
-    doc.text(value, 150, y, { width: 380 });
-    y += 15;
+    doc.text(String(value), 150, y, { width: 380 });
+    y += Math.max(h, 12) + 3;
   });
 
   y += 25;
@@ -89,10 +90,11 @@ function generarCertificadoCarta({ titulo, datos, tenant, logoBuffer }) {
   // ============ Conceptos ============
   (datos.conceptos || []).forEach(c => {
     doc.font('Helvetica').fontSize(10).fillColor(textColor);
+    const h = doc.heightOfString(c.concepto || '', { width: 300 });
     doc.text(c.concepto || '', 60, y, { width: 300 });
     doc.text(c.moneda || 'USD', 400, y);
     doc.text(formatImporte(c.importe), 450, y, { width: 85, align: 'right' });
-    y += 18;
+    y += Math.max(h, 12) + 6;
   });
 
   y += 40;
