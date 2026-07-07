@@ -13,5 +13,7 @@ router.post('/desde-carpeta', prefacturaController.crearDesdeCarpeta);
 router.put('/:id', prefacturaController.actualizarPrefactura);
 router.post('/:id/confirmar', prefacturaController.confirmarPrefactura);
 router.post('/:id/cancelar', prefacturaController.cancelarPrefactura);
+router.post('/:id/tipos-cambio', prefacturaController.actualizarTiposCambio);
+router.get('/:id/pdf', prefacturaController.generarPDF);
 
 module.exports = router;

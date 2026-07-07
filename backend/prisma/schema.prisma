@@ -998,6 +998,10 @@ model Prefactura {
   estado        String   @default("BORRADOR") @db.VarChar(50)
   observaciones String?
 
+  // Tipos de cambio para conversión de monedas
+  // Formato: { usd: 1475, eur: 1600, ... } (valor en moneda local ARS)
+  tiposCambio Json? @default("{}") @map("tipos_cambio")
+
   usuarioId String   @map("usuario_id") @db.Uuid
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -1020,6 +1024,7 @@ model ItemPrefactura {
   descripcion    String
   cantidad       Float  @default(1)
   precioUnitario Float  @map("precio_unitario")
+  divisa         String @default("USD") @db.VarChar(10)
   subtotal       Float
   alicuotaIVA    Float  @default(21) @map("alicuota_iva")
   iva            Float
@@ -1067,8 +1072,9 @@ model Factura {
   createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt     DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  items     ItemFactura[]
-  cobranzas Cobranza[]
+  items        ItemFactura[]
+  cobranzas    Cobranza[]
+  comprobantes Comprobante[]
 
   @@unique([tenantId, numero])
   @@unique([tenantId, puntoVenta, tipoComprobante, numeroCompleto])
@@ -1076,6 +1082,58 @@ model Factura {
   @@index([clienteId])
   @@index([estado])
   @@map("facturas")
+}
+
+// ===========================================
+// COMPROBANTES: Recibos, Notas de Crédito y Débito
+// ===========================================
+model Comprobante {
+  id       String @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+  numero   String @db.VarChar(50)
+
+  // RECIBO, NOTA_CREDITO, NOTA_DEBITO
+  tipo String @db.VarChar(20)
+
+  facturaId String  @map("factura_id") @db.Uuid
+  factura   Factura @relation(fields: [facturaId], references: [id])
+
+  fecha  DateTime @default(now()) @db.Timestamptz(6)
+  moneda String   @default("USD") @db.VarChar(10)
+  total  Float
+
+  concepto      String?
+  observaciones String?
+  // Ítems opcionales para NC/ND: [{ descripcion, cantidad, precioUnitario, total }]
+  items         Json?   @default("[]")
+
+  usuarioId String   @map("usuario_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([tenantId, numero])
+  @@index([tenantId])
+  @@index([facturaId])
+  @@index([tipo])
+  @@map("comprobantes")
+}
+
+// ===========================================
+// TIPOS DE CAMBIO HISTÓRICOS
+// ===========================================
+model TipoCambio {
+  id       String @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+
+  moneda String @db.VarChar(10) // USD, EUR, CAD, BRL, etc.
+  valor  Float // valor en moneda local (ARS)
+
+  fecha     DateTime @default(now()) @db.Timestamptz(6)
+  usuarioId String?  @map("usuario_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([tenantId, moneda, fecha])
+  @@map("tipos_cambio")
 }
 
 // ITEMS FACTURA

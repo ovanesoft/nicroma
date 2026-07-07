@@ -801,22 +801,118 @@ export function useCompanyConfig() {
   return useApiQuery(['companyConfig'], '/tenants/my/company');
 }
 
-// Tipos de cambio del día (USD/EUR) del tenant
-export function useTiposCambio() {
-  return useApiQuery(['tiposCambio'], '/tenants/my/tipos-cambio', {
+// ============================================
+// TIPOS DE CAMBIO (histórico por moneda)
+// ============================================
+
+// Últimos valores de cada moneda (para el dashboard)
+export function useTiposCambioUltimos() {
+  return useApiQuery(['tiposCambioUltimos'], '/tipos-cambio/ultimos', {
     staleTime: 60000
   });
 }
 
-export function useUpdateTiposCambio() {
+// Histórico para ver la evolución
+export function useTiposCambioHistorico(moneda) {
+  const params = moneda ? `?moneda=${moneda}` : '';
+  return useApiQuery(['tiposCambioHistorico', moneda], `/tipos-cambio/historico${params}`, {
+    staleTime: 30000
+  });
+}
+
+// Cargar cotizaciones
+export function useCargarTiposCambio() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (data) => {
-      const response = await api.put('/tenants/my/tipos-cambio', data);
+    mutationFn: async (cotizaciones) => {
+      const response = await api.post('/tipos-cambio', { cotizaciones });
       return response.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tiposCambio'] });
+      queryClient.invalidateQueries({ queryKey: ['tiposCambioUltimos'] });
+      queryClient.invalidateQueries({ queryKey: ['tiposCambioHistorico'] });
+    }
+  });
+}
+
+// Eliminar registro del histórico
+export function useEliminarTipoCambio() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id) => {
+      const response = await api.delete(`/tipos-cambio/${id}`);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tiposCambioUltimos'] });
+      queryClient.invalidateQueries({ queryKey: ['tiposCambioHistorico'] });
+    }
+  });
+}
+
+// ============================================
+// COMPROBANTES (Recibos, NC, ND)
+// ============================================
+
+export function usePanelComprobantes(params = {}) {
+  const queryString = new URLSearchParams(
+    Object.entries(params).filter(([_, v]) => v !== undefined && v !== '')
+  ).toString();
+  return useApiQuery(
+    ['panelComprobantes', params],
+    `/comprobantes/panel${queryString ? `?${queryString}` : ''}`
+  );
+}
+
+export function useComprobantes(params = {}) {
+  const queryString = new URLSearchParams(
+    Object.entries(params).filter(([_, v]) => v !== undefined && v !== '')
+  ).toString();
+  return useApiQuery(
+    ['comprobantes', params],
+    `/comprobantes${queryString ? `?${queryString}` : ''}`
+  );
+}
+
+export function useCrearComprobante() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (data) => {
+      const response = await api.post('/comprobantes', data);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['panelComprobantes'] });
+      queryClient.invalidateQueries({ queryKey: ['comprobantes'] });
+    }
+  });
+}
+
+export function useEliminarComprobante() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id) => {
+      const response = await api.delete(`/comprobantes/${id}`);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['panelComprobantes'] });
+      queryClient.invalidateQueries({ queryKey: ['comprobantes'] });
+    }
+  });
+}
+
+// Actualizar tipos de cambio / unificar moneda de una prefactura
+export function useActualizarTiposCambioPrefactura(id) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (data) => {
+      const response = await api.post(`/prefacturas/${id}/tipos-cambio`, data);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['prefactura', id] });
+      queryClient.invalidateQueries({ queryKey: ['prefacturas'] });
     }
   });
 }

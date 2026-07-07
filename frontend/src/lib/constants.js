@@ -100,12 +100,14 @@ export const getNavigation = (role, modules = null) => {
         { name: 'Proveedores', href: '/proveedores', icon: Package },
       ]
     },
-    {
+    { 
       name: 'Facturación',
       icon: Wallet,
       children: [
         { name: 'Prefacturas', href: '/prefacturas', icon: ClipboardList },
         { name: 'Facturas', href: '/facturas', icon: FileText },
+        { name: 'Comprobantes', href: '/comprobantes', icon: Receipt },
+        { name: 'Tipo de Cambio', href: '/tipos-cambio', icon: CreditCard },
         { name: 'AFIP (Electrónica)', href: '/fiscal/config', icon: Receipt },
       ]
     },

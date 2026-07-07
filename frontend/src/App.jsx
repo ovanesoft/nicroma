@@ -54,6 +54,8 @@ import PrefacturaDetalle from './pages/facturacion/PrefacturaDetalle';
 import FacturasPage from './pages/facturacion/FacturasPage';
 import FacturaForm from './pages/facturacion/FacturaForm';
 import FacturaDetalle from './pages/facturacion/FacturaDetalle';
+import ComprobantesPage from './pages/facturacion/ComprobantesPage';
+import TiposCambioPage from './pages/facturacion/TiposCambioPage';
 
 // Pages - Estadísticas
 import EstadisticasPage from './pages/estadisticas/EstadisticasPage';
@@ -68,6 +70,9 @@ import FiscalConfigPage from './pages/fiscal/FiscalConfigPage';
 
 // Pages - Perfil
 import Profile from './pages/Profile';
+
+// New Landing Preview
+import NicromaCargoLanding from './pages/NicromaCargoLanding';
 
 // Pages - Portal (público)
 import PortalLanding from './pages/portal/PortalLanding';
@@ -210,6 +215,7 @@ function AppRoutes() {
       <Route path="/verify-email" element={<VerifyEmail />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
+      <Route path="/nicroma-cargo" element={<NicromaCargoLanding />} />
       <Route path="/portal/:portalSlug" element={<PortalLanding />} />
       <Route path="/precios" element={<PricingPage />} />
       <Route path="/privacy" element={<Privacy />} />
@@ -389,6 +395,16 @@ function AppRoutes() {
       <Route path="/facturas/:id" element={
         <ProtectedRoute allowedRoles={['admin', 'manager']}>
           <FacturaDetalle />
+        </ProtectedRoute>
+      } />
+      <Route path="/comprobantes" element={
+        <ProtectedRoute allowedRoles={['admin', 'manager']}>
+          <ComprobantesPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/tipos-cambio" element={
+        <ProtectedRoute allowedRoles={['admin', 'manager']}>
+          <TiposCambioPage />
         </ProtectedRoute>
       } />
 

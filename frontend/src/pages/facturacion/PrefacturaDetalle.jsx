@@ -1,14 +1,19 @@
+import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { 
-  ArrowLeft, FileText, CheckCircle, XCircle, Receipt, Building, Calendar, Ship
+  ArrowLeft, FileText, CheckCircle, XCircle, Receipt, Building, Calendar, Ship,
+  Download, Banknote, RefreshCw
 } from 'lucide-react';
 import Layout from '../../components/layout/Layout';
-import { Card, CardContent, CardHeader, CardTitle, Button, Badge } from '../../components/ui';
+import { Card, CardContent, CardHeader, CardTitle, Button, Badge, Input } from '../../components/ui';
 import { 
   usePrefactura, useConfirmarPrefactura, useCancelarPrefactura, 
-  useCreateFacturaDesdePrefactura 
+  useCreateFacturaDesdePrefactura, useActualizarTiposCambioPrefactura,
+  useTiposCambioUltimos
 } from '../../hooks/useApi';
 import { formatDate, cn } from '../../lib/utils';
+import toast from 'react-hot-toast';
+import api from '../../api/axios';
 
 const ESTADOS = {
   BORRADOR: { label: 'Borrador', color: 'bg-slate-100 text-slate-700' },
@@ -25,8 +30,65 @@ function PrefacturaDetalle() {
   const confirmar = useConfirmarPrefactura();
   const cancelar = useCancelarPrefactura();
   const facturar = useCreateFacturaDesdePrefactura();
+  const actualizarTC = useActualizarTiposCambioPrefactura(id);
+  const { data: tcUltimosData } = useTiposCambioUltimos();
 
   const prefactura = data?.data?.prefactura;
+  const tcUltimos = tcUltimosData?.data?.ultimos || {};
+
+  const [descargandoPdf, setDescargandoPdf] = useState(false);
+  const [tcValores, setTcValores] = useState({});
+  const [monedaUnificada, setMonedaUnificada] = useState('');
+  const [tcHidratado, setTcHidratado] = useState(false);
+
+  // Divisas presentes en los ítems
+  const divisasItems = [...new Set((prefactura?.items || []).map(i => (i.divisa || 'USD').toUpperCase()))];
+  const hayMultiplesMonedas = divisasItems.length > 1;
+
+  // Hidratar TC guardados o últimos del sistema (una sola vez)
+  useEffect(() => {
+    if (!prefactura || tcHidratado) return;
+    setTcHidratado(true);
+    const guardados = prefactura.tiposCambio || {};
+    const iniciales = {};
+    divisasItems.filter(d => d !== 'ARS').forEach(d => {
+      iniciales[d] = guardados[d] ?? tcUltimos[d]?.valor ?? '';
+    });
+    setTcValores(iniciales);
+    setMonedaUnificada(prefactura.moneda || 'USD');
+  }, [prefactura, tcUltimos]);
+
+  const handleDescargarPdf = async () => {
+    setDescargandoPdf(true);
+    try {
+      const response = await api.get(`/prefacturas/${id}/pdf`, { responseType: 'blob' });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `Prefactura_${prefactura.numero}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch {
+      toast.error('Error al descargar el PDF');
+    } finally {
+      setDescargandoPdf(false);
+    }
+  };
+
+  const handleUnificar = async () => {
+    try {
+      const result = await actualizarTC.mutateAsync({
+        tiposCambio: tcValores,
+        monedaUnificada
+      });
+      toast.success(result.message || 'Moneda unificada');
+      refetch();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Error al unificar');
+    }
+  };
 
   const handleConfirmar = async () => {
     if (!confirm('¿Confirmar esta prefactura?')) return;
@@ -91,6 +153,10 @@ function PrefacturaDetalle() {
           Volver
         </Button>
         <div className="flex gap-2">
+          <Button variant="outline" onClick={handleDescargarPdf} loading={descargandoPdf}>
+            <Download className="w-4 h-4" />
+            Descargar PDF
+          </Button>
           {prefactura.estado === 'BORRADOR' && (
             <>
               <Button variant="secondary" onClick={handleCancelar}>
@@ -163,6 +229,50 @@ function PrefacturaDetalle() {
             </CardContent>
           </Card>
 
+          {/* Datos de la operación (carpeta) */}
+          {prefactura.carpeta && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Ship className="w-5 h-5" />
+                  Datos de la Operación
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                  {(() => {
+                    const c = prefactura.carpeta;
+                    const totalBultos = c.mercancias?.reduce((s, m) => s + (m.bultos || 0), 0) || 0;
+                    const totalPeso = c.mercancias?.reduce((s, m) => s + (m.peso || 0), 0) || 0;
+                    const totalVolumen = c.mercancias?.reduce((s, m) => s + (m.volumen || 0), 0) || 0;
+                    const contenedores = c.contenedores?.map(ct => [ct.tipo, ct.numero].filter(Boolean).join(' ')).join(', ') || '-';
+                    const shipper = c.shipperData?.empresa || c.shipper?.razonSocial || '-';
+                    const campos = [
+                      ['Nro. de HBL', c.houseBL || '-'],
+                      ['Origen', c.puertoOrigen || '-'],
+                      ['Destino', c.puertoDestino || '-'],
+                      ['Shipper', shipper],
+                      ['Fecha Salida', c.fechaSalidaEstimada ? formatDate(c.fechaSalidaEstimada) : '-'],
+                      ['Fecha Llegada', c.fechaLlegadaEstimada ? formatDate(c.fechaLlegadaEstimada) : '-'],
+                      ['Bultos', `${totalBultos}`],
+                      ['Peso', `${totalPeso.toLocaleString('es-AR')} KG`],
+                      ['Volumen', `${totalVolumen.toLocaleString('es-AR')} M³`],
+                      ['Ref. Cliente', c.referenciaCliente || '-'],
+                      ['Buque', c.buque || '-'],
+                      ['Contenedor', contenedores]
+                    ];
+                    return campos.map(([label, value]) => (
+                      <div key={label}>
+                        <p className="text-slate-500 text-xs">{label}</p>
+                        <p className="font-medium text-slate-800">{value}</p>
+                      </div>
+                    ));
+                  })()}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Items */}
           <Card>
             <CardHeader>
@@ -174,6 +284,7 @@ function PrefacturaDetalle() {
                   <thead>
                     <tr className="text-left text-sm text-slate-500 border-b">
                       <th className="pb-3 font-medium">Descripción</th>
+                      <th className="pb-3 font-medium">Divisa</th>
                       <th className="pb-3 font-medium text-right">Cantidad</th>
                       <th className="pb-3 font-medium text-right">Precio Unit.</th>
                       <th className="pb-3 font-medium text-right">Subtotal</th>
@@ -185,6 +296,11 @@ function PrefacturaDetalle() {
                     {prefactura.items?.map((item, idx) => (
                       <tr key={idx} className="border-b border-slate-100">
                         <td className="py-3 text-slate-700">{item.descripcion}</td>
+                        <td className="py-3">
+                          <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600">
+                            {item.divisa || 'USD'}
+                          </span>
+                        </td>
                         <td className="py-3 text-right">{item.cantidad}</td>
                         <td className="py-3 text-right">
                           {item.precioUnitario?.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
@@ -240,6 +356,58 @@ function PrefacturaDetalle() {
               )}
             </CardContent>
           </Card>
+
+          {/* Tipos de cambio y unificación de moneda */}
+          {['BORRADOR', 'CONFIRMADA'].includes(prefactura.estado) && (
+            <Card className={hayMultiplesMonedas ? 'border-amber-300 bg-amber-50/40' : ''}>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Banknote className="w-5 h-5" />
+                  Tipo de Cambio
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {hayMultiplesMonedas && (
+                  <p className="text-xs text-amber-700 bg-amber-100 rounded-lg px-3 py-2">
+                    Esta prefactura tiene ítems en varias monedas ({divisasItems.join(', ')}).
+                    Cargá los tipos de cambio para unificar el total.
+                  </p>
+                )}
+                {Object.keys(tcValores).map(divisa => (
+                  <div key={divisa} className="flex items-center gap-2">
+                    <span className="w-12 text-sm font-semibold text-slate-700">{divisa}</span>
+                    <input
+                      type="number" step="0.01" placeholder="0.00"
+                      value={tcValores[divisa]}
+                      onChange={(e) => setTcValores(prev => ({ ...prev, [divisa]: e.target.value }))}
+                      className="flex-1 px-3 py-1.5 rounded-lg border border-slate-300 text-sm text-right focus:border-primary-500 outline-none"
+                    />
+                  </div>
+                ))}
+                <div className="flex items-center gap-2 pt-2 border-t border-slate-200">
+                  <span className="text-sm text-slate-600 flex-shrink-0">Unificar en:</span>
+                  <select
+                    value={monedaUnificada}
+                    onChange={(e) => setMonedaUnificada(e.target.value)}
+                    className="flex-1 px-2 py-1.5 rounded-lg border border-slate-300 text-sm bg-white"
+                  >
+                    {[...new Set(['USD', 'EUR', 'ARS', ...divisasItems])].map(m => (
+                      <option key={m} value={m}>{m}</option>
+                    ))}
+                  </select>
+                </div>
+                <Button className="w-full" size="sm" onClick={handleUnificar} loading={actualizarTC.isPending}>
+                  <RefreshCw className="w-4 h-4" />
+                  Aplicar Conversión
+                </Button>
+                {Object.keys(prefactura.tiposCambio || {}).length > 0 && (
+                  <p className="text-xs text-slate-400">
+                    TC aplicados: {Object.entries(prefactura.tiposCambio).map(([m, v]) => `${m} ${Number(v).toLocaleString('es-AR')}`).join(' • ')}
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           {/* Totales */}
           <Card>

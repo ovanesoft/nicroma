@@ -1,4 +1,17 @@
 const prisma = require('../services/prisma');
+const { generarPrefacturaPdf } = require('../services/pdf/prefacturaPdf');
+const { loadLogoBuffer } = require('../services/pdf/pdfHelpers');
+
+// Convertir un monto entre divisas usando tipos de cambio (valor en ARS)
+// tc = { USD: 1475, EUR: 1600, ... }; ARS siempre vale 1.
+const convertirMonto = (monto, divisaOrigen, divisaDestino, tc) => {
+  if (!monto) return 0;
+  if (divisaOrigen === divisaDestino) return monto;
+  const tcOrigen = divisaOrigen === 'ARS' ? 1 : tc[divisaOrigen];
+  const tcDestino = divisaDestino === 'ARS' ? 1 : tc[divisaDestino];
+  if (!tcOrigen || !tcDestino) return null; // falta tipo de cambio
+  return monto * tcOrigen / tcDestino;
+};
 
 // Generar número de prefactura
 const generarNumeroPrefactura = async (tenantId) => {
@@ -103,9 +116,18 @@ const obtenerPrefactura = async (req, res) => {
       include: {
         cliente: true,
         carpeta: {
-          select: { id: true, numero: true, puertoOrigen: true, puertoDestino: true }
+          select: {
+            id: true, numero: true, houseBL: true, masterBL: true,
+            puertoOrigen: true, puertoDestino: true,
+            fechaSalidaEstimada: true, fechaLlegadaEstimada: true,
+            referenciaCliente: true, buque: true, viaje: true,
+            shipperData: true,
+            shipper: { select: { razonSocial: true } },
+            mercancias: { select: { bultos: true, peso: true, volumen: true } },
+            contenedores: { select: { tipo: true, numero: true } }
+          }
         },
-        items: true,
+        items: { orderBy: { createdAt: 'asc' } },
         factura: {
           select: { id: true, numeroCompleto: true, fecha: true }
         }
@@ -147,7 +169,7 @@ const crearDesdeCarpeta = async (req, res) => {
       return res.status(400).json({ success: false, message: 'La carpeta no tiene gastos para facturar' });
     }
 
-    // Calcular totales desde gastos (solo venta)
+    // Calcular totales desde gastos (solo venta), conservando la divisa de cada gasto
     const items = carpeta.gastos.map(g => {
       const subtotal = g.totalVenta;
       const iva = g.gravado ? subtotal * (g.porcentajeIVA / 100) : 0;
@@ -155,6 +177,7 @@ const crearDesdeCarpeta = async (req, res) => {
         descripcion: g.concepto,
         cantidad: g.cantidad,
         precioUnitario: g.montoVenta,
+        divisa: g.divisa || carpeta.moneda || 'USD',
         subtotal,
         alicuotaIVA: g.gravado ? g.porcentajeIVA : 0,
         iva,
@@ -404,6 +427,138 @@ const cancelarPrefactura = async (req, res) => {
   }
 };
 
+// Actualizar tipos de cambio y unificar moneda
+// Body: { tiposCambio: { USD: 1475, EUR: 1600 }, monedaUnificada: 'USD' }
+// Recalcula los totales de la prefactura convirtiendo cada ítem (que conserva
+// su divisa original) a la moneda unificada.
+const actualizarTiposCambio = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const tenantId = req.user.tenant_id;
+    const { tiposCambio = {}, monedaUnificada } = req.body;
+
+    const prefactura = await prisma.prefactura.findFirst({
+      where: { id, tenantId },
+      include: { items: true }
+    });
+
+    if (!prefactura) {
+      return res.status(404).json({ success: false, message: 'Prefactura no encontrada' });
+    }
+
+    if (!['BORRADOR', 'CONFIRMADA'].includes(prefactura.estado)) {
+      return res.status(400).json({ success: false, message: 'La prefactura ya fue facturada o cancelada' });
+    }
+
+    // Normalizar TC: claves en mayúscula, valores float
+    const tc = {};
+    Object.entries(tiposCambio).forEach(([k, v]) => {
+      const val = parseFloat(v);
+      if (!isNaN(val) && val > 0) tc[k.toUpperCase()] = val;
+    });
+
+    const monedaDestino = (monedaUnificada || prefactura.moneda || 'USD').toUpperCase();
+
+    // Verificar que todas las divisas de los items tengan TC (o sean la destino/ARS)
+    const divisasItems = [...new Set(prefactura.items.map(i => (i.divisa || 'USD').toUpperCase()))];
+    const faltantes = divisasItems.filter(d =>
+      d !== monedaDestino && d !== 'ARS' && !tc[d]
+    );
+    if (monedaDestino !== 'ARS' && !tc[monedaDestino] && divisasItems.some(d => d !== monedaDestino)) {
+      faltantes.push(monedaDestino);
+    }
+
+    if (faltantes.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: `Falta cargar el tipo de cambio de: ${[...new Set(faltantes)].join(', ')}`
+      });
+    }
+
+    // Recalcular totales convertidos
+    let subtotal = 0, iva = 0;
+    prefactura.items.forEach(item => {
+      const divisa = (item.divisa || 'USD').toUpperCase();
+      const sub = convertirMonto(item.subtotal, divisa, monedaDestino, tc);
+      const it = convertirMonto(item.iva, divisa, monedaDestino, tc);
+      subtotal += sub || 0;
+      iva += it || 0;
+    });
+
+    const updated = await prisma.prefactura.update({
+      where: { id },
+      data: {
+        tiposCambio: tc,
+        moneda: monedaDestino,
+        subtotal,
+        iva,
+        total: subtotal + iva
+      },
+      include: { cliente: true, items: true }
+    });
+
+    res.json({
+      success: true,
+      message: `Totales unificados en ${monedaDestino}`,
+      data: { prefactura: updated }
+    });
+  } catch (error) {
+    console.error('Error actualizando tipos de cambio:', error);
+    res.status(500).json({ success: false, message: 'Error al actualizar tipos de cambio' });
+  }
+};
+
+// Generar PDF de la prefactura
+const generarPDF = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const tenantId = req.user.tenant_id;
+
+    const prefactura = await prisma.prefactura.findFirst({
+      where: { id, tenantId },
+      include: {
+        cliente: true,
+        carpeta: {
+          select: {
+            id: true, numero: true, houseBL: true, masterBL: true,
+            puertoOrigen: true, puertoDestino: true,
+            fechaSalidaEstimada: true, fechaLlegadaEstimada: true,
+            referenciaCliente: true, buque: true, viaje: true,
+            shipperData: true,
+            shipper: { select: { razonSocial: true } },
+            mercancias: { select: { bultos: true, peso: true, volumen: true } },
+            contenedores: { select: { tipo: true, numero: true } }
+          }
+        },
+        items: { orderBy: { createdAt: 'asc' } }
+      }
+    });
+
+    if (!prefactura) {
+      return res.status(404).json({ success: false, message: 'Prefactura no encontrada' });
+    }
+
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: {
+        name: true, logoUrl: true, companyAddress: true, companyPhone: true,
+        companyEmail: true, paymentBankCuit: true
+      }
+    });
+
+    const logoBuffer = await loadLogoBuffer(tenant?.logoUrl);
+    const doc = generarPrefacturaPdf(prefactura, tenant, logoBuffer);
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="Prefactura_${prefactura.numero}.pdf"`);
+    doc.pipe(res);
+    doc.end();
+  } catch (error) {
+    console.error('Error generando PDF de prefactura:', error);
+    res.status(500).json({ success: false, message: 'Error al generar el PDF' });
+  }
+};
+
 module.exports = {
   listarPrefacturas,
   obtenerPrefactura,
@@ -411,5 +566,7 @@ module.exports = {
   crearPrefactura,
   actualizarPrefactura,
   confirmarPrefactura,
-  cancelarPrefactura
+  cancelarPrefactura,
+  actualizarTiposCambio,
+  generarPDF
 };

@@ -161,6 +161,8 @@ app.use('/api/billing', billingRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/conversations', conversationRoutes);
 app.use('/api/predespachos', predespachoRoutes);
+app.use('/api/comprobantes', require('./routes/comprobantes'));
+app.use('/api/tipos-cambio', require('./routes/tiposCambio'));
 app.use('/api/terminales', require('./routes/terminales'));
 app.use('/api/conceptos-gasto', require('./routes/conceptosGasto'));
 
