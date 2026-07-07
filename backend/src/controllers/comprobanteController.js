@@ -134,7 +134,7 @@ const crearComprobante = async (req, res) => {
   try {
     const tenantId = req.user.tenant_id;
     const usuarioId = req.user.id;
-    const { facturaId, tipo, total, concepto, observaciones, items } = req.body;
+    const { facturaId, tipo, total, concepto, observaciones, items, retenciones } = req.body;
 
     if (!['RECIBO', 'NOTA_CREDITO', 'NOTA_DEBITO'].includes(tipo)) {
       return res.status(400).json({ success: false, message: 'Tipo de comprobante inválido' });
@@ -164,6 +164,15 @@ const crearComprobante = async (req, res) => {
 
     const numero = await generarNumeroComprobante(tenantId, tipo);
 
+    // Sanitizar retenciones (solo para recibos)
+    const retencionesValidas = (Array.isArray(retenciones) ? retenciones : [])
+      .filter(r => r && r.importe != null && parseFloat(r.importe) > 0)
+      .map(r => ({
+        tipo: r.tipo || 'OTRA',
+        descripcion: r.descripcion || '',
+        importe: parseFloat(r.importe)
+      }));
+
     const comprobante = await prisma.comprobante.create({
       data: {
         tenantId,
@@ -175,7 +184,8 @@ const crearComprobante = async (req, res) => {
         total: total != null && total !== '' ? parseFloat(total) : factura.total,
         concepto: concepto || null,
         observaciones: observaciones || null,
-        items: Array.isArray(items) ? items : []
+        items: Array.isArray(items) ? items : [],
+        retenciones: retencionesValidas
       },
       include: {
         factura: {

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Receipt, Search, Download, FileText, CheckCircle, Clock,
-  FilePlus, FileMinus, X, Trash2
+  FilePlus, FileMinus, X, Trash2, Plus
 } from 'lucide-react';
 import Layout from '../../components/layout/Layout';
 import { 
@@ -22,6 +22,14 @@ const TIPOS = {
   NOTA_DEBITO: { label: 'Nota de Débito', color: 'bg-blue-100 text-blue-800', icon: FilePlus }
 };
 
+const TIPOS_RETENCION = [
+  { value: 'GANANCIAS', label: 'Imp. a las Ganancias' },
+  { value: 'IVA', label: 'IVA' },
+  { value: 'IIBB', label: 'Ingresos Brutos' },
+  { value: 'SUSS', label: 'SUSS' },
+  { value: 'OTRA', label: 'Otra' }
+];
+
 // Modal para emitir un comprobante
 function EmitirModal({ factura, tipo, onClose, onEmitido }) {
   const crear = useCrearComprobante();
@@ -32,8 +40,37 @@ function EmitirModal({ factura, tipo, onClose, onEmitido }) {
       : ''
   );
   const [observaciones, setObservaciones] = useState('');
+  const [retenciones, setRetenciones] = useState([]);
 
   const info = TIPOS[tipo];
+  const esRecibo = tipo === 'RECIBO';
+
+  const totalRetenciones = retenciones.reduce((s, r) => s + (parseFloat(r.importe) || 0), 0);
+  const netoRecibido = (parseFloat(factura.total) || 0) - totalRetenciones;
+
+  // Al modificar retenciones en un recibo, el total (neto) se recalcula solo
+  const actualizarRetencion = (idx, field, value) => {
+    const nuevas = [...retenciones];
+    nuevas[idx] = { ...nuevas[idx], [field]: value };
+    setRetenciones(nuevas);
+    if (esRecibo) {
+      const totRet = nuevas.reduce((s, r) => s + (parseFloat(r.importe) || 0), 0);
+      setTotal(((parseFloat(factura.total) || 0) - totRet).toFixed(2));
+    }
+  };
+
+  const agregarRetencion = () => {
+    setRetenciones(prev => [...prev, { tipo: 'GANANCIAS', descripcion: '', importe: '' }]);
+  };
+
+  const quitarRetencion = (idx) => {
+    const nuevas = retenciones.filter((_, i) => i !== idx);
+    setRetenciones(nuevas);
+    if (esRecibo) {
+      const totRet = nuevas.reduce((s, r) => s + (parseFloat(r.importe) || 0), 0);
+      setTotal(((parseFloat(factura.total) || 0) - totRet).toFixed(2));
+    }
+  };
 
   const handleEmitir = async () => {
     try {
@@ -42,7 +79,8 @@ function EmitirModal({ factura, tipo, onClose, onEmitido }) {
         tipo,
         total,
         concepto,
-        observaciones
+        observaciones,
+        retenciones: esRecibo ? retenciones : []
       });
       toast.success(result.message);
       onEmitido(result.data.comprobante);
@@ -73,8 +111,72 @@ function EmitirModal({ factura, tipo, onClose, onEmitido }) {
             <span>Total de la factura:</span>
             <span className="font-bold">{factura.moneda} {formatCurrency(factura.total)}</span>
           </div>
+          {/* Retenciones (solo recibos) */}
+          {esRecibo && (
+            <div className="border border-amber-200 bg-amber-50/50 rounded-lg p-3">
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-sm font-medium text-amber-800">Retenciones aplicadas</label>
+                <Button type="button" variant="ghost" size="sm" onClick={agregarRetencion}>
+                  <Plus className="w-4 h-4" /> Agregar
+                </Button>
+              </div>
+              {retenciones.length === 0 ? (
+                <p className="text-xs text-amber-600">
+                  Sin retenciones. Si el cliente aplicó retenciones (Ganancias, IVA, IIBB, SUSS), agregalas acá.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {retenciones.map((r, idx) => (
+                    <div key={idx} className="grid grid-cols-12 gap-2 items-center">
+                      <select
+                        value={r.tipo}
+                        onChange={(e) => actualizarRetencion(idx, 'tipo', e.target.value)}
+                        className="col-span-4 px-2 py-1.5 rounded border border-slate-300 text-sm bg-white"
+                      >
+                        {TIPOS_RETENCION.map(t => (
+                          <option key={t.value} value={t.value}>{t.label}</option>
+                        ))}
+                      </select>
+                      <input
+                        placeholder="N° certificado / detalle"
+                        value={r.descripcion}
+                        onChange={(e) => actualizarRetencion(idx, 'descripcion', e.target.value)}
+                        className="col-span-4 px-2 py-1.5 rounded border border-slate-300 text-sm"
+                      />
+                      <input
+                        type="number" step="0.01" placeholder="Importe"
+                        value={r.importe}
+                        onChange={(e) => actualizarRetencion(idx, 'importe', e.target.value)}
+                        className="col-span-3 px-2 py-1.5 rounded border border-slate-300 text-sm text-right"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => quitarRetencion(idx)}
+                        className="col-span-1 p-1 text-red-400 hover:text-red-600"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                  <div className="flex justify-between text-sm pt-2 border-t border-amber-200">
+                    <span className="text-amber-700">Total retenciones:</span>
+                    <span className="font-bold text-amber-900">
+                      {factura.moneda} {totalRetenciones.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-amber-700">Neto a recibir:</span>
+                    <span className="font-bold text-amber-900">
+                      {factura.moneda} {netoRecibido.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           <Input
-            label={`Importe del ${info.label.toLowerCase()}`}
+            label={esRecibo && retenciones.length > 0 ? 'Neto recibido (efectivo/transferencia)' : `Importe del ${info.label.toLowerCase()}`}
             type="number" step="0.01"
             value={total}
             onChange={(e) => setTotal(e.target.value)}

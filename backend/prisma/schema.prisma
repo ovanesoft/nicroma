@@ -1106,6 +1106,9 @@ model Comprobante {
   observaciones String?
   // Ítems opcionales para NC/ND: [{ descripcion, cantidad, precioUnitario, total }]
   items         Json?   @default("[]")
+  // Retenciones aplicadas (recibos): [{ tipo, descripcion, importe }]
+  // tipo: GANANCIAS, IVA, IIBB, SUSS, OTRA
+  retenciones   Json?   @default("[]")
 
   usuarioId String   @map("usuario_id") @db.Uuid
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)

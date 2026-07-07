@@ -147,12 +147,59 @@ function generarComprobantePdf(comprobante, tenant, logoBuffer = null) {
     y += 20;
   }
 
-  // ============ Total ============
-  y += 10;
+  // ============ Retenciones (recibos) ============
+  const retenciones = Array.isArray(comprobante.retenciones) ? comprobante.retenciones : [];
+  const totalRetenciones = retenciones.reduce((s, r) => s + (parseFloat(r.importe) || 0), 0);
+
+  const NOMBRES_RETENCION = {
+    GANANCIAS: 'Retención Imp. a las Ganancias',
+    IVA: 'Retención IVA',
+    IIBB: 'Retención Ingresos Brutos',
+    SUSS: 'Retención SUSS',
+    OTRA: 'Otra retención'
+  };
+
+  if (retenciones.length > 0) {
+    doc.rect(50, y, doc.page.width - 100, 18).fill('#fef3c7').stroke();
+    doc.fillColor('#92400e').font('Helvetica-Bold').fontSize(9);
+    doc.text('RETENCIONES APLICADAS', 58, y + 5);
+    y += 24;
+
+    doc.fontSize(8.5).fillColor(textColor);
+    retenciones.forEach(r => {
+      const label = [NOMBRES_RETENCION[r.tipo] || r.tipo, r.descripcion].filter(Boolean).join(' — ');
+      const h = doc.heightOfString(label, { width: 350 });
+      doc.font('Helvetica').text(label, 58, y, { width: 350 });
+      doc.font('Helvetica-Bold').text(
+        `- ${comprobante.moneda || 'USD'} ${formatCurrency(r.importe)}`,
+        430, y, { width: 115, align: 'right' }
+      );
+      y += Math.max(h, 10) + 4;
+    });
+    y += 6;
+  }
+
+  // ============ Totales ============
+  y += 4;
   doc.moveTo(300, y).lineTo(doc.page.width - 50, y).strokeColor(borderColor).stroke();
   y += 10;
+
+  if (retenciones.length > 0) {
+    // Desglose: importe bruto - retenciones = neto recibido
+    const bruto = (parseFloat(comprobante.total) || 0) + totalRetenciones;
+    doc.fontSize(9).fillColor(textColor).font('Helvetica');
+    doc.text('Importe bruto:', 320, y);
+    doc.font('Helvetica-Bold').text(`${comprobante.moneda || 'USD'} ${formatCurrency(bruto)}`, 430, y, { width: 115, align: 'right' });
+    y += 14;
+    doc.font('Helvetica').text('Total retenciones:', 320, y);
+    doc.font('Helvetica-Bold').text(`- ${comprobante.moneda || 'USD'} ${formatCurrency(totalRetenciones)}`, 430, y, { width: 115, align: 'right' });
+    y += 16;
+  }
+
   doc.fontSize(13).fillColor(primaryColor).font('Helvetica-Bold');
-  const totalLabel = comprobante.tipo === 'RECIBO' ? 'TOTAL RECIBIDO' : 'TOTAL';
+  const totalLabel = comprobante.tipo === 'RECIBO'
+    ? (retenciones.length > 0 ? 'NETO RECIBIDO' : 'TOTAL RECIBIDO')
+    : 'TOTAL';
   doc.text(`${totalLabel}:`, 300, y);
   doc.text(`${comprobante.moneda || 'USD'} ${formatCurrency(comprobante.total)}`, 420, y, { width: 125, align: 'right' });
   y += 30;
@@ -160,11 +207,11 @@ function generarComprobantePdf(comprobante, tenant, logoBuffer = null) {
   // ============ Texto del recibo ============
   if (comprobante.tipo === 'RECIBO') {
     doc.fontSize(9).fillColor(textColor).font('Helvetica');
-    doc.text(
-      `Recibimos de ${cliente.razonSocial || 'el cliente'} la suma correspondiente al total indicado, en concepto de pago de la factura ${factura.numeroCompleto || '-'}.`,
-      50, y, { width: doc.page.width - 100, align: 'justify' }
-    );
-    y += 35;
+    const textoRecibo = retenciones.length > 0
+      ? `Recibimos de ${cliente.razonSocial || 'el cliente'} la suma indicada como neto recibido, en concepto de pago de la factura ${factura.numeroCompleto || '-'}, con más los certificados de retención detallados que completan el total de la operación.`
+      : `Recibimos de ${cliente.razonSocial || 'el cliente'} la suma correspondiente al total indicado, en concepto de pago de la factura ${factura.numeroCompleto || '-'}.`;
+    doc.text(textoRecibo, 50, y, { width: doc.page.width - 100, align: 'justify' });
+    y += doc.heightOfString(textoRecibo, { width: doc.page.width - 100 }) + 15;
   }
 
   // Observaciones
