@@ -275,8 +275,18 @@ class AFIPService {
   async getUltimoAutorizado(tenantId, puntoVenta, tipoComprobante) {
     const config = await this.getConfig(tenantId);
     const credentials = await this.getCredentials(tenantId);
-    
+
     return wsfev1.getUltimoAutorizado(config, credentials, puntoVenta, tipoComprobante);
+  }
+
+  /**
+   * Cotización oficial de ARCA para una moneda (DOL, EUR, etc.)
+   */
+  async getCotizacion(tenantId, monId = 'DOL') {
+    const config = await this.getConfig(tenantId);
+    const credentials = await this.getCredentials(tenantId);
+
+    return wsfev1.getCotizacion(config, credentials, monId);
   }
 
   /**

@@ -310,6 +310,31 @@ class WSFEv1Service {
   }
 
   /**
+   * FEParamGetCotizacion - Obtiene la cotización oficial de una moneda
+   * según ARCA (necesaria para emitir comprobantes en moneda extranjera).
+   * @param {string} monId - Código de moneda AFIP (DOL, EUR, etc.)
+   */
+  async getCotizacion(config, credentials, monId = 'DOL') {
+    const client = await this.getClient(config.environment);
+
+    const params = {
+      Auth: this.buildAuth(credentials.token, credentials.sign, config.cuit),
+      MonId: monId,
+    };
+
+    const result = await client.FEParamGetCotizacionAsync(params);
+    const response = result[0]?.FEParamGetCotizacionResult;
+
+    this.handleError(response, 'FEParamGetCotizacion');
+
+    const cotiz = parseFloat(response?.ResultGet?.MonCotiz);
+    if (!cotiz || isNaN(cotiz)) {
+      throw new Error(`ARCA no devolvió cotización para ${monId}`);
+    }
+    return cotiz;
+  }
+
+  /**
    * FEParamGetTiposCbte - Obtiene tipos de comprobantes disponibles
    */
   async getTiposComprobante(config, credentials) {
@@ -424,7 +449,7 @@ class WSFEv1Service {
         tipoCmp: parseInt(comprobante.tipoComprobante) || 0,
         nroCmp: parseInt(comprobante.numeroComprobante) || 0,
         importe: parseFloat(comprobante.importeTotal) || 0,
-        moneda: comprobante.moneda === 'DOL' ? 'DOL' : 'PES',
+        moneda: comprobante.moneda && comprobante.moneda !== 'PES' ? comprobante.moneda : 'PES',
         ctz: parseFloat(comprobante.cotizacion) || 1,
         tipoDocRec: parseInt(comprobante.tipoDocReceptor) || 80,
         nroDocRec: parseInt(String(comprobante.nroDocReceptor || '').replace(/[^0-9]/g, '')) || 0,

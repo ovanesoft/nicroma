@@ -490,6 +490,50 @@ exports.emitirDesdeFactura = async (req, res) => {
       });
     }
 
+    // Moneda AFIP y cotización oficial.
+    // ARCA rechaza [10119] si la cotización difiere de la oficial: para
+    // moneda extranjera SIEMPRE consultamos FEParamGetCotizacion y usamos
+    // la cotización del día, salvo que la factura tenga una cargada
+    // dentro del rango razonable.
+    const MONEDA_AFIP = { ARS: 'PES', USD: 'DOL', EUR: '060', BRL: '012' };
+    const monedaAfip = MONEDA_AFIP[factura.moneda] || 'DOL';
+    let cotizacion = 1;
+
+    if (monedaAfip !== 'PES') {
+      let cotizOficial = null;
+      try {
+        cotizOficial = await afipService.getCotizacion(req.user.tenant_id, monedaAfip);
+        console.log(`[AFIP] Cotización oficial ${monedaAfip}: ${cotizOficial}`);
+      } catch (cotizErr) {
+        console.error('[AFIP] No se pudo obtener cotización oficial:', cotizErr.message);
+      }
+
+      const cotizFactura = parseFloat(factura.cotizacion);
+      if (cotizOficial) {
+        // Usar la de la factura solo si está dentro del rango que acepta ARCA
+        // (entre -2% y +400% de la oficial); si no, usar la oficial.
+        const dentroDeRango = cotizFactura &&
+          cotizFactura >= cotizOficial * 0.98 &&
+          cotizFactura <= cotizOficial * 5;
+        cotizacion = dentroDeRango ? cotizFactura : cotizOficial;
+      } else if (cotizFactura && cotizFactura > 1) {
+        cotizacion = cotizFactura;
+      } else {
+        return res.status(400).json({
+          success: false,
+          error: 'No se pudo obtener la cotización oficial de ARCA y la factura no tiene cotización cargada. Cargá la cotización en la factura o reintentá.'
+        });
+      }
+
+      // Persistir la cotización usada en la factura
+      try {
+        await prisma.factura.update({
+          where: { id: factura.id },
+          data: { cotizacion },
+        });
+      } catch (e) { /* no bloqueante */ }
+    }
+
     // Construir comprobante
     const comprobante = {
       facturaId: factura.id,
@@ -507,8 +551,8 @@ exports.emitirDesdeFactura = async (req, res) => {
       importeIVA: parseFloat(factura.iva),
       importeExento,
       importeTributos: parseFloat(factura.percepcionIVA || 0) + parseFloat(factura.percepcionIIBB || 0),
-      moneda: factura.moneda === 'ARS' ? 'PES' : 'DOL',
-      cotizacion: parseFloat(factura.cotizacion) || 1,
+      moneda: monedaAfip,
+      cotizacion,
       iva: ivaDesglosado,
     };
 
