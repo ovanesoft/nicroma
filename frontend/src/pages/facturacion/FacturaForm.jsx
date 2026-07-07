@@ -100,6 +100,9 @@ function FacturaForm() {
         tipoComprobante: formData.tipoComprobante,
         puntoVenta: parseInt(formData.puntoVenta),
         moneda: formData.moneda,
+        cotizacion: formData.moneda !== 'ARS' && parseFloat(formData.cotizacion) > 0
+          ? parseFloat(formData.cotizacion)
+          : 1,
         observaciones: formData.observaciones || null,
         items: items.filter(i => i.descripcion).map(i => ({
           descripcion: i.descripcion,
@@ -346,6 +349,24 @@ function FacturaForm() {
                   <option value="EUR">EUR - Euro</option>
                 </select>
               </div>
+              {formData.moneda !== 'ARS' && (
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                    Cotización ({formData.moneda} → ARS)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    placeholder="Ej: 1515.00"
+                    value={formData.cotizacion === 1 ? '' : formData.cotizacion}
+                    onChange={(e) => handleChange('cotizacion', e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm text-right"
+                  />
+                  <p className="text-[11px] text-slate-400 mt-1">
+                    Opcional. Si queda vacía, al emitir el CAE se usa la oficial de ARCA.
+                  </p>
+                </div>
+              )}
               <Input
                 label="Vencimiento"
                 type="date"

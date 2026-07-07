@@ -238,6 +238,7 @@ const crearFactura = async (req, res) => {
       tipoComprobante = 'A', 
       puntoVenta = 1,
       moneda = 'USD',
+      cotizacion,
       observaciones,
       items = []
     } = req.body;
@@ -276,6 +277,7 @@ const crearFactura = async (req, res) => {
         clienteId,
         fecha: new Date(),
         moneda,
+        cotizacion: cotizacion && parseFloat(cotizacion) > 0 ? parseFloat(cotizacion) : 1,
         subtotal: subtotalGeneral,
         iva: ivaGeneral,
         total: totalGeneral,

@@ -76,17 +76,56 @@ function FacturaDetalle() {
     setCobranzaModal(true);
   };
 
+  // Modal de emisión CAE con cotización editable
+  const [emisionModal, setEmisionModal] = useState(false);
+  const [cotizOficial, setCotizOficial] = useState(null);
+  const [cotizManual, setCotizManual] = useState('');
+  const [cargandoCotiz, setCargandoCotiz] = useState(false);
+
+  const esMonedaExtranjera = factura && factura.moneda !== 'ARS';
+  const limInf = cotizOficial ? cotizOficial * 0.98 : null;
+  const limSup = cotizOficial ? cotizOficial * 5 : null;
+  const cotizNum = parseFloat(cotizManual);
+  const cotizValida = !esMonedaExtranjera || (
+    cotizNum > 0 && (!cotizOficial || (cotizNum >= limInf && cotizNum <= limSup))
+  );
+
+  const abrirEmisionModal = async () => {
+    setEmisionModal(true);
+    if (!esMonedaExtranjera) return;
+    setCargandoCotiz(true);
+    try {
+      const MONEDA_AFIP = { USD: 'DOL', EUR: '060', BRL: '012' };
+      const response = await api.get(`/fiscal/cotizacion?moneda=${MONEDA_AFIP[factura.moneda] || 'DOL'}`);
+      const oficial = response.data?.data?.cotizacion;
+      setCotizOficial(oficial);
+      // Precargar: cotización de la factura si es válida, sino la oficial
+      const propia = parseFloat(factura.cotizacion);
+      setCotizManual(
+        propia > 1 && oficial && propia >= oficial * 0.98 && propia <= oficial * 5
+          ? String(propia)
+          : String(oficial ?? '')
+      );
+    } catch {
+      toast.error('No se pudo obtener la cotización oficial de ARCA. Podés ingresarla manualmente.');
+      setCotizOficial(null);
+      setCotizManual(factura.cotizacion > 1 ? String(factura.cotizacion) : '');
+    } finally {
+      setCargandoCotiz(false);
+    }
+  };
+
   const handleEmitirCAE = async () => {
-    if (!confirm('¿Emitir factura electrónica a ARCA? Esta acción no se puede deshacer.')) return;
-    
     setEmitiendo(true);
     try {
-      const result = await emitirCAE.mutateAsync({});
+      const payload = esMonedaExtranjera && cotizNum > 0 ? { cotizacion: cotizNum } : {};
+      const result = await emitirCAE.mutateAsync(payload);
       if (result.success) {
         if (result.data?.advertencia) {
           toast.error(result.data.advertencia, { duration: 10000 });
         }
         toast.success(`CAE obtenido: ${result.data.cae}`, { duration: 8000 });
+        setEmisionModal(false);
         refetch();
       } else {
         toast.error(result.error || 'Error al emitir');
@@ -179,16 +218,12 @@ function FacturaDetalle() {
           {canEmitCAE && (
             <>
               <Button 
-                onClick={handleEmitirCAE} 
+                onClick={abrirEmisionModal} 
                 disabled={emitiendo}
                 className="bg-green-600 hover:bg-green-700"
               >
-                {emitiendo ? (
-                  <Send className="w-4 h-4 animate-pulse" />
-                ) : (
-                  <Send className="w-4 h-4" />
-                )}
-                {emitiendo ? 'Emitiendo...' : 'Emitir CAE'}
+                <Send className="w-4 h-4" />
+                Emitir CAE
               </Button>
               <Button 
                 variant="outline"
@@ -508,6 +543,78 @@ function FacturaDetalle() {
           </Button>
           <Button onClick={handleCobranza} loading={registrarCobranza.isPending}>
             Registrar
+          </Button>
+        </ModalFooter>
+      </Modal>
+
+      {/* Modal Emisión CAE con cotización */}
+      <Modal open={emisionModal} onClose={() => setEmisionModal(false)}>
+        <ModalHeader onClose={() => setEmisionModal(false)}>
+          <ModalTitle>Emitir Factura Electrónica</ModalTitle>
+        </ModalHeader>
+        <ModalContent className="space-y-4">
+          <p className="text-sm text-slate-600">
+            Se emitirá la factura <span className="font-mono font-medium">{factura.numeroCompleto}</span> ante ARCA.
+            Esta acción no se puede deshacer.
+          </p>
+
+          {esMonedaExtranjera && (
+            <div className="border border-emerald-200 bg-emerald-50/50 rounded-lg p-4 space-y-3">
+              <p className="text-sm font-medium text-emerald-800">
+                Tipo de cambio ({factura.moneda} → ARS)
+              </p>
+              {cargandoCotiz ? (
+                <p className="text-sm text-slate-500">Consultando cotización oficial de ARCA...</p>
+              ) : (
+                <>
+                  {cotizOficial && (
+                    <div className="flex justify-between text-sm text-slate-600">
+                      <span>Cotización oficial ARCA:</span>
+                      <span className="font-bold tabular-nums">
+                        $ {cotizOficial.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                      </span>
+                    </div>
+                  )}
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                      Cotización a utilizar
+                    </label>
+                    <input
+                      type="number" step="0.01"
+                      value={cotizManual}
+                      onChange={(e) => setCotizManual(e.target.value)}
+                      className={cn(
+                        'w-full px-3 py-2 rounded-lg border text-sm text-right tabular-nums outline-none focus:ring-2',
+                        cotizValida
+                          ? 'border-slate-300 focus:border-emerald-500 focus:ring-emerald-500/20'
+                          : 'border-red-400 bg-red-50 focus:border-red-500 focus:ring-red-500/20'
+                      )}
+                    />
+                  </div>
+                  {cotizOficial && (
+                    <p className={cn('text-xs', cotizValida ? 'text-slate-500' : 'text-red-600 font-medium')}>
+                      {cotizValida
+                        ? `Rango aceptado por ARCA: $ ${limInf.toLocaleString('es-AR', { minimumFractionDigits: 2 })} (-2%) a $ ${limSup.toLocaleString('es-AR', { minimumFractionDigits: 2 })} (+400%)`
+                        : `⚠ Fuera del rango de ARCA: debe estar entre $ ${limInf.toLocaleString('es-AR', { minimumFractionDigits: 2 })} y $ ${limSup.toLocaleString('es-AR', { minimumFractionDigits: 2 })}`}
+                    </p>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+        </ModalContent>
+        <ModalFooter>
+          <Button variant="ghost" onClick={() => setEmisionModal(false)}>
+            Cancelar
+          </Button>
+          <Button
+            onClick={handleEmitirCAE}
+            disabled={emitiendo || cargandoCotiz || !cotizValida}
+            loading={emitiendo}
+            className="bg-green-600 hover:bg-green-700"
+          >
+            <Send className="w-4 h-4" />
+            {emitiendo ? 'Emitiendo...' : 'Confirmar y Emitir'}
           </Button>
         </ModalFooter>
       </Modal>

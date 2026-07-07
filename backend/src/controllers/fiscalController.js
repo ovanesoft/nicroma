@@ -408,7 +408,7 @@ exports.emitirComprobante = async (req, res) => {
 exports.emitirDesdeFactura = async (req, res) => {
   try {
     const { facturaId } = req.params;
-    const { puntoVenta, tipoComprobante } = req.body;
+    const { puntoVenta, tipoComprobante, cotizacion: cotizacionManual } = req.body;
 
     // Obtener factura
     const factura = await prisma.factura.findFirst({
@@ -508,11 +508,28 @@ exports.emitirDesdeFactura = async (req, res) => {
         console.error('[AFIP] No se pudo obtener cotización oficial:', cotizErr.message);
       }
 
+      // Prioridad: 1) cotización manual del request, 2) cotización de la
+      // factura, 3) cotización oficial de ARCA.
+      const cotizManual = parseFloat(cotizacionManual);
       const cotizFactura = parseFloat(factura.cotizacion);
-      if (cotizOficial) {
-        // Usar la de la factura solo si está dentro del rango que acepta ARCA
-        // (entre -2% y +400% de la oficial); si no, usar la oficial.
-        const dentroDeRango = cotizFactura &&
+
+      if (cotizManual && cotizManual > 0) {
+        // Validar límites ARCA (-2% / +400% de la oficial) ANTES de emitir
+        if (cotizOficial) {
+          const limInf = cotizOficial * 0.98;
+          const limSup = cotizOficial * 5;
+          if (cotizManual < limInf || cotizManual > limSup) {
+            return res.status(400).json({
+              success: false,
+              error: `La cotización ingresada (${cotizManual}) está fuera del rango que acepta ARCA: entre ${limInf.toFixed(2)} (-2%) y ${limSup.toFixed(2)} (+400%) de la oficial (${cotizOficial}).`,
+              data: { cotizacionOficial: cotizOficial, limiteInferior: limInf, limiteSuperior: limSup }
+            });
+          }
+        }
+        cotizacion = cotizManual;
+      } else if (cotizOficial) {
+        // Usar la de la factura solo si está dentro del rango; si no, la oficial
+        const dentroDeRango = cotizFactura && cotizFactura > 1 &&
           cotizFactura >= cotizOficial * 0.98 &&
           cotizFactura <= cotizOficial * 5;
         cotizacion = dentroDeRango ? cotizFactura : cotizOficial;
@@ -521,7 +538,7 @@ exports.emitirDesdeFactura = async (req, res) => {
       } else {
         return res.status(400).json({
           success: false,
-          error: 'No se pudo obtener la cotización oficial de ARCA y la factura no tiene cotización cargada. Cargá la cotización en la factura o reintentá.'
+          error: 'No se pudo obtener la cotización oficial de ARCA y la factura no tiene cotización cargada. Ingresá la cotización manualmente o reintentá.'
         });
       }
 
@@ -567,6 +584,31 @@ exports.emitirDesdeFactura = async (req, res) => {
     });
   } catch (error) {
     console.error('Error emitiendo desde factura:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+/**
+ * GET /api/fiscal/cotizacion?moneda=DOL
+ * Devuelve la cotización oficial de ARCA para la moneda, junto con los
+ * límites aceptados (-2% / +400%) para validar cotizaciones manuales.
+ */
+exports.getCotizacion = async (req, res) => {
+  try {
+    const { moneda = 'DOL' } = req.query;
+    const cotizacion = await afipService.getCotizacion(req.user.tenant_id, moneda);
+
+    res.json({
+      success: true,
+      data: {
+        moneda,
+        cotizacion,
+        limiteInferior: Math.round(cotizacion * 0.98 * 100) / 100,
+        limiteSuperior: Math.round(cotizacion * 5 * 100) / 100
+      }
+    });
+  } catch (error) {
+    console.error('Error obteniendo cotización:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 };

@@ -93,6 +93,9 @@ router.post('/recuperar-cae/:facturaId',
   fiscalController.recuperarCAE
 );
 
+// Cotización oficial de ARCA para una moneda
+router.get('/cotizacion', fiscalController.getCotizacion);
+
 // ==================== CONSULTAS ====================
 
 // Listar comprobantes emitidos
