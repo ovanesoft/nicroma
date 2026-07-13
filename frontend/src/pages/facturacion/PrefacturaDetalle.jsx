@@ -9,9 +9,10 @@ import { Card, CardContent, CardHeader, CardTitle, Button, Badge, Input } from '
 import { 
   usePrefactura, useConfirmarPrefactura, useCancelarPrefactura, 
   useCreateFacturaDesdePrefactura, useActualizarTiposCambioPrefactura,
-  useTiposCambioUltimos
+  useTiposCambioUltimos, useActualizarPrefactura
 } from '../../hooks/useApi';
 import { formatDate, cn } from '../../lib/utils';
+import { CONDICIONES_VENTA_FACTURA } from '../../lib/constants';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
 
@@ -31,6 +32,7 @@ function PrefacturaDetalle() {
   const cancelar = useCancelarPrefactura();
   const facturar = useCreateFacturaDesdePrefactura();
   const actualizarTC = useActualizarTiposCambioPrefactura(id);
+  const actualizarPrefactura = useActualizarPrefactura(id);
   const { data: tcUltimosData } = useTiposCambioUltimos();
 
   const prefactura = data?.data?.prefactura;
@@ -40,6 +42,43 @@ function PrefacturaDetalle() {
   const [tcValores, setTcValores] = useState({});
   const [monedaUnificada, setMonedaUnificada] = useState('');
   const [tcHidratado, setTcHidratado] = useState(false);
+
+  // Período de facturación y condición de venta (editable en borrador/confirmada)
+  const [facturacion, setFacturacion] = useState({
+    periodoDesde: '',
+    periodoHasta: '',
+    fechaVencimiento: '',
+    condicionVenta: '',
+  });
+  const [facturacionHidratado, setFacturacionHidratado] = useState(false);
+
+  useEffect(() => {
+    if (!prefactura || facturacionHidratado) return;
+    setFacturacionHidratado(true);
+    const hoy = new Date().toISOString().slice(0, 10);
+    const toDate = (v) => (v ? String(v).slice(0, 10) : hoy);
+    setFacturacion({
+      periodoDesde: toDate(prefactura.periodoDesde),
+      periodoHasta: toDate(prefactura.periodoHasta),
+      fechaVencimiento: toDate(prefactura.fechaVencimiento),
+      condicionVenta: prefactura.condicionVenta || '',
+    });
+  }, [prefactura]);
+
+  const handleGuardarFacturacion = async () => {
+    try {
+      await actualizarPrefactura.mutateAsync({
+        periodoDesde: facturacion.periodoDesde || null,
+        periodoHasta: facturacion.periodoHasta || null,
+        fechaVencimiento: facturacion.fechaVencimiento || null,
+        condicionVenta: facturacion.condicionVenta || null,
+      });
+      toast.success('Datos de facturación guardados');
+      refetch();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Error al guardar');
+    }
+  };
 
   // Divisas presentes en los ítems
   const divisasItems = [...new Set((prefactura?.items || []).map(i => (i.divisa || 'USD').toUpperCase()))];
@@ -111,9 +150,19 @@ function PrefacturaDetalle() {
   };
 
   const handleFacturar = async () => {
+    if (!facturacion.condicionVenta && !prefactura.condicionVenta) {
+      toast.error('Seleccioná la condición de venta antes de facturar');
+      return;
+    }
     if (!confirm('¿Generar factura desde esta prefactura?')) return;
     try {
-      const result = await facturar.mutateAsync({ prefacturaId: id });
+      await facturar.mutateAsync({
+        prefacturaId: id,
+        periodoDesde: facturacion.periodoDesde || null,
+        periodoHasta: facturacion.periodoHasta || null,
+        fechaVencimiento: facturacion.fechaVencimiento || null,
+        condicionVenta: facturacion.condicionVenta || prefactura.condicionVenta || null,
+      });
       navigate(`/facturas`);
     } catch (error) {
       alert(error.response?.data?.message || 'Error al facturar');
@@ -353,6 +402,79 @@ function PrefacturaDetalle() {
               )}
               {prefactura.cliente?.telefono && (
                 <p className="text-sm text-slate-500">{prefactura.cliente.telefono}</p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Período de facturación y condición de venta */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Calendar className="w-5 h-5" />
+                Período y Condición de Venta
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {['BORRADOR', 'CONFIRMADA'].includes(prefactura.estado) ? (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Desde</label>
+                    <Input
+                      type="date"
+                      value={facturacion.periodoDesde}
+                      onChange={(e) => setFacturacion(prev => ({ ...prev, periodoDesde: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Hasta</label>
+                    <Input
+                      type="date"
+                      value={facturacion.periodoHasta}
+                      onChange={(e) => setFacturacion(prev => ({ ...prev, periodoHasta: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Fecha de Vto. para el pago</label>
+                    <Input
+                      type="date"
+                      value={facturacion.fechaVencimiento}
+                      onChange={(e) => setFacturacion(prev => ({ ...prev, fechaVencimiento: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">
+                      Condición de venta <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      value={facturacion.condicionVenta}
+                      onChange={(e) => setFacturacion(prev => ({ ...prev, condicionVenta: e.target.value }))}
+                      className={cn(
+                        'w-full px-3 py-2 rounded-lg border bg-white text-sm',
+                        facturacion.condicionVenta ? 'border-slate-300' : 'border-red-300'
+                      )}
+                    >
+                      <option value="">Seleccionar...</option>
+                      {CONDICIONES_VENTA_FACTURA.map(opt => (
+                        <option key={opt} value={opt}>{opt}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <Button
+                    className="w-full"
+                    size="sm"
+                    variant="secondary"
+                    onClick={handleGuardarFacturacion}
+                    loading={actualizarPrefactura.isPending}
+                  >
+                    Guardar datos de facturación
+                  </Button>
+                </>
+              ) : (
+                <div className="text-sm space-y-1">
+                  <p><span className="text-slate-500">Período:</span> {formatDate(prefactura.periodoDesde)} al {formatDate(prefactura.periodoHasta)}</p>
+                  <p><span className="text-slate-500">Vto. pago:</span> {formatDate(prefactura.fechaVencimiento)}</p>
+                  <p><span className="text-slate-500">Condición de venta:</span> {prefactura.condicionVenta || '-'}</p>
+                </div>
               )}
             </CardContent>
           </Card>

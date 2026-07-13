@@ -9,7 +9,10 @@ import {
 } from '../../components/ui';
 import { useCreateFactura, useBuscarClientes } from '../../hooks/useApi';
 import { cn } from '../../lib/utils';
+import { CONDICIONES_VENTA_FACTURA } from '../../lib/constants';
 import toast from 'react-hot-toast';
+
+const HOY_ISO = new Date().toISOString().slice(0, 10);
 
 const TIPOS_COMPROBANTE = [
   { value: '001', label: 'Factura A' },
@@ -44,7 +47,10 @@ function FacturaForm() {
     moneda: 'ARS',
     cotizacion: 1,
     observaciones: '',
-    fechaVencimiento: '',
+    periodoDesde: HOY_ISO,
+    periodoHasta: HOY_ISO,
+    fechaVencimiento: HOY_ISO,
+    condicionVenta: '',
   });
 
   const [items, setItems] = useState([
@@ -93,6 +99,10 @@ function FacturaForm() {
       toast.error('Agregá al menos un item con descripción');
       return;
     }
+    if (!formData.condicionVenta) {
+      toast.error('Seleccioná la condición de venta');
+      return;
+    }
 
     try {
       const payload = {
@@ -104,6 +114,10 @@ function FacturaForm() {
           ? parseFloat(formData.cotizacion)
           : 1,
         observaciones: formData.observaciones || null,
+        periodoDesde: formData.periodoDesde || null,
+        periodoHasta: formData.periodoHasta || null,
+        fechaVencimiento: formData.fechaVencimiento || null,
+        condicionVenta: formData.condicionVenta,
         items: items.filter(i => i.descripcion).map(i => ({
           descripcion: i.descripcion,
           cantidad: i.cantidad || 1,
@@ -199,6 +213,69 @@ function FacturaForm() {
                     </div>
                   )}
                 </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Período de facturación */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Período de Facturación</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Desde</label>
+                  <Input
+                    type="date"
+                    value={formData.periodoDesde}
+                    onChange={(e) => handleChange('periodoDesde', e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Hasta</label>
+                  <Input
+                    type="date"
+                    value={formData.periodoHasta}
+                    onChange={(e) => handleChange('periodoHasta', e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Fecha de Vto. para el pago</label>
+                  <Input
+                    type="date"
+                    value={formData.fechaVencimiento}
+                    onChange={(e) => handleChange('fechaVencimiento', e.target.value)}
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Condición de venta */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Condición de Venta</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                Condición de venta <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={formData.condicionVenta}
+                onChange={(e) => handleChange('condicionVenta', e.target.value)}
+                className={cn(
+                  'flex h-10 w-full rounded-md border bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500',
+                  formData.condicionVenta ? 'border-slate-300' : 'border-red-300'
+                )}
+              >
+                <option value="">Seleccionar condición de venta...</option>
+                {CONDICIONES_VENTA_FACTURA.map(opt => (
+                  <option key={opt} value={opt}>{opt}</option>
+                ))}
+              </select>
+              {!formData.condicionVenta && (
+                <p className="mt-1 text-xs text-red-500">Campo obligatorio para emitir el comprobante.</p>
               )}
             </CardContent>
           </Card>
@@ -367,12 +444,6 @@ function FacturaForm() {
                   </p>
                 </div>
               )}
-              <Input
-                label="Vencimiento"
-                type="date"
-                value={formData.fechaVencimiento}
-                onChange={(e) => handleChange('fechaVencimiento', e.target.value)}
-              />
             </CardContent>
           </Card>
 

@@ -417,6 +417,20 @@ export function useCancelarPrefactura() {
   });
 }
 
+export function useActualizarPrefactura(id) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (data) => {
+      const response = await api.put(`/prefacturas/${id}`, data);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['prefactura', id] });
+      queryClient.invalidateQueries({ queryKey: ['prefacturas'] });
+    }
+  });
+}
+
 // ============================================
 // HOOKS PARA CATÁLOGO DE GASTOS (TARIFARIO)
 // ============================================

@@ -59,7 +59,7 @@ function generarFacturaPdf(factura, tenant, comprobanteFiscal = null, logoBuffer
 
   // ============ ENCABEZADO ============
   // Marco superior con datos del emisor (izq) y del comprobante (der)
-  const headH = 110;
+  const headH = 140;
   doc.rect(X, 40, W, headH).strokeColor(borderColor).lineWidth(0.8).stroke();
   // Divisor central
   doc.moveTo(X + W / 2, 40).lineTo(X + W / 2, 40 + headH).stroke();
@@ -75,27 +75,38 @@ function generarFacturaPdf(factura, tenant, comprobanteFiscal = null, logoBuffer
   }
 
   // Izquierda: logo + datos del emisor
-  drawTenantLogo(doc, logoBuffer, { right: doc.page.width - X - 130, top: 48, maxWidth: 110, maxHeight: 42 });
-  doc.fontSize(11).fillColor(textColor).font('Helvetica-Bold');
-  doc.text(tenant?.name || '', X + 8, 95, { width: W / 2 - 30 });
-  doc.fontSize(7).fillColor(lightText).font('Helvetica');
-  let ly = 109;
-  if (tenant?.companyAddress) { doc.text(tenant.companyAddress, X + 8, ly, { width: W / 2 - 30 }); ly += 9; }
-  if (tenant?.paymentBankCuit) { doc.text(`CUIT: ${tenant.paymentBankCuit}`, X + 8, ly); ly += 9; }
+  drawTenantLogo(doc, logoBuffer, { right: doc.page.width - X - 130, top: 46, maxWidth: 110, maxHeight: 38 });
+  doc.fontSize(10.5).fillColor(textColor).font('Helvetica-Bold');
+  doc.text(tenant?.name || '', X + 8, 88, { width: W / 2 - 20 });
+  doc.fontSize(6.5).fillColor(lightText).font('Helvetica');
+  let ly = 102;
+  const emisorCuit = tenant?.companyCuit || tenant?.paymentBankCuit;
+  if (tenant?.companyAddress) { doc.text(tenant.companyAddress, X + 8, ly, { width: W / 2 - 20 }); ly += 8.5; }
+  if (emisorCuit) { doc.text(`CUIT: ${emisorCuit}`, X + 8, ly); ly += 8.5; }
+  if (tenant?.companyCondicionFiscal) { doc.text(`Cond. Fiscal: ${tenant.companyCondicionFiscal}`, X + 8, ly, { width: W / 2 - 20 }); ly += 8.5; }
+  if (tenant?.companyIngresosBrutos) { doc.text(`Ingresos Brutos: ${tenant.companyIngresosBrutos}`, X + 8, ly, { width: W / 2 - 20 }); ly += 8.5; }
+  if (tenant?.companyInicioActividad) { doc.text(`Inicio de Actividad: ${formatDate(tenant.companyInicioActividad)}`, X + 8, ly); ly += 8.5; }
   const contacto = [tenant?.companyEmail, tenant?.companyPhone].filter(Boolean).join(' • ');
-  if (contacto) { doc.text(contacto, X + 8, ly, { width: W / 2 - 30 }); }
+  if (contacto) { doc.text(contacto, X + 8, ly, { width: W / 2 - 20 }); }
 
   // Derecha: tipo de documento + número + fechas
+  const rx = X + W / 2 + 24;
   doc.fontSize(13).fillColor(textColor).font('Helvetica-Bold');
-  doc.text(nombreDoc, X + W / 2 + 24, 50);
+  doc.text(nombreDoc, rx, 48);
   doc.fontSize(10);
-  doc.text(`N° ${comprobanteFiscal?.numeroCompleto || factura.numeroCompleto}`, X + W / 2 + 24, 68);
-  doc.fontSize(8).font('Helvetica').fillColor(textColor);
-  doc.text(`Fecha de emisión: ${formatDate(factura.fecha)}`, X + W / 2 + 24, 86);
+  doc.text(`N° ${comprobanteFiscal?.numeroCompleto || factura.numeroCompleto}`, rx, 64);
+  doc.fontSize(7.5).font('Helvetica').fillColor(textColor);
+  doc.text(`Fecha de emisión: ${formatDate(factura.fecha)}`, rx, 80);
   if (factura.fechaVencimiento) {
-    doc.text(`Vencimiento: ${formatDate(factura.fechaVencimiento)}`, X + W / 2 + 24, 98);
+    doc.text(`Vto. pago: ${formatDate(factura.fechaVencimiento)}`, rx, 91);
   }
-  doc.text(`Moneda: ${factura.moneda || 'USD'}${factura.cotizacion && factura.cotizacion !== 1 ? ` (cotiz. ${formatCurrency(factura.cotizacion)})` : ''}`, X + W / 2 + 24, 110);
+  doc.text(`Moneda: ${factura.moneda || 'USD'}${factura.cotizacion && factura.cotizacion !== 1 ? ` (cotiz. ${formatCurrency(factura.cotizacion)})` : ''}`, rx, 102);
+  if (factura.periodoDesde || factura.periodoHasta) {
+    doc.text(`Período: ${formatDate(factura.periodoDesde)} al ${formatDate(factura.periodoHasta)}`, rx, 113, { width: W / 2 - 30 });
+  }
+  if (factura.condicionVenta) {
+    doc.text(`Condición de venta: ${factura.condicionVenta}`, rx, 124, { width: W / 2 - 30 });
+  }
 
   let y = 40 + headH + 12;
 

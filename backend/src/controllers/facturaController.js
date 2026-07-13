@@ -154,7 +154,15 @@ const crearDesdePrefactura = async (req, res) => {
   try {
     const tenantId = req.user.tenant_id;
     const usuarioId = req.user.id;
-    const { prefacturaId, tipoComprobante = 'A', puntoVenta = 1 } = req.body;
+    const {
+      prefacturaId,
+      tipoComprobante = 'A',
+      puntoVenta = 1,
+      fechaVencimiento,
+      periodoDesde,
+      periodoHasta,
+      condicionVenta,
+    } = req.body;
 
     // Obtener prefactura
     const prefactura = await prisma.prefactura.findFirst({
@@ -174,6 +182,17 @@ const crearDesdePrefactura = async (req, res) => {
       return res.status(400).json({ success: false, message: 'No se puede facturar una prefactura cancelada' });
     }
 
+    // Condición de venta: se puede sobreescribir en la emisión o heredar de la prefactura
+    const condVentaFinal = (condicionVenta ?? prefactura.condicionVenta);
+    if (!condVentaFinal || !String(condVentaFinal).trim()) {
+      return res.status(400).json({ success: false, message: 'La condición de venta es obligatoria' });
+    }
+
+    const parseFechaFactura = (v) => (v ? new Date(v) : null);
+    const fechaVencimientoFinal = fechaVencimiento !== undefined ? parseFechaFactura(fechaVencimiento) : prefactura.fechaVencimiento;
+    const periodoDesdeFinal = periodoDesde !== undefined ? parseFechaFactura(periodoDesde) : prefactura.periodoDesde;
+    const periodoHastaFinal = periodoHasta !== undefined ? parseFechaFactura(periodoHasta) : prefactura.periodoHasta;
+
     // Crear factura con items (con reintento si colisiona la numeración)
     const factura = await crearFacturaConReintento(tenantId, puntoVenta, tipoComprobante, (numero, numeroCompleto) => ({
       data: {
@@ -186,6 +205,10 @@ const crearDesdePrefactura = async (req, res) => {
         carpetaId: prefactura.carpetaId,
         clienteId: prefactura.clienteId,
         fecha: new Date(),
+        fechaVencimiento: fechaVencimientoFinal,
+        periodoDesde: periodoDesdeFinal,
+        periodoHasta: periodoHastaFinal,
+        condicionVenta: String(condVentaFinal).trim(),
         moneda: prefactura.moneda,
         subtotal: prefactura.subtotal,
         iva: prefactura.iva,
@@ -240,12 +263,22 @@ const crearFactura = async (req, res) => {
       moneda = 'USD',
       cotizacion,
       observaciones,
+      fechaVencimiento,
+      periodoDesde,
+      periodoHasta,
+      condicionVenta,
       items = []
     } = req.body;
 
     if (!clienteId) {
       return res.status(400).json({ success: false, message: 'Cliente requerido' });
     }
+
+    if (!condicionVenta || !String(condicionVenta).trim()) {
+      return res.status(400).json({ success: false, message: 'La condición de venta es obligatoria' });
+    }
+
+    const parseFechaFactura = (v) => (v ? new Date(v) : null);
 
     // Calcular totales
     const itemsCalculados = items.map(i => {
@@ -276,6 +309,10 @@ const crearFactura = async (req, res) => {
         carpetaId: carpetaId || null,
         clienteId,
         fecha: new Date(),
+        fechaVencimiento: parseFechaFactura(fechaVencimiento),
+        periodoDesde: parseFechaFactura(periodoDesde),
+        periodoHasta: parseFechaFactura(periodoHasta),
+        condicionVenta: condicionVenta.trim(),
         moneda,
         cotizacion: cotizacion && parseFloat(cotizacion) > 0 ? parseFloat(cotizacion) : 1,
         subtotal: subtotalGeneral,
@@ -432,7 +469,9 @@ const generarPDF = async (req, res) => {
       where: { id: tenantId },
       select: {
         name: true, logoUrl: true, companyAddress: true,
-        companyPhone: true, companyEmail: true, paymentBankCuit: true
+        companyPhone: true, companyEmail: true, paymentBankCuit: true,
+        companyCuit: true, companyIngresosBrutos: true,
+        companyInicioActividad: true, companyCondicionFiscal: true
       }
     });
 

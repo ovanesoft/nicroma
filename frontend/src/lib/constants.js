@@ -318,6 +318,27 @@ export const TIPOS_DOCUMENTO_PD = [
   { value: 'PRESUPUESTO', label: 'Presupuesto' }
 ];
 
+// Condición fiscal de la empresa (según AFIP) - Información de la Empresa
+export const CONDICIONES_FISCALES = [
+  { value: 'Responsable Inscripto', label: 'Responsable Inscripto' },
+  { value: 'Monotributista', label: 'Monotributista' },
+  { value: 'Exento', label: 'Exento' },
+  { value: 'No Responsable', label: 'No Responsable' },
+  { value: 'Consumidor Final', label: 'Consumidor Final' }
+];
+
+// Condición de venta (medio de pago) - Pantalla de Prefactura/Factura
+export const CONDICIONES_VENTA_FACTURA = [
+  'Contado',
+  'Tarjeta de Débito',
+  'Tarjeta de Crédito',
+  'Cuenta Corriente',
+  'Cheque',
+  'Transferencia Bancaria',
+  'Otra',
+  'Otros medios de pago electrónico'
+];
+
 export const PREDESPACHO_ESTADOS = {
   BORRADOR: { label: 'Borrador', color: 'bg-slate-100 text-slate-800' },
   ENVIADO: { label: 'Enviado', color: 'bg-purple-100 text-purple-800' },

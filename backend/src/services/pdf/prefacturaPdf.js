@@ -50,7 +50,11 @@ function generarPrefacturaPdf(prefactura, tenant, logoBuffer = null) {
   doc.text(tenant?.name || '', 50, 45, { width: 300 });
   doc.fontSize(8).fillColor(lightText).font('Helvetica');
   let hy = 62;
-  if (tenant?.paymentBankCuit) { doc.text(`CUIT: ${tenant.paymentBankCuit}`, 50, hy); hy += 11; }
+  const emisorCuit = tenant?.companyCuit || tenant?.paymentBankCuit;
+  if (emisorCuit) { doc.text(`CUIT: ${emisorCuit}`, 50, hy); hy += 11; }
+  if (tenant?.companyCondicionFiscal) { doc.text(`Cond. Fiscal: ${tenant.companyCondicionFiscal}`, 50, hy, { width: 300 }); hy += 11; }
+  if (tenant?.companyIngresosBrutos) { doc.text(`Ingresos Brutos: ${tenant.companyIngresosBrutos}`, 50, hy, { width: 300 }); hy += 11; }
+  if (tenant?.companyInicioActividad) { doc.text(`Inicio de Actividad: ${formatDate(tenant.companyInicioActividad)}`, 50, hy); hy += 11; }
   if (tenant?.companyAddress) { doc.text(tenant.companyAddress, 50, hy, { width: 300 }); hy += 11; }
   const contacto = [tenant?.companyEmail, tenant?.companyPhone].filter(Boolean).join(' • ');
   if (contacto) { doc.text(contacto, 50, hy); hy += 11; }
@@ -79,6 +83,22 @@ function generarPrefacturaPdf(prefactura, tenant, logoBuffer = null) {
   doc.font('Helvetica-Bold').text('CUIT:', 400, y);
   doc.font('Helvetica').text(cliente.numeroDocumento || '-', 435, y);
   y += 18;
+
+  // ============ Período de facturación y condición de venta ============
+  if (prefactura.periodoDesde || prefactura.periodoHasta || prefactura.fechaVencimiento || prefactura.condicionVenta) {
+    doc.fontSize(8.5).fillColor(textColor);
+    doc.font('Helvetica-Bold').text('Período:', 58, y);
+    doc.font('Helvetica').text(`${formatDate(prefactura.periodoDesde)} al ${formatDate(prefactura.periodoHasta)}`, 135, y, { width: 200 });
+    doc.font('Helvetica-Bold').text('Vto. pago:', 350, y);
+    doc.font('Helvetica').text(formatDate(prefactura.fechaVencimiento), 420, y, { width: 125 });
+    y += 14;
+    if (prefactura.condicionVenta) {
+      doc.font('Helvetica-Bold').text('Condición de venta:', 58, y);
+      doc.font('Helvetica').text(prefactura.condicionVenta, 165, y, { width: 380 });
+      y += 14;
+    }
+    y += 4;
+  }
 
   // ============ Datos de la operación (carpeta) ============
   if (prefactura.carpetaId && carpeta.numero) {

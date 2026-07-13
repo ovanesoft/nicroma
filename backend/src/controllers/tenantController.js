@@ -664,6 +664,7 @@ const getCompanyConfig = async (req, res) => {
     const result = await query(
       `SELECT id, name, slug, domain, logo_url, settings,
               company_email, company_phone, company_address, company_city, company_country, company_website,
+              company_cuit, company_ingresos_brutos, company_inicio_actividad, company_condicion_fiscal,
               portal_enabled, portal_slug, portal_welcome_message, portal_primary_color,
               payment_bank_name, payment_bank_account, payment_bank_cbu, payment_bank_alias,
               payment_bank_cuit, payment_bank_holder, payment_mercado_pago, payment_paypal,
@@ -706,6 +707,10 @@ const getCompanyConfig = async (req, res) => {
           city: tenant.company_city,
           country: tenant.company_country,
           website: tenant.company_website,
+          cuit: tenant.company_cuit,
+          ingresosBrutos: tenant.company_ingresos_brutos,
+          inicioActividad: tenant.company_inicio_actividad,
+          condicionFiscal: tenant.company_condicion_fiscal,
           plan: tenant.plan,
           createdAt: tenant.created_at
         },
@@ -755,6 +760,7 @@ const updateCompanyConfig = async (req, res) => {
     const {
       name, domain, 
       companyEmail, companyPhone, companyAddress, companyCity, companyCountry, companyWebsite,
+      companyCuit, companyIngresosBrutos, companyInicioActividad, companyCondicionFiscal,
       portalEnabled, portalSlug, portalWelcomeMessage, portalPrimaryColor,
       // Medios de pago
       paymentBankName, paymentBankAccount, paymentBankCbu, paymentBankAlias,
@@ -817,6 +823,22 @@ const updateCompanyConfig = async (req, res) => {
     if (companyWebsite !== undefined) {
       updates.push(`company_website = $${paramCount++}`);
       values.push(companyWebsite?.trim() || null);
+    }
+    if (companyCuit !== undefined) {
+      updates.push(`company_cuit = $${paramCount++}`);
+      values.push(companyCuit?.trim() || null);
+    }
+    if (companyIngresosBrutos !== undefined) {
+      updates.push(`company_ingresos_brutos = $${paramCount++}`);
+      values.push(companyIngresosBrutos?.trim() || null);
+    }
+    if (companyInicioActividad !== undefined) {
+      updates.push(`company_inicio_actividad = $${paramCount++}`);
+      values.push(companyInicioActividad ? new Date(companyInicioActividad) : null);
+    }
+    if (companyCondicionFiscal !== undefined) {
+      updates.push(`company_condicion_fiscal = $${paramCount++}`);
+      values.push(companyCondicionFiscal?.trim() || null);
     }
     if (portalEnabled !== undefined) {
       updates.push(`portal_enabled = $${paramCount++}`);

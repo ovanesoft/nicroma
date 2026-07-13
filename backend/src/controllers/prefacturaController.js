@@ -192,6 +192,9 @@ const crearDesdeCarpeta = async (req, res) => {
     // Generar número
     const numero = await generarNumeroPrefactura(tenantId);
 
+    // Período de facturación por defecto = fecha de emisión
+    const hoy = new Date();
+
     // Crear prefactura con items
     const prefactura = await prisma.prefactura.create({
       data: {
@@ -199,7 +202,10 @@ const crearDesdeCarpeta = async (req, res) => {
         numero,
         carpetaId,
         clienteId: carpeta.clienteId,
-        fecha: new Date(),
+        fecha: hoy,
+        periodoDesde: hoy,
+        periodoHasta: hoy,
+        fechaVencimiento: hoy,
         moneda: carpeta.moneda || 'USD',
         subtotal: subtotalGeneral,
         iva: ivaGeneral,
@@ -300,7 +306,7 @@ const actualizarPrefactura = async (req, res) => {
   try {
     const { id } = req.params;
     const tenantId = req.user.tenant_id;
-    const { observaciones, items } = req.body;
+    const { observaciones, items, periodoDesde, periodoHasta, fechaVencimiento, condicionVenta } = req.body;
 
     const existing = await prisma.prefactura.findFirst({
       where: { id, tenantId }
@@ -310,12 +316,25 @@ const actualizarPrefactura = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Prefactura no encontrada' });
     }
 
-    if (existing.estado !== 'BORRADOR') {
-      return res.status(400).json({ success: false, message: 'Solo se pueden editar prefacturas en borrador' });
+    // Los ítems solo pueden editarse en borrador. Los datos de facturación
+    // (período, vencimiento y condición de venta) pueden ajustarse también
+    // cuando la prefactura está confirmada, antes de emitir la factura.
+    if (items && existing.estado !== 'BORRADOR') {
+      return res.status(400).json({ success: false, message: 'Solo se pueden editar los ítems de prefacturas en borrador' });
+    }
+    if (!['BORRADOR', 'CONFIRMADA'].includes(existing.estado)) {
+      return res.status(400).json({ success: false, message: 'No se puede editar una prefactura en este estado' });
     }
 
+    const parseFechaPref = (v) => (v ? new Date(v) : null);
+
     // Si hay items, recalcular
-    let updateData = { observaciones };
+    let updateData = {};
+    if (observaciones !== undefined) updateData.observaciones = observaciones;
+    if (periodoDesde !== undefined) updateData.periodoDesde = parseFechaPref(periodoDesde);
+    if (periodoHasta !== undefined) updateData.periodoHasta = parseFechaPref(periodoHasta);
+    if (fechaVencimiento !== undefined) updateData.fechaVencimiento = parseFechaPref(fechaVencimiento);
+    if (condicionVenta !== undefined) updateData.condicionVenta = condicionVenta?.trim() || null;
 
     if (items) {
       // Eliminar items existentes
@@ -542,7 +561,9 @@ const generarPDF = async (req, res) => {
       where: { id: tenantId },
       select: {
         name: true, logoUrl: true, companyAddress: true, companyPhone: true,
-        companyEmail: true, paymentBankCuit: true
+        companyEmail: true, paymentBankCuit: true,
+        companyCuit: true, companyIngresosBrutos: true,
+        companyInicioActividad: true, companyCondicionFiscal: true
       }
     });
 

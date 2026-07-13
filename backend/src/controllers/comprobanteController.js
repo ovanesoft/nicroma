@@ -237,7 +237,9 @@ const descargarPDF = async (req, res) => {
       where: { id: tenantId },
       select: {
         name: true, logoUrl: true, companyAddress: true, companyPhone: true,
-        companyEmail: true, paymentBankCuit: true
+        companyEmail: true, paymentBankCuit: true,
+        companyCuit: true, companyIngresosBrutos: true,
+        companyInicioActividad: true, companyCondicionFiscal: true
       }
     });
 

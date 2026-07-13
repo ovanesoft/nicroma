@@ -14,6 +14,7 @@ import {
   useDeleteCompanyLogo, useEnablePortal 
 } from '../../hooks/useApi';
 import { cn } from '../../lib/utils';
+import { CONDICIONES_FISCALES } from '../../lib/constants';
 import toast from 'react-hot-toast';
 
 const COLORS = [
@@ -49,6 +50,11 @@ function CompanySettingsPage() {
     companyCity: '',
     companyCountry: '',
     companyWebsite: '',
+    // Datos fiscales de la empresa
+    companyCuit: '',
+    companyIngresosBrutos: '',
+    companyInicioActividad: '',
+    companyCondicionFiscal: '',
     portalEnabled: false,
     portalSlug: '',
     portalWelcomeMessage: '',
@@ -91,6 +97,10 @@ function CompanySettingsPage() {
         companyCity: config.company?.city || '',
         companyCountry: config.company?.country || '',
         companyWebsite: config.company?.website || '',
+        companyCuit: config.company?.cuit || '',
+        companyIngresosBrutos: config.company?.ingresosBrutos || '',
+        companyInicioActividad: config.company?.inicioActividad ? String(config.company.inicioActividad).slice(0, 10) : '',
+        companyCondicionFiscal: config.company?.condicionFiscal || '',
         portalEnabled: config.portal?.enabled || false,
         portalSlug: config.portal?.slug || '',
         portalWelcomeMessage: config.portal?.welcomeMessage || '',
@@ -138,10 +148,45 @@ function CompanySettingsPage() {
       .replace(/\{(N+)\}/g, (_, ns) => String(seq).padStart(ns.length, '0'));
   };
 
+  // Valida CUIT: formato XX-XXXXXXXX-X y dígito verificador (módulo 11, estándar AFIP)
+  const validarCuit = (cuitRaw) => {
+    const soloNum = (cuitRaw || '').replace(/[^0-9]/g, '');
+    if (soloNum.length !== 11) return false;
+    const mult = [5, 4, 3, 2, 7, 6, 5, 4, 3, 2];
+    const suma = mult.reduce((acc, m, i) => acc + m * parseInt(soloNum[i], 10), 0);
+    let verificador = 11 - (suma % 11);
+    if (verificador === 11) verificador = 0;
+    if (verificador === 10) verificador = 9;
+    return verificador === parseInt(soloNum[10], 10);
+  };
+
   const handleSave = async () => {
     if (!form.name.trim()) {
       toast.error('El nombre de la empresa es requerido');
       return;
+    }
+
+    // Validación CUIT (opcional pero si se carga debe ser válido)
+    if (form.companyCuit && form.companyCuit.trim()) {
+      if (!validarCuit(form.companyCuit)) {
+        toast.error('El CUIT no es válido. Formato XX-XXXXXXXX-X con dígito verificador correcto');
+        return;
+      }
+    }
+
+    // Validación Inicio de Actividad: fecha válida y no futura
+    if (form.companyInicioActividad) {
+      const fecha = new Date(form.companyInicioActividad + 'T00:00:00');
+      if (isNaN(fecha.getTime())) {
+        toast.error('La fecha de Inicio de Actividad no es válida');
+        return;
+      }
+      const hoy = new Date();
+      hoy.setHours(23, 59, 59, 999);
+      if (fecha > hoy) {
+        toast.error('El Inicio de Actividad no puede ser una fecha futura');
+        return;
+      }
     }
 
     try {
@@ -443,6 +488,60 @@ function CompanySettingsPage() {
                   placeholder="https://www.miempresa.com"
                   className="pl-10"
                 />
+              </div>
+            </div>
+
+            {/* Datos fiscales (se imprimen en facturas, notas y recibos) */}
+            <div className="pt-4 mt-2 border-t border-slate-200">
+              <p className="text-sm font-semibold text-slate-700 mb-1">Datos Fiscales</p>
+              <p className="text-xs text-slate-500 mb-3">
+                Estos datos se imprimen automáticamente en Facturas, Notas de Crédito, Notas de Débito y Recibos.
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label>CUIT</Label>
+                  <Input
+                    value={form.companyCuit}
+                    onChange={(e) => {
+                      const digits = e.target.value.replace(/[^0-9]/g, '').slice(0, 11);
+                      let formatted = digits;
+                      if (digits.length > 2) formatted = `${digits.slice(0, 2)}-${digits.slice(2)}`;
+                      if (digits.length > 10) formatted = `${digits.slice(0, 2)}-${digits.slice(2, 10)}-${digits.slice(10)}`;
+                      setForm(prev => ({ ...prev, companyCuit: formatted }));
+                    }}
+                    placeholder="30-71929845-8"
+                  />
+                </div>
+                <div>
+                  <Label>Condición Fiscal</Label>
+                  <select
+                    value={form.companyCondicionFiscal}
+                    onChange={(e) => setForm(prev => ({ ...prev, companyCondicionFiscal: e.target.value }))}
+                    className="flex h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">Seleccionar...</option>
+                    {CONDICIONES_FISCALES.map(opt => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <Label>Ingresos Brutos</Label>
+                  <Input
+                    value={form.companyIngresosBrutos}
+                    onChange={(e) => setForm(prev => ({ ...prev, companyIngresosBrutos: e.target.value }))}
+                    placeholder="Ej: 901-123456-7 o Convenio Multilateral / Exento"
+                  />
+                </div>
+                <div>
+                  <Label>Inicio de Actividad</Label>
+                  <Input
+                    type="date"
+                    value={form.companyInicioActividad}
+                    max={new Date().toISOString().slice(0, 10)}
+                    onChange={(e) => setForm(prev => ({ ...prev, companyInicioActividad: e.target.value }))}
+                  />
+                </div>
               </div>
             </div>
           </CardContent>

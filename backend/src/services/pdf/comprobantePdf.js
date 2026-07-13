@@ -55,7 +55,11 @@ function generarComprobantePdf(comprobante, tenant, logoBuffer = null) {
   doc.text(tenant?.name || '', 50, 45, { width: 300 });
   doc.fontSize(8).fillColor(lightText).font('Helvetica');
   let hy = 62;
-  if (tenant?.paymentBankCuit) { doc.text(`CUIT: ${tenant.paymentBankCuit}`, 50, hy); hy += 11; }
+  const emisorCuit = tenant?.companyCuit || tenant?.paymentBankCuit;
+  if (emisorCuit) { doc.text(`CUIT: ${emisorCuit}`, 50, hy); hy += 11; }
+  if (tenant?.companyCondicionFiscal) { doc.text(`Cond. Fiscal: ${tenant.companyCondicionFiscal}`, 50, hy, { width: 300 }); hy += 11; }
+  if (tenant?.companyIngresosBrutos) { doc.text(`Ingresos Brutos: ${tenant.companyIngresosBrutos}`, 50, hy, { width: 300 }); hy += 11; }
+  if (tenant?.companyInicioActividad) { doc.text(`Inicio de Actividad: ${formatDate(tenant.companyInicioActividad)}`, 50, hy); hy += 11; }
   if (tenant?.companyAddress) { doc.text(tenant.companyAddress, 50, hy, { width: 300 }); hy += 11; }
   const contacto = [tenant?.companyEmail, tenant?.companyPhone].filter(Boolean).join(' • ');
   if (contacto) { doc.text(contacto, 50, hy); hy += 11; }
@@ -108,6 +112,11 @@ function generarComprobantePdf(comprobante, tenant, logoBuffer = null) {
   if (factura.carpeta) {
     doc.font('Helvetica-Bold').text('Carpeta:', 58, y);
     doc.font('Helvetica').text(`${factura.carpeta.numero || ''} ${factura.carpeta.houseBL ? `• HBL ${factura.carpeta.houseBL}` : ''}`, 135, y, { width: 400 });
+    y += 14;
+  }
+  if (comprobante.tipo === 'RECIBO' && factura.condicionVenta) {
+    doc.font('Helvetica-Bold').text('Condición de venta:', 58, y);
+    doc.font('Helvetica').text(factura.condicionVenta, 165, y, { width: 380 });
     y += 14;
   }
   y += 10;

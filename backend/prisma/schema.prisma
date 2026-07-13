@@ -34,6 +34,12 @@ model Tenant {
   companyCountry String? @map("company_country") @db.VarChar(100)
   companyWebsite String? @map("company_website") @db.VarChar(255)
 
+  // Datos fiscales de la empresa (se imprimen en facturas, notas y recibos)
+  companyCuit            String?   @map("company_cuit") @db.VarChar(20)
+  companyIngresosBrutos  String?   @map("company_ingresos_brutos") @db.VarChar(100)
+  companyInicioActividad DateTime? @map("company_inicio_actividad") @db.Timestamptz(6)
+  companyCondicionFiscal String?   @map("company_condicion_fiscal") @db.VarChar(100)
+
   // Medios de pago para clientes
   paymentBankName     String? @map("payment_bank_name") @db.VarChar(255)
   paymentBankAccount  String? @map("payment_bank_account") @db.VarChar(100)
@@ -990,13 +996,17 @@ model Prefactura {
   clienteId String   @map("cliente_id") @db.Uuid
   cliente   Cliente  @relation(fields: [clienteId], references: [id])
 
-  fecha         DateTime @default(now()) @db.Timestamptz(6)
-  moneda        String   @default("USD") @db.VarChar(10)
-  subtotal      Float
-  iva           Float
-  total         Float
-  estado        String   @default("BORRADOR") @db.VarChar(50)
-  observaciones String?
+  fecha            DateTime  @default(now()) @db.Timestamptz(6)
+  fechaVencimiento DateTime? @map("fecha_vencimiento") @db.Timestamptz(6)
+  periodoDesde     DateTime? @map("periodo_desde") @db.Timestamptz(6)
+  periodoHasta     DateTime? @map("periodo_hasta") @db.Timestamptz(6)
+  condicionVenta   String?   @map("condicion_venta") @db.VarChar(50)
+  moneda           String    @default("USD") @db.VarChar(10)
+  subtotal         Float
+  iva              Float
+  total            Float
+  estado           String    @default("BORRADOR") @db.VarChar(50)
+  observaciones    String?
 
   // Tipos de cambio para conversión de monedas
   // Formato: { usd: 1475, eur: 1600, ... } (valor en moneda local ARS)
@@ -1055,6 +1065,9 @@ model Factura {
 
   fecha            DateTime  @default(now()) @db.Timestamptz(6)
   fechaVencimiento DateTime? @map("fecha_vencimiento") @db.Timestamptz(6)
+  periodoDesde     DateTime? @map("periodo_desde") @db.Timestamptz(6)
+  periodoHasta     DateTime? @map("periodo_hasta") @db.Timestamptz(6)
+  condicionVenta   String?   @map("condicion_venta") @db.VarChar(50)
   moneda           String    @default("USD") @db.VarChar(10)
   cotizacion       Float     @default(1)
   subtotal         Float
